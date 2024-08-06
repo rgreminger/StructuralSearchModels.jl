@@ -1,0 +1,7 @@
+name = "StructuralSearchModels"
+uuid = "3afe5679-3dae-4b7a-af0e-821cb371ddf8"
+authors = ["Rafael Greminger <rafael.greminger@outlook.com>"]
+version = "0.1.0"
+
+[deps]
+Revise = "295af30f-e4ad-537b-8983-00126c2a3abe"
