@@ -61,7 +61,11 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 
 	n_sessions = n_consumers * n_sessions_per_consumer 
 
+	# Unpack products
 	product_ids, product_characteristics = products 
-	
-	return product_ids, product_characteristics 
+
+	# Create positions 
+	positions = [vcat(ones(Int64, 1 + m.n_A0), repeat(collect(Int64, 2:(length(product_ids[i]) - 1 - m.n_A0) / m.n_d), inner=m.n_d)) for i in 1:n_sessions]
+
+	return product_ids, product_characteristics, positions
 end

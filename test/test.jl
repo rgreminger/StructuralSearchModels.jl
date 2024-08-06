@@ -7,7 +7,7 @@ m = SDCore(
     ξ = 1.0, 
     ξρ = [1.0, 2.0, 3.0], 
     n_d = 3, 
-    n_A0 = 3, 
+    n_A0 = 1, 
     dE = Normal(), 
     dV = Normal(), 
     dU0 = Normal(), 
@@ -17,4 +17,5 @@ m = SDCore(
 )
 
 
-product_ids, product_characteristics = generate_data(m, 100, 10)
+product_ids, product_characteristics, positions = generate_data(m, 100, 1); 
+positions
