@@ -72,7 +72,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 	positions = [vcat(ones(Int64, 1 + n_A0), repeat(collect(Int64, 2:(length(product_ids[i]) - 1 - n_A0) / n_d), inner=n_d)) for i in 1:n_sessions]
 
 	# Generate search paths 
-	# paths, consideration_sets, indices_purchase, indices_stop = generate_search_paths(m, product_ids, product_characteristics, positions) 
+	paths, consideration_sets, indices_purchase, indices_stop = generate_search_paths(m, product_ids, product_characteristics, positions) 
 
 
 
@@ -113,6 +113,10 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 
 			# Loop over sessions in the chunk
 			for i in chunk
+				# Set to negative infinity so that never chosen/considered without filling in values.
+				u .= typemin(Float64)
+				zs .= typemin(Float64)
+
 				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m,
 								i, product_ids, product_characteristics, positions, u, zs, e, v, w, u0, zdfun, zsfun)
 			end
@@ -127,91 +131,87 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 end
 
 
-# function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m, 
-# 	i, product_ids, product_characteristics, positions, u, zs, e, v, w, u0, zdfun, zsfun)
+function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m, 
+	i, product_ids, product_characteristics, positions, u, zs, e, v, w, u0, zdfun, zsfun)
 
-# 	# outside option utility 
-# 	u[1] = rand(m.dU0) + rand(m.dV) + m.β[1]
-# 	u[1] = u0[s[1],k]
-# 	if m.outDummy
-# 		u[s[1]] += b[end]
-# 	end
+	# draw outside option utility 
+	u[1] = rand(m.dU0) + product_characteristics[i][1,1] * m.β[end]
 
-# 	# max utility and search value , initially outside option 
-# 	max_u = u[s[1]] 
-# 	max_zs = zs[s[1]]  # = -Inf 
+	# Define local variables
+	max_u = u[1] 	# current max utility 
+	max_zs = zs[1]  # current max search value
 
-# 	# search and purchase indicators (where max is) 
-# 	ind_p = s[1]
-# 	ind_s = s[1]
+	ind_p = 1 # index of product to purchase
+	ind_s = 1 # index of product to search
 
-# 	# index and position 
-# 	pos = 0 
-# 	ns = 0 # number of searches 
+	pos = 0 # current position 
+	ns = 0 	# number of searches
 
-# 	# Discovery value (varies with position)
-# 	ρ = isempty(ρ) ? [0.0] : ρ
-# 	zd = zdfun(Ξ[1],ρ,0)
+	zd = zdfun(m.Ξ, m.ρ, pos) # Discovery value (varies with position)	
+	ij = 0  # Index tracking product for reservation value 
+	ls = length(product_ids[i]) # number of products for consumer
 
-# 	# Index tracking product for reservation value 
-# 	ij = 0  
+	# Fill reservation values in initial awareness set
+	for j in eachindex(u) 
+		
+		if j == 1 # 1st product is outside option and we skip
+			continue
+		end 
 
-# 	ls = length(s) # number of products for consumer
+		# Fill in reservation value for product j
+		zs[j] =  zsfun(ξ[1],ξρ, positions[i][j]) + rand(m.dV) + rand(m.dW) 
+		for h in eachindex(b)
+			zs[j] += product_characteristics[i][j,h] * m.β[h]
+		end
 
-# 	# Reservation values in initial awareness set
-# 	for j in s[2:min(1+m.nA0,ls)]  # 1 is outside
-# 		ij += 1 
-# 		zs[j] =  zsfun(ξ[1],ξρ,ij-1) + v[j,k] + w[j,k]
-# 		for h in eachindex(b)
-# 			zs[j] += chars[j,h] * b[h]
-# 		end
-# 		if zs[j] > max_zs 
-# 			max_zs = zs[j]
-# 			ind_s = j 
-# 		end
-# 	end
-# 	# Index tracking disocveries (how far discovered )
-# 	i = 1+m.nA0
-# 	# Loop through discovering more products and searching 
-# 	while true 
-# 		if max_u < zd && max_zs < zd && i < ls # discover more 
-# 			pos += 1 
-# 			for j in s[i+1:min(i+m.nd,ls)]
-# 				ij += 1 
-# 				zs[j] =  zsfun(ξ[1],ξρ,ij-1) + v[j,k] + w[j,k]
-# 				for h in eachindex(b)
-# 					zs[j] += chars[j,h] * b[h]
-# 				end
-# 				if zs[j] > max_zs 
-# 					max_zs = zs[j]
-# 					ind_s = j
-# 				end
-# 			end
-# 			i += m.nd
+		if zs[j] > max_zs 
+			max_zs = zs[j]
+			ind_s = j 
+		end
+	end
+	
+	# Index tracking disocveries (how far discovered )
+	i = 1+m.nA0
+	# Loop through discovering more products and searching 
+	while true 
+		if max_u < zd && max_zs < zd && i < ls # discover more 
+			pos += 1 
+			for j in s[i+1:min(i+m.nd,ls)]
+				ij += 1 
+				zs[j] =  zsfun(ξ[1],ξρ,ij-1) + v[j,k] + w[j,k]
+				for h in eachindex(b)
+					zs[j] += chars[j,h] * b[h]
+				end
+				if zs[j] > max_zs 
+					max_zs = zs[j]
+					ind_s = j
+				end
+			end
+			i += m.nd
 
-# 			# Note: if position-specific mean not provided for all 
-# 			# 		positions, uses last one provided for all subsequent 
-# 			zd =  zdfun(Ξ[1],ρ,pos ) 
-# 		elseif ( max_u >= zd || i>=length(s) ) && max_u > max_zs # stop and buy 
-# 			purch[iCons] = ind_p - s[1] + 1 
-# 			stop[iCons] = pos 
-# 			path[ns+1,iCons] = 0 
-# 			break 
-# 		else # search 
-# 			ns += 1 
-# 			path[ns,iCons] = ind_s - s[1] + 1 
-# 			u[ind_s] =  e[ind_s,k] + w[ind_s,k]
-# 			for h in eachindex(b) 
-# 				u[ind_s] += chars[ind_s,h] * b[h] 
-# 			end	
-# 			if u[ind_s] > max_u 
-# 				max_u = u[ind_s]
-# 				ind_p = ind_s 
-# 			end
-# 			zs[ind_s] = -Inf 
-# 			max_zs,ind_s = StructSearch.findmax_range(zs,s[1:min(i,ls)])
-# 		end
-# 	end
-# 	return nothing
-# end
+			# Note: if position-specific mean not provided for all 
+			# 		positions, uses last one provided for all subsequent 
+			zd =  zdfun(Ξ[1],ρ,pos ) 
+		elseif ( max_u >= zd || i>=length(s) ) && max_u > max_zs # stop and buy 
+			purch[iCons] = ind_p - s[1] + 1 
+			stop[iCons] = pos 
+			path[ns+1,iCons] = 0 
+			break 
+		else # search 
+			ns += 1 
+			path[ns,iCons] = ind_s - s[1] + 1 
+			u[ind_s] =  e[ind_s,k] + w[ind_s,k]
+			for h in eachindex(b) 
+				u[ind_s] += chars[ind_s,h] * b[h] 
+			end	
+			if u[ind_s] > max_u 
+				max_u = u[ind_s]
+				ind_p = ind_s 
+			end
+			zs[ind_s] = -Inf 
+			max_zs,ind_s = StructSearch.findmax_range(zs,s[1:min(i,ls)])
+		end
+	end
+	return nothing
+end
 
