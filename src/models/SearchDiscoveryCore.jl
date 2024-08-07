@@ -72,7 +72,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 	positions = [vcat(ones(Int64, 1 + n_A0), repeat(collect(Int64, 2:(length(product_ids[i]) - 1 - n_A0) / n_d), inner=n_d)) for i in 1:n_sessions]
 
 	# Generate search paths 
-	paths, consideration_sets, indices_purchase, indices_stop = generate_search_paths(m, product_ids, product_characteristics, positions) 
+	# paths, consideration_sets, indices_purchase, indices_stop = generate_search_paths(m, product_ids, product_characteristics, positions) 
 
 
 

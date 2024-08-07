@@ -1,5 +1,4 @@
 # Generate products 
-
 function generate_products(n_sessions; 
     n_products = 1_000_000,
     n_products_per_session = 30,
@@ -17,10 +16,18 @@ function generate_products(n_sessions;
     product_characteristics = rand(distribution, n_products, 1) 
 
     # Draw products per session randomly from set of products for each session 
-    product_ids =   [ vcat(0 , rand(pid, n_products_per_session)) for i in 1:n_sessions]
+    product_ids =   if outside_option
+						[ vcat(0 , rand(pid, n_products_per_session)) for i in 1:n_sessions]
+					else
+						[ rand(pid, n_products_per_session) for i in 1:n_sessions]
+					end
 
     # Gather characteristics for each product
-    product_characteristics =   [ product_characteristics[pids[2:end], :] for pids in product_ids]
+    product_characteristics =   if outside_option
+									[ hcat(vcat(1.0, zeros(length(pids)-1)), vcat(zeros(1, size(product_characteristics, 2)), product_characteristics[pids[2:end], :])) for pids in product_ids]
+								else
+									[ product_characteristics[pids, :] for pids in product_ids]
+								end
 
     return product_ids, product_characteristics
 end 
