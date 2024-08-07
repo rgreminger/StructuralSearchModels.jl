@@ -19,6 +19,7 @@ using Parameters                # utils
 # Load general code 
 include("abstractions.jl")      # abstract types and functions
 include("utils.jl")             # helper functions
+include("constants.jl")
 
 # Load concrete model code 
 include("models/SearchDiscoveryCore.jl")     # Search and Discovery core model
