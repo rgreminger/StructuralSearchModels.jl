@@ -42,16 +42,18 @@ end
 
 """
 @with_kw mutable struct DataSDCore{T} <: Data where T <: Real
-	consumer_indices::Vector{UnitRange{Int}}	# which sessions belong to which consumer 
-	product_ids::Vector{Vector{Int}}			# product ids for each session in order 
-	product_characteristics::Vector{Matrix{T}}	# product characteristics matrix 
-	positions::Vector{Vector{Int}}				# positions for each session in order
-	search_paths::Vector{Vector{Int}} 			# search paths for each session 
-	consideration_sets::Vector{Vector{Bool}}	# consideration sets for each session, booleans whether searched or not 
-	purchase_indices::Vector{Int} 				# which product within session is purchased 
-	stop_indices::Vector{Int}					# which product within session is stopped a
+	consumer_indices::Vector{UnitRange{Int}}			# which sessions belong to which consumer 
+	product_ids::Vector{Vector{Int}}					# product ids for each session in order 
+	product_characteristics::Vector{Matrix{T}}			# product characteristics matrix 
+	positions::Vector{Vector{Int}}						# positions for each session in order
+	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing # search paths for each session, can be nothing 
+	consideration_sets::Vector{Vector{Bool}}			# consideration sets for each session, booleans whether searched or not 
+	purchase_indices::Vector{Int} 						# which product within session is purchased 
+	stop_indices::Vector{Int}							# which product within session is stopped a
 
-	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(search_paths) == length(consideration_sets) == length(purchase_indices) == length(stop_indices)
+	# Check that all vectors have the same length (number of sessions)
+	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(consideration_sets) == length(purchase_indices) == length(stop_indices)
+	@assert isnothing(search_paths) || length(search_paths) == length(product_ids)
 end
 
 

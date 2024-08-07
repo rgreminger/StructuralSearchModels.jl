@@ -17,5 +17,16 @@ m = SDCore(
 )
 
 
-product_ids, product_characteristics, positions = generate_data(m, 100, 1); 
+n_consumers = 100
+product_ids, product_characteristics, positions = generate_data(m, n_consumers, 1); 
 positions
+
+StructuralSearchModels.DataSDCore(;
+    consumer_indices = fill(1:1, 100), 
+    product_ids, 
+    product_characteristics, 
+    positions,
+    consideration_sets = [fill(true, 31) for i in 1:n_consumers],
+    purchase_indices = 1:n_consumers,
+    stop_indices = 1:n_consumers
+)
