@@ -24,7 +24,7 @@ function generate_products(n_sessions;
 
     # Gather characteristics for each product
     product_characteristics =   if outside_option
-									[ hcat(vcat(1.0, zeros(length(pids)-1)), vcat(zeros(1, size(product_characteristics, 2)), product_characteristics[pids[2:end], :])) for pids in product_ids]
+									[ hcat(vcat(zeros(1, size(product_characteristics, 2)), product_characteristics[pids[2:end], :]), vcat(1.0, zeros(length(pids)-1))) for pids in product_ids]
 								else
 									[ product_characteristics[pids, :] for pids in product_ids]
 								end

@@ -1,11 +1,11 @@
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random
 
 m = SDCore(
-    β = [1.0, 2.0, 3.0], 
-    Ξ = 1.0, 
-    ρ = [1.0, 2.0, 3.0], 
-    ξ = 1.0, 
-    ξρ = [1.0, 2.0, 3.0], 
+    β = [1.0, -100.0], 
+    Ξ = 10.0, 
+    ρ = [-1.0], 
+    ξ = 0.3, 
+    ξρ = [0.0], 
     dE = Normal(), 
     dV = Normal(), 
     dU0 = Normal(), 
@@ -16,9 +16,8 @@ m = SDCore(
 
 
 n_consumers = 100
-product_ids, product_characteristics, positions = generate_data(m, n_consumers, 1, 1); 
-positions
-
+product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop = generate_data(m, n_consumers, 1, 1); 
+paths[1] 
 
 ## 
 using BenchmarkTools
