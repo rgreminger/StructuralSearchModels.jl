@@ -16,12 +16,12 @@ m = SDCore(
 
 
 n_consumers = 100000
-@time product_ids, product_characteristics, positions, paths, 
-                consideration_sets, indices_purchase, indices_stop,
-                utility_purchases = 
-                generate_data(m, n_consumers, 1, 1; 
+@time data, utility_purchases = 
+                generate_data(m, n_consumers, 2, 1; 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
-utility_purchases 
+
+
+data.consumer_indices
 ## 
 using BenchmarkTools
 n = 10000

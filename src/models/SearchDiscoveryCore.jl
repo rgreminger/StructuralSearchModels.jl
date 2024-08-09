@@ -76,8 +76,14 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
 		generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
 
-	return product_ids, product_characteristics, positions, paths, 
-			consideration_sets, indices_purchase, indices_stop, utility_purchases
+	# Create consumer indices mapping consumers into sessions 
+	consumer_indices = [UnitRange((i-1)*n_sessions_per_consumer + 1, i*n_sessions_per_consumer) for i in 1:n_consumers]
+
+	# Create data object
+	data = DataSDCore(consumer_indices, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop)
+
+	# Return together with purchase utilities 
+	return data, utility_purchases
 end
 
 function generate_search_paths(m::SDCore, product_ids, product_characteristics, positions; kwargs...)
