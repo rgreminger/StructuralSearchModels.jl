@@ -69,3 +69,13 @@ Calculate standard errors for the model `model` using the data `data` and estima
 """
 function calculate_standard_errors(model::Model, data::Data, estimator::Estimator; bootstrap = false, kwargs...) end    
     
+
+##################################################################################
+# Welfare and demand 
+""" 
+    calculate_welfare_and_demand(model::Model, data::Data; kwargs...)
+
+Calculate welfare and demand for the model `model` using the data `data`. 
+
+"""
+function calculate_welfare_and_demand(model::Model, data::Data; kwargs...) end

@@ -4,6 +4,8 @@ abstract type SearchDiscovery end
 
 # Fields:  
 - `β::Vector{T}`: vector of preference weights. 
+- `cs`: search costs. Initialized as nothing by to avoid computational cost. Can be updated through `calculate_costs!(m, data; kwargs...)`. 
+- `cd`: discovery costs. Initialized in the same way as `cs`, and is also added in `calculate_costs!(m, data; kwargs...)`.
 - `Ξ::T`: baseline Ξ.
 - `ρ::Vector{T}`: parameters governing decrease of Ξ across positions.
 - `ξ::T`: baseline ξ.
@@ -18,6 +20,8 @@ abstract type SearchDiscovery end
 """
 @with_kw mutable struct SDCore{T} <: SearchDiscovery where T <: Real
 	β::Vector{T} 
+	cs::T	= nothing 
+	cd::T	= nothing 
 	Ξ::T
 	ρ::Vector{T}
 	ξ::T
@@ -71,6 +75,19 @@ function getindex(d::DataSDCore, elements...)
 	return DataSDCore(d.consumer_ids[i], d.product_ids[i], d.product_characteristics[i], d.positions[i], d.search_paths == nothing ? nothing : d.search_paths[i], d.consideration_sets[i], d.purchase_indices[i], d.stop_indices[i])
 end
 
+function eachindex(d::DataSDCore) 
+	return eachindex(d.product_ids)
+end
+
+function sessions_with_clicks(d::DataSDCore) 
+	has_click = x -> x[1] > 0
+	return findall(has_click, d.search_paths)
+end
+
+function sessions_with_purchase(d::DataSDCore) 
+	has_purchase = x -> x > 1
+	return findall(has_purchase, d.purchase_indices)
+end
 
 # Data generation 
 function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed; 
@@ -169,7 +186,6 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 
 	return paths, consideration_sets, indices_purchase, indices_stop, utility_purchases
 end
-
 
 function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
 						m, i, 
@@ -330,3 +346,144 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	return nothing
 end
 
+function generate_data(m::SDCore, d::DataSDCore, seed; kwargs...) 
+	
+	# Set seed 
+	Random.seed!(seed)
+
+	# Generate new paths
+	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
+		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs...) 
+
+	# Update and return data object
+	data = DataSDCore(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, paths, consideration_sets, indices_purchase, indices_stop)
+
+	return data, utility_purchases
+
+end
+
+# Cost computations 
+function calculate_costs!(m, d_sim ; 
+							force_recompute = true)
+	# Search costs 
+	if isnothing(m.cs) || force_recompute
+		m.cs = 0.0
+	end
+	# Discovery costs
+	if isnothing(m.cd) || force_recompute
+		m.cd = 0.0
+	end
+end
+
+
+
+# Consumer welfare
+"""
+	calculate_welfare(m::SDCore, data::DataSDCore; 
+										method = "effective_values",
+										kwargs...)
+Calculate consumer welfare for the Search and Discovery model `m` using the data `data` and `n_sim` simulation draws. `method` can be either `"simulate_paths"` or `"effective_values"`. Simulate paths will simulate search paths  for each consumer and calculate welfare based on these paths. Effective values will calculate welfare based on effective values. 
+
+"""
+function calculate_welfare(m::SDCore, data::DataSDCore, n_sim, seed; 
+										method = "effective_values",
+										kwargs...)
+
+	if method == "simulate_paths"
+		return calculate_welfare_simpaths(m, data, n_sim, seed; kwargs...)
+	elseif method == "effective_values"
+		return calculate_welfare_effective_values(m, data, n_sim, seed; kwargs...)
+	else
+		throw(ArgumentError("Method $method not recognized."))
+	end
+end
+
+function calculate_welfare_simpaths(m, data, n_sim, seed; kwargs_data_generation...)
+
+	# Set seed 
+	Random.seed!(seed)
+
+	# Iterate over simulation draws and calculate welfare measures for each 
+
+	# Average across all consumers 
+	utility_choice_avg = zeros(Float64, n_sim)
+	search_costs_avg = zeros(Float64, n_sim)
+	discovery_costs_avg = zeros(Float64, n_sim)
+	n_ses = length(data)
+
+	# Average conditional on click 
+	utility_choice_conditional_on_click = zeros(Float64, n_sim)
+	search_costs_conditional_on_click = zeros(Float64, n_sim)
+	discovery_costs_conditional_on_click = zeros(Float64, n_sim)
+
+	# Average conditional on purchase
+	utility_choice_conditional_on_purchase = zeros(Float64, n_sim)
+	search_costs_conditional_on_purchase = zeros(Float64, n_sim)
+	discovery_costs_conditional_on_purchase = zeros(Float64, n_sim)
+	
+
+	for sim in 1:n_sim
+		new_seed = rand(1:1000000)
+		d_sim, utility_purchases = generate_data(m, data, new_seed; kwargs_data_generation...) 
+
+		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim)
+		utility_choice_avg[sim] = sum(utility_purchases) / n_ses 
+		search_costs_avg[sim] = sum(search_costs) / n_ses
+		discovery_costs_avg[sim] = sum(discovery_costs) / n_ses
+
+		# Conditional on click
+		i_ses_with_clicks = sessions_with_clicks(d_sim) 
+		n_sessions_with_clicks = length(i_ses_with_clicks)
+
+		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim[i_ses_with_clicks])
+		utility_choice_conditional_on_click[sim] = sum(utility_purchases[i_ses_with_clicks]) / n_sessions_with_clicks
+		search_costs_conditional_on_click[sim] = sum(search_costs) / n_sessions_with_clicks
+		discovery_costs_conditional_on_click[sim] = sum(discovery_costs) / n_sessions_with_clicks
+		
+		# Conditional on purchase
+		i_ses_with_purchase = sessions_with_purchase(d_sim)
+		n_sessions_with_purchase = length(i_ses_with_purchase)
+		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim[i_ses_with_purchase])
+
+		utility_choice_conditional_on_purchase[sim] = sum(utility_purchases[i_ses_with_purchase]) / n_sessions_with_purchase
+		search_costs_conditional_on_purchase[sim] = sum(search_costs) / n_sessions_with_purchase
+		discovery_costs_conditional_on_purchase[sim] = sum(discovery_costs) / n_sessions_with_purchase
+	end
+
+	welfare_avg = utility_choice_avg - search_costs_avg - discovery_costs_avg
+	welfare_conditional_on_click = utility_choice_conditional_on_click - search_costs_conditional_on_click - discovery_costs_conditional_on_click
+	welfare_conditional_on_purchase = utility_choice_conditional_on_purchase - search_costs_conditional_on_purchase - discovery_costs_conditional_on_purchase
+
+	# Show warning if no session with at least one click 
+	if isempty(sessions_with_clicks(data))
+		@warn "No sessions with at least one click. Conditional welfare is NaN."
+	end
+
+	# Show warning if no session with at least one purchase
+	if isempty(sessions_with_purchase(data))
+		@warn "No sessions with at least one purchase. Conditional welfare is NaN."
+	end
+
+	# Return averages across simulations 
+	# 1. Average welfare, utility, search costs, discovery costs
+	# 2. Average conditional on click
+	# 3. Average conditional on purchase
+
+	return mean.((welfare_avg, utility_choice_avg, search_costs_avg, discovery_costs_avg)), 
+			mean.((welfare_conditional_on_click, utility_choice_conditional_on_click, search_costs_conditional_on_click, discovery_costs_conditional_on_click)), 
+			mean.((welfare_conditional_on_purchase, utility_choice_conditional_on_purchase, search_costs_conditional_on_purchase, discovery_costs_conditional_on_purchase))
+end
+
+function calculate_costs_in_sessions(m::SDCore, d)
+	calculate_costs!(m, d; force_recompute = false)  # add costs if not already added. 
+	
+	# paid search costs are the number of searches multiplied with search costs
+	search_costs = [m.cs * sum(d.consideration_sets[i]) for i in eachindex(d)] 
+
+	# number of discovery is equal to the position of the last product discovered because 
+	# position = 0 is initial awareness set. So if stops on position =1 is one discovery, and so on. 
+	discovery_costs = [m.cd * d.positions[i][d.stop_indices[i]] for i in eachindex(d)] 
+
+	return search_costs, discovery_costs	
+
+end
