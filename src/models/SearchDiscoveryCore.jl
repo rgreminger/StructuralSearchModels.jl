@@ -58,7 +58,8 @@ end
 # Data generation 
 function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed; 
 						n_A0 = 1, n_d = 1, 
-						products = generate_products(n_consumers*n_sessions_per_consumer), kwargs...) 
+						products = generate_products(n_consumers*n_sessions_per_consumer), 
+						kwargs...) 
 
 	n_sessions = n_consumers * n_sessions_per_consumer 
 	
@@ -72,12 +73,18 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 	positions = [vcat(zeros(Int64, 1 + n_A0), repeat(collect(Int64, 1:(length(product_ids[i]) - 1 - n_A0) / n_d), inner=n_d)) for i in 1:n_sessions]
 
 	# Generate search paths 
-	paths, consideration_sets, indices_purchase, indices_stop = generate_search_paths(m, product_ids, product_characteristics, positions) 
+	paths, consideration_sets, indices_purchase, indices_stop = 
+		generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
 
-	return product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop
+	return product_ids, product_characteristics, positions, paths, 
+			consideration_sets, indices_purchase, indices_stop
 end
 
-function generate_search_paths(m::SDCore, product_ids, product_characteristics, positions) 
+function generate_search_paths(m::SDCore, product_ids, product_characteristics, positions; kwargs...)
+
+	# Extract keyword arguments 
+	conditional_on_click = get(kwargs, :conditional_on_click, false)
+	conditional_on_click_iter = get(kwargs, :conditional_on_click_iter, 100)
 
 	# Number of consumers and sessions
 	max_products_per_session = maximum(length.(product_ids))
@@ -93,40 +100,51 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 	indices_purchase = zeros(Int, n_sessions)
 	indices_stop = fill(max_products_per_session, n_sessions)
 
-	# # Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
-	# # creates the search path.
-	# chunk_size, data_chunks = get_chunks(n_sessions)
+	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
+	# creates the search path.
+	_, data_chunks = get_chunks(n_sessions)
 
 	# Create and define tasks for each chunk
-	# tasks = map(data_chunks) do chunk 
-	# 	Threads.@spawn begin 
-	# Create local variables that the thread can work with. Pre-allocation circumvenst allocations in the loop.
-	local u 	= zeros(Float64, max_products_per_session)
-	local zs 	= zeros(Float64, max_products_per_session)
+	tasks = map(data_chunks) do chunk 
+		Threads.@spawn begin 
+			# Create local variables that the thread can work with. Pre-allocation circumvenst allocations in the loop.
+			local u 	= zeros(Float64, max_products_per_session)
+			local zs 	= zeros(Float64, max_products_per_session)
 
-	# Loop over sessions in the chunk
-	for i in eachindex(product_ids)
+			# Loop over sessions in the chunk
+			for i in chunk
 
-		# Reset 
-		u .= typemin(Float64)
-		zs .= typemin(Float64)
+				# Reset 
+				u .= typemin(Float64)
+				zs .= typemin(Float64)
 
-		fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m,
-						i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun)
+				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m,
+								i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun)
+
+				# If conditional on click, iterate until have at least one 
+				if conditional_on_click 
+					iter = 1 
+					while paths[i][1] == 0 && iter <= conditional_on_click_iter
+						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m,
+								i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun)
+						iter += 1 
+					end
+				end
+				
+			end
+		end
 	end
-
-	# 	end
-	# end
 	
 	# Execute tasks
-	# fetch.(tasks) 
+	fetch.(tasks) 
 
 	return paths, consideration_sets, indices_purchase, indices_stop
 end
 
 
 function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m, 
-	i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun; debug_print = true)
+	i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun; 
+						debug_print = false)
 
 	# draw outside option utility 
 	u[1] = rand(m.dU0) + product_characteristics[i][1, end] * m.β[end]
