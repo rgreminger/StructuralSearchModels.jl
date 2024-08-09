@@ -4,10 +4,10 @@ function generate_products(n_sessions;
     n_products_per_session = 30,
     distribution = Normal(), 
     outside_option = true,
-    seed = 890367) 
+    kwargs...) 
 
     # Set seed 
-    Random.seed!(seed)
+    set_seed(kwargs)
 
     # Product ids, 0 will be outside option 
     pid = collect(1:n_products) 
@@ -53,4 +53,12 @@ function get_functional_form(s::String)
 	else
 		error("zdfun not correctly specified")
 	end
+end
+
+# Set seed 
+function set_seed(kwargs)
+    # Set seed 
+	seed = get(kwargs, :seed, rand(1:1000000)) # if no seed set, just draw one
+	Random.seed!(seed)
+    return nothing 
 end

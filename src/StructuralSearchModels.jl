@@ -4,16 +4,17 @@ module StructuralSearchModels
 export Estimator, Model, Data  # abstract types
 
 # Functions to be exported
-export generate_data, sample, generate_products, sessions_with_clicks, sessions_with_purchase        # functions for data generation
+export generate_data, generate_products, sessions_with_clicks, sessions_with_purchase        # functions for data generation
 export estimate_model                                               # functions for estimation
 export evaluate_fit, calculate_standard_errors, calculate_welfare   # functions for post-estimation
+export calculate_costs!
 
 # Export concrete model types 
-export SDCore
+export SD, SDCore 
 
 # Load packages 
 using Revise                    # for package development 
-using Random, Distributions, StatsBase             # math and other 
+using Random, Distributions, StatsBase, QuadGK # math and other 
 using Parameters                # utils 
 
 # Import functions to add own definitions 

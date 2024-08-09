@@ -1,4 +1,5 @@
-abstract type SearchDiscovery end
+abstract type SD end
+
 """
 *Search and Discovery* (SD) core model. This model is a base model for all models that are subtypes of the Search and Discovery model. 
 
@@ -18,10 +19,10 @@ abstract type SearchDiscovery end
 - `zsfun::String`: select functional form f(h, ξ, ξρ) that determines the search value in position h.
 - `unobserved_heterogeneity::Dict`: dictionary of unobserved heterogeneity parameters and options. 
 """
-@with_kw mutable struct SDCore{T} <: SearchDiscovery where T <: Real
+@with_kw mutable struct SDCore{T} <: SD where T <: Real
 	β::Vector{T} 
-	cs::T	= nothing 
-	cd::T	= nothing 
+	cs::Union{T, Nothing}	= nothing 
+	cd::Union{T, Nothing}	= nothing 
 	Ξ::T
 	ρ::Vector{T}
 	ξ::T
@@ -33,6 +34,8 @@ abstract type SearchDiscovery end
 	zdfun::String 
 	zsfun::String
 	unobserved_heterogeneity::Dict = Dict()
+
+	@assert ρ[1] < 0 "ρ[1] must be negative for decreasing discovery value across positions."
 end 
 
 
@@ -50,7 +53,7 @@ end
 - `purchase_indices::Vector{Int}`: which product within session is purchased
 - `stop_indices::Vector{Int}`: which product within session is stopped a
 """
-@with_kw mutable struct DataSDCore{T} <: Data where T <: Real
+@with_kw mutable struct DataSD{T} <: Data where T <: Real
 	consumer_ids::Vector{Int}			
 	product_ids::Vector{Vector{Int}}					
 	product_characteristics::Vector{Matrix{T}}			
@@ -66,39 +69,39 @@ end
 end
 
 # Define base functions for working with the core data
-function length(d::DataSDCore) 
+function length(d::DataSD) 
 	return length(d.product_ids)
 end
-function getindex(d::DataSDCore, elements...) 
+function getindex(d::DataSD, elements...) 
 	i = vcat(elements...)
 	
-	return DataSDCore(d.consumer_ids[i], d.product_ids[i], d.product_characteristics[i], d.positions[i], d.search_paths == nothing ? nothing : d.search_paths[i], d.consideration_sets[i], d.purchase_indices[i], d.stop_indices[i])
+	return DataSD(d.consumer_ids[i], d.product_ids[i], d.product_characteristics[i], d.positions[i], d.search_paths == nothing ? nothing : d.search_paths[i], d.consideration_sets[i], d.purchase_indices[i], d.stop_indices[i])
 end
 
-function eachindex(d::DataSDCore) 
+function eachindex(d::DataSD) 
 	return eachindex(d.product_ids)
 end
 
-function sessions_with_clicks(d::DataSDCore) 
+function sessions_with_clicks(d::DataSD) 
 	has_click = x -> x[1] > 0
 	return findall(has_click, d.search_paths)
 end
 
-function sessions_with_purchase(d::DataSDCore) 
+function sessions_with_purchase(d::DataSD) 
 	has_purchase = x -> x > 1
 	return findall(has_purchase, d.purchase_indices)
 end
 
 # Data generation 
-function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed; 
+function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer; 
 						n_A0 = 1, n_d = 1, 
 						products = generate_products(n_consumers*n_sessions_per_consumer), 
 						kwargs...) 
 
 	n_sessions = n_consumers * n_sessions_per_consumer 
 	
-	# Set seed 
-	Random.seed!(seed)
+	# Set seed (is stable across threads) 
+	set_seed(kwargs)
 
 	# Unpack products
 	product_ids, product_characteristics = products 
@@ -114,7 +117,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 	consumer_ids = repeat(1:n_consumers, n_sessions_per_consumer)
 
 	# Create data object
-	data = DataSDCore(consumer_ids, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop)
+	data = DataSD(consumer_ids, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop)
 
 	# Return together with purchase utilities 
 	return data, utility_purchases
@@ -346,51 +349,161 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	return nothing
 end
 
-function generate_data(m::SDCore, d::DataSDCore, seed; kwargs...) 
+function generate_data(m::SDCore, d::DataSD; kwargs...) 
 	
-	# Set seed 
-	Random.seed!(seed)
+	# Set seed (is stable across threads) 
+	set_seed(kwargs)
 
 	# Generate new paths
 	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
 		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs...) 
 
 	# Update and return data object
-	data = DataSDCore(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, paths, consideration_sets, indices_purchase, indices_stop)
+	data = DataSD(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, paths, consideration_sets, indices_purchase, indices_stop)
 
 	return data, utility_purchases
 
 end
 
 # Cost computations 
-function calculate_costs!(m, d_sim ; 
-							force_recompute = true)
+"""
+	caculate_costs!(m::SD, d, n_draws_cd, seed; force_recompute = true)
+
+Calculate search and discovery costs for the Search and Discovery model `m` and data `d`. Uses `n_draws` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true, the costs are recomputed even if they are already present in the model.
+	
+"""
+function calculate_costs!(m::SD, d, n_draws_cd; 
+							force_recompute = true,
+							cd_kwargs...)
 	# Search costs 
 	if isnothing(m.cs) || force_recompute
-		m.cs = 0.0
+		m.cs = calculate_search_cost(m) 
 	end
 	# Discovery costs
 	if isnothing(m.cd) || force_recompute
-		m.cd = 0.0
+		m.cd = calculate_discovery_cost(m, d, n_draws_cd; cd_kwargs...)
 	end
+	return nothing 
+end
+
+""" 
+	calculate_search_cost(m::SearchDiscovery)
+
+Calculate search costs for the SD model given `ξ` and the distribution of ε `dE`. 
+"""
+function calculate_search_cost(m::SD)
+	ξ = m.ξ
+	F = m.dE
+
+	return quadgk(e->(1-cdf(F,e)),ξ,maximum(F))[1]
+end
+
+
+"""
+	calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
+
+"""
+
+function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...) 
+
+	# Set seed (is stable across threads) 
+	set_seed(kwargs)	
+
+	# characteristics matrix without outside option 
+
+	# Get distribution of expected utilities xβ across all products in data 
+	chars = vcat([d.product_characteristics[i][d.product_ids[i] .> 0, :] for i in eachindex(d)]...) # excludes outside option 
+	xβ = chars * m.β
+
+	# Get discovery value at position where beliefs are correct
+	zdfun = get_functional_form(m.zdfun)
+	position_at_which_correct_beliefs = get(kwargs, :position_at_which_correct_beliefs, calculate_mean_position(d))
+	zd = zdfun(m.Ξ, m.ρ, position_at_which_correct_beliefs)
+
+	# Calculate discovery costs by sampling effective values using the empirical xβ distribution and taste shock assumptions 
+	W = zeros(Float64, n_draws)
+	fill_values_cd_compute!(W, m, xβ, zd) 
+
+	# Return mean of the values 
+	return mean(W)
+
+end
+
+function fill_values_cd_compute!(W, m, xβ, zd::T) where T <: Real 
+
+	_, data_chunks = get_chunks(length(W))
+
+	# Create and define tasks for each chunk
+	tasks = map(data_chunks) do chunk 
+		Threads.@spawn begin 
+			for i in chunk 
+				e = rand(m.dE)
+				v = rand(m.dV)
+				w = rand(m.dW)
+				xβi = rand(xβ)
+				W[i] = max(zero(T),xβi + v + min(m.ξ + w, e) - zd ) 
+			end
+		end
+	end
+	
+	fetch.(tasks)
+
+	return nothing 
 end
 
 
 
+function calculate_mean_position(d)
+	# Get positions without outside option 
+	positions = 0:maximum(vcat(d.positions...))
+	return round(Int, mean(positions[positions .> 0])) 
+end
+
+
+function _calc_cd!(W,chars::Array{T,2},e::Array{T,1},
+					v::Array{T,1},w::Array{T,1},
+					β,ξ,zd,coef1fun::Function; 
+					singlethread = false,
+					xb = nothing ) where T 
+
+	# Get xb distribution given βdraw  
+	_xb = if isnothing(xb) 
+			β[1] = coef1fun(β[1]) # account for coef1fun 
+			chars * β
+		else
+			xb
+		end
+
+	# range to draw xb from 
+	r = 1:length(_xb) 
+
+	if singlethread 
+		for i in eachindex(W) 
+			W[i] = max(zero(T),_xb[rand(r)] + w[i] + min(ξ + v[i],e[i]) - zd ) 
+		end
+	else
+		Threads.@threads for i in eachindex(W) 
+			W[i] = max(zero(T),_xb[rand(r)] + w[i] + min(ξ + v[i],e[i]) - zd ) 
+		end
+    end
+
+	return mean(W)
+end
+	
 # Consumer welfare
 """
-	calculate_welfare(m::SDCore, data::DataSDCore; 
+	calculate_welfare(m::SDCore, data::DataSD; 
 										method = "effective_values",
 										kwargs...)
 Calculate consumer welfare for the Search and Discovery model `m` using the data `data` and `n_sim` simulation draws. `method` can be either `"simulate_paths"` or `"effective_values"`. Simulate paths will simulate search paths  for each consumer and calculate welfare based on these paths. Effective values will calculate welfare based on effective values. 
 
 """
-function calculate_welfare(m::SDCore, data::DataSDCore, n_sim, seed; 
+function calculate_welfare(m::SDCore, data::DataSD, n_sim; 
 										method = "effective_values",
 										kwargs...)
 
 	if method == "simulate_paths"
-		return calculate_welfare_simpaths(m, data, n_sim, seed; kwargs...)
+		return calculate_welfare_simpaths(m, data, n_sim; kwargs...)
 	elseif method == "effective_values"
 		return calculate_welfare_effective_values(m, data, n_sim, seed; kwargs...)
 	else
@@ -398,10 +511,10 @@ function calculate_welfare(m::SDCore, data::DataSDCore, n_sim, seed;
 	end
 end
 
-function calculate_welfare_simpaths(m, data, n_sim, seed; kwargs_data_generation...)
+function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_generation...)
 
 	# Set seed 
-	Random.seed!(seed)
+	set_seed(kwargs_data_generation)
 
 	# Iterate over simulation draws and calculate welfare measures for each 
 
@@ -424,9 +537,9 @@ function calculate_welfare_simpaths(m, data, n_sim, seed; kwargs_data_generation
 
 	for sim in 1:n_sim
 		new_seed = rand(1:1000000)
-		d_sim, utility_purchases = generate_data(m, data, new_seed; kwargs_data_generation...) 
+		d_sim, utility_purchases = generate_data(m, data; seed = new_seed, kwargs_data_generation...) 
 
-		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim)
+		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim) # note: 0 draws for cd because requires that already calculated 
 		utility_choice_avg[sim] = sum(utility_purchases) / n_ses 
 		search_costs_avg[sim] = sum(search_costs) / n_ses
 		discovery_costs_avg[sim] = sum(discovery_costs) / n_ses
@@ -475,7 +588,11 @@ function calculate_welfare_simpaths(m, data, n_sim, seed; kwargs_data_generation
 end
 
 function calculate_costs_in_sessions(m::SDCore, d)
-	calculate_costs!(m, d; force_recompute = false)  # add costs if not already added. 
+
+	# Assert costs are part of model
+	if isnothing(m.cs) || isnothing(m.cd)
+		throw(ArgumentError("Search and discovery costs not calculated. Run calculate_costs! first."))
+	end
 	
 	# paid search costs are the number of searches multiplied with search costs
 	search_costs = [m.cs * sum(d.consideration_sets[i]) for i in eachindex(d)] 

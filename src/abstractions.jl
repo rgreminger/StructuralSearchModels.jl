@@ -30,13 +30,6 @@ Generate and return data for the model `model` using the existing data object `d
 """
 function generate_data(model::Model, data::Data; kwargs...  ) end 
 
-"""
-    sample_data(data::Data, n)
-Sample and return `n` consumers from the data object.
-
-"""
-function sample(data::Data, n::Int; kwargs...  ) end 
-
 ##################################################################################
 # Estimation 
 
