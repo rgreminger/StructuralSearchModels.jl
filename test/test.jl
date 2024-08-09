@@ -1,10 +1,10 @@
-using StructuralSearchModels, Revise, Distributions, StatsBase, Random
+using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools
 
 m = SDCore(
-    β = [1.0, -100.0], 
-    Ξ = 10.0, 
+    β = [1.0, 1.0], 
+    Ξ = 5.0, 
     ρ = [-1.0], 
-    ξ = 0.3, 
+    ξ = 0.5, 
     ξρ = [0.0], 
     dE = Normal(), 
     dV = Normal(), 
@@ -15,10 +15,13 @@ m = SDCore(
 )
 
 
-n_consumers = 100
-product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop = generate_data(m, n_consumers, 1, 1); 
-paths[1] 
-
+n_consumers = 100000
+@time product_ids, product_characteristics, positions, paths, 
+                consideration_sets, indices_purchase, indices_stop,
+                utility_purchases = 
+                generate_data(m, n_consumers, 1, 1; 
+                conditional_on_click = false, conditional_on_click_iter = 100); 
+utility_purchases 
 ## 
 using BenchmarkTools
 n = 10000

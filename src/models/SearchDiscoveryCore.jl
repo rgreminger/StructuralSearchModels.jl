@@ -73,11 +73,11 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 	positions = [vcat(zeros(Int64, 1 + n_A0), repeat(collect(Int64, 1:(length(product_ids[i]) - 1 - n_A0) / n_d), inner=n_d)) for i in 1:n_sessions]
 
 	# Generate search paths 
-	paths, consideration_sets, indices_purchase, indices_stop = 
+	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
 		generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
 
 	return product_ids, product_characteristics, positions, paths, 
-			consideration_sets, indices_purchase, indices_stop
+			consideration_sets, indices_purchase, indices_stop, utility_purchases
 end
 
 function generate_search_paths(m::SDCore, product_ids, product_characteristics, positions; kwargs...)
@@ -94,11 +94,13 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 	zdfun = get_functional_form(m.zdfun)
 	zsfun = get_functional_form(m.zsfun)
 
-	# Create empty vectors to store paths, searched, purchase and stop indices
+	# Create empty vectors to store outputs
 	paths = [zeros(Int, max_products_per_session - 1) for i in 1:n_sessions]
 	consideration_sets = [fill(false, max_products_per_session) for i in 1:n_sessions]
 	indices_purchase = zeros(Int, n_sessions)
 	indices_stop = fill(max_products_per_session, n_sessions)
+	utility_purchases = zeros(Float64, n_sessions)
+
 
 	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
 	# creates the search path.
@@ -118,15 +120,19 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 				u .= typemin(Float64)
 				zs .= typemin(Float64)
 
-				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m,
-								i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun)
+				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases,
+								m, i, 
+								product_ids, product_characteristics, positions, 
+								u, zs, zdfun, zsfun)
 
 				# If conditional on click, iterate until have at least one 
 				if conditional_on_click 
 					iter = 1 
 					while paths[i][1] == 0 && iter <= conditional_on_click_iter
-						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m,
-								i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun)
+						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
+										m, i, 
+										product_ids, product_characteristics, positions, 
+										u, zs, zdfun, zsfun)
 						iter += 1 
 					end
 				end
@@ -138,12 +144,14 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 	# Execute tasks
 	fetch.(tasks) 
 
-	return paths, consideration_sets, indices_purchase, indices_stop
+	return paths, consideration_sets, indices_purchase, indices_stop, utility_purchases
 end
 
 
-function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, m, 
-	i, product_ids, product_characteristics, positions, u, zs, zdfun, zsfun; 
+function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
+						m, i, 
+						product_ids, product_characteristics, positions, 
+						u, zs, zdfun, zsfun; 
 						debug_print = false)
 
 	# draw outside option utility 
@@ -258,6 +266,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			# Fill in purchase and stop indices 
 			indices_purchase[i] = ind_p 
 			indices_stop[i] = ij 
+			utility_purchases[i] = max_u
 			break 
 
 		# search next product 
