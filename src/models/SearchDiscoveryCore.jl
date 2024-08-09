@@ -395,7 +395,7 @@ function calculate_search_cost(m::SD)
 	ξ = m.ξ
 	F = m.dE
 
-	return quadgk(e->(1-cdf(F,e)),ξ,maximum(F))[1]
+	return quadgk(e->(1-cdf(F ,e)), ξ, maximum(F))[1]
 end
 
 
@@ -425,7 +425,7 @@ function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
 	fill_values_cd_compute!(W, m, xβ, zd) 
 
 	# Return mean of the values 
-	return mean(W)
+	return mean(W) 
 
 end
 
@@ -441,7 +441,7 @@ function fill_values_cd_compute!(W, m, xβ, zd::T) where T <: Real
 				v = rand(m.dV)
 				w = rand(m.dW)
 				xβi = rand(xβ)
-				W[i] = max(zero(T),xβi + v + min(m.ξ + w, e) - zd ) 
+				W[i] = max(zero(T), xβi + v + min(m.ξ + w, e) - zd ) 
 			end
 		end
 	end
@@ -451,45 +451,48 @@ function fill_values_cd_compute!(W, m, xβ, zd::T) where T <: Real
 	return nothing 
 end
 
-
-
 function calculate_mean_position(d)
 	# Get positions without outside option 
 	positions = 0:maximum(vcat(d.positions...))
 	return round(Int, mean(positions[positions .> 0])) 
 end
 
+# Reservation values / inverse calculations for costs 
+"""
+	calculate_discovery_value(G::Normal, m::SD)
 
-function _calc_cd!(W,chars::Array{T,2},e::Array{T,1},
-					v::Array{T,1},w::Array{T,1},
-					β,ξ,zd,coef1fun::Function; 
-					singlethread = false,
-					xb = nothing ) where T 
+Calculate the discovery value zd given cs, cd, and ξ from SD model `m`. Assumes that pre-search values xβ + v + w follow normal distribution `G`.
 
-	# Get xb distribution given βdraw  
-	_xb = if isnothing(xb) 
-			β[1] = coef1fun(β[1]) # account for coef1fun 
-			chars * β
-		else
-			xb
-		end
+"""
 
-	# range to draw xb from 
-	r = 1:length(_xb) 
+function calculate_discovery_value(G::Normal, m)
 
-	if singlethread 
-		for i in eachindex(W) 
-			W[i] = max(zero(T),_xb[rand(r)] + w[i] + min(ξ + v[i],e[i]) - zd ) 
-		end
-	else
-		Threads.@threads for i in eachindex(W) 
-			W[i] = max(zero(T),_xb[rand(r)] + w[i] + min(ξ + v[i],e[i]) - zd ) 
-		end
-    end
+	ξ, cs, cd = m.ξ, m.cs, m.cd  
 
-	return mean(W)
+	zd = 	if integrate_cdfsingle(cd, ξ, cs, mean(G), std(G))-cd ≈ -cd  # case where no convergence 
+				-cd
+			elseif cd <= 0 || (std(G) > 1e9 && cd <= 1e8) 
+				Inf
+			else
+				fzero(t -> integrate_cdfsingle(t, ξ, cs, mean(G), std(G)) - cd, cd)
+			end
+	return zd 
 end
-	
+
+function integrate_cdfsingle(z,ξ,cs,μ,σ)
+	a = z-μ ; b = σ
+	f(x) = pdf(Normal(),x)
+	F(x) = cdf(Normal(),x)
+
+	return (1 - F((z - ξ - μ) / σ)) * (μ - z - cs) + σ * f((z - ξ - μ) / σ) +
+		(z - μ) * bvncdf(a / sqrt(1 + b^2), (μ + ξ - z) / σ, -b / sqrt(1 + b^2)) -
+		σ * (-b / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2))))
+		+ F(a - b * (z - ξ - μ) / σ) * f((z - ξ - μ) / σ) +
+		1.0 / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2)))
+
+end
+
+
 # Consumer welfare
 """
 	calculate_welfare(m::SDCore, data::DataSD; 
