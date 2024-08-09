@@ -16,6 +16,9 @@ using Revise                    # for package development
 using Random, Distributions, StatsBase             # math and other 
 using Parameters                # utils 
 
+# Import functions to add own definitions 
+import Base: length, getindex 
+
 # Load general code 
 include("abstractions.jl")      # abstract types and functions
 include("utils.jl")             # helper functions

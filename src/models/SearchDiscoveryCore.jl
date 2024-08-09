@@ -8,8 +8,6 @@ abstract type SearchDiscovery end
 - `ρ::Vector{T}`: parameters governing decrease of Ξ across positions.
 - `ξ::T`: baseline ξ.
 - `ξρ::Vector{T}`: parameters governing decrease of ξ across positions.
-- `n_d::Int64`: number of alternatives per position. 
-- `n_A0::Int64`: number of alternatives in the initial awareness set. 
 - `dE::Distribution`: distribution of ε_{ij}.
 - `dV::Distribution`: distribution of ν_{ij}.
 - `dU0::Distribution`: distribution of u_{i0}. 
@@ -36,22 +34,41 @@ end
 
 
 """ 
-*Data* type for the core Search and Discovery model. 
+*Data* type for the core Search and Discovery model. Indexing is based on sessions. 
 
+# Fields:
+- `consumer_ids::Vector{Int}`: consumer id for each session 
+- `product_ids::Vector{Vector{Int}}`: product ids for each session in order
+- `product_characteristics::Vector{Matrix{T}}`: product characteristics matrix
+- `positions::Vector{Vector{Int}}`: positions for each session in order
+- `search_paths::Union{Vector{Vector{Int}}, Nothing}`: search paths for each session, can be nothing
+- `consideration_sets::Vector{Vector{Bool}}`: consideration sets for each session, booleans whether searched or not
+- `purchase_indices::Vector{Int}`: which product within session is purchased
+- `stop_indices::Vector{Int}`: which product within session is stopped a
 """
 @with_kw mutable struct DataSDCore{T} <: Data where T <: Real
-	consumer_indices::Vector{UnitRange{Int}}			# which sessions belong to which consumer 
-	product_ids::Vector{Vector{Int}}					# product ids for each session in order 
-	product_characteristics::Vector{Matrix{T}}			# product characteristics matrix 
-	positions::Vector{Vector{Int}}						# positions for each session in order
-	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing # search paths for each session, can be nothing 
-	consideration_sets::Vector{Vector{Bool}}			# consideration sets for each session, booleans whether searched or not 
-	purchase_indices::Vector{Int} 						# which product within session is purchased 
-	stop_indices::Vector{Int}							# which product within session is stopped a
+	consumer_ids::Vector{Int}			
+	product_ids::Vector{Vector{Int}}					
+	product_characteristics::Vector{Matrix{T}}			
+	positions::Vector{Vector{Int}}						
+	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing
+	consideration_sets::Vector{Vector{Bool}}			
+	purchase_indices::Vector{Int} 						
+	stop_indices::Vector{Int}							
 
 	# Check that all vectors have the same length (number of sessions)
 	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(consideration_sets) == length(purchase_indices) == length(stop_indices)
 	@assert isnothing(search_paths) || length(search_paths) == length(product_ids)
+end
+
+# Define base functions for working with the core data
+function length(d::DataSDCore) 
+	return length(d.product_ids)
+end
+function getindex(d::DataSDCore, elements...) 
+	i = vcat(elements...)
+	
+	return DataSDCore(d.consumer_ids[i], d.product_ids[i], d.product_characteristics[i], d.positions[i], d.search_paths == nothing ? nothing : d.search_paths[i], d.consideration_sets[i], d.purchase_indices[i], d.stop_indices[i])
 end
 
 
@@ -77,10 +94,10 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer, seed;
 		generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
 
 	# Create consumer indices mapping consumers into sessions 
-	consumer_indices = [UnitRange((i-1)*n_sessions_per_consumer + 1, i*n_sessions_per_consumer) for i in 1:n_consumers]
+	consumer_ids = repeat(1:n_consumers, n_sessions_per_consumer)
 
 	# Create data object
-	data = DataSDCore(consumer_indices, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop)
+	data = DataSDCore(consumer_ids, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop)
 
 	# Return together with purchase utilities 
 	return data, utility_purchases
