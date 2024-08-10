@@ -155,6 +155,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 			# Create local variables that the thread can work with. Pre-allocation circumvenst allocations in the loop.
 			local u 	= zeros(Float64, max_products_per_session)
 			local zs 	= zeros(Float64, max_products_per_session)
+			local v 	= zeros(Float64, max_products_per_session)
 
 			# Loop over sessions in the chunk
 			for i in chunk
@@ -162,11 +163,12 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 				# Reset 
 				u .= typemin(Float64)
 				zs .= typemin(Float64)
+				v .= 0
 
 				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases,
 								m, i, 
 								product_ids, product_characteristics, positions, 
-								u, zs, zdfun, zsfun)
+								u, zs, v, zdfun, zsfun)
 
 				# If conditional on click, iterate until have at least one 
 				if conditional_on_click 
@@ -175,7 +177,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
 										m, i, 
 										product_ids, product_characteristics, positions, 
-										u, zs, zdfun, zsfun)
+										u, zs, v, zdfun, zsfun)
 						iter += 1 
 					end
 				end
@@ -190,20 +192,18 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 	return paths, consideration_sets, indices_purchase, indices_stop, utility_purchases
 end
 
-function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
+function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, 		
+						utility_purchases, 
 						m, i, 
 						product_ids, product_characteristics, positions, 
-						u, zs, zdfun, zsfun; 
+						u, zs, v, zdfun, zsfun; 
 						debug_print = false)
 
-	# draw outside option utility 
-	u[1] = rand(m.dU0) + product_characteristics[i][1, end] * m.β[end]
-
 	# Define variables tracking state during search 
-	max_u = u[1] 	# current max utility 
-	max_zs = zs[1]  # current max search value
-	ind_p = 1 # index of product to purchase
-	ind_s = 1 # index of product to search
+	max_u = typemin(eltype(u)) 	# current max utility 
+	max_zs = typemin(eltype(zs))  # current max search value
+	ind_p = 0 # index of product to purchase
+	ind_s = 0 # index of product to search
 	pos = 0 # current position 
 	ns = 0 	# number of searches
 	ij = 0  # Index tracking current product 
@@ -214,24 +214,30 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	# Fill reservation values in initial awareness set
 	for j in eachindex(u) 
 		
-		if j == 1 # 1st product is outside option and we skip
-			continue
-		end 
-		
 		if positions[i][j] > 0 # only for initial awareness set, indicated with position = 0. 
 			break 
 		end
 
-		# Fill in reservation value for product j
-		zs[j] =  zsfun(m.ξ, m.ξρ, pos) + rand(m.dV) + rand(m.dW) 
-		for h in eachindex(m.β)
-			zs[j] += product_characteristics[i][j, h] * m.β[h]
-		end
+		# Outside option 
+		if product_ids[i][j] == 0
+			# draw outside option utility 
+			u[j] = rand(m.dU0) + product_characteristics[i][1, end] * m.β[end]
+			max_u = u[j]
+			ind_p = 1 
+		else
+			# Fill in reservation value for product j
+			# note: storing v_j draw as also enters utility 
+			v[j] = rand(m.dV)
+			zs[j] =  zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
+			for h in eachindex(m.β)
+				zs[j] += product_characteristics[i][j, h] * m.β[h]
+			end
 
-		# Update max search value and index
-		if zs[j] > max_zs 
-			max_zs = zs[j]
-			ind_s = j 
+			# Update max search value and index
+			if zs[j] > max_zs 
+				max_zs = zs[j]
+				ind_s = j 
+			end
 		end
 
 		# Update index of current product 
@@ -248,13 +254,15 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 		println("initial max_u = ", max_u)
 	end
 
+	# Update position and discovery value to next one to be revealed
+	pos += 1
+	zd = zdfun(m.Ξ, m.ρ, pos)
 
 	# Loop through discovering more products and searching 
 	while true 
 	
 		# discover more products
-		if max_u < zd && max_zs < zd && pos < positions[i][end]
-			pos += 1 
+		if max_u < zd && max_zs < zd && pos <= positions[i][end]
 
 			if i == 1 && debug_print 
 				println("############################")
@@ -267,7 +275,6 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				println("max_zs = ", max_zs)
 				println("max_u = ", max_u)
 			end
-	
 
 			# Update reservation values for products in next position 
 			for j in ij+1:n_prod 
@@ -278,7 +285,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				end
 
 				# Update reservation value and max 
-				zs[j] =  zsfun(m.ξ, m.ξρ, pos) + rand(m.dV) + rand(m.dW) 
+				v[j] = rand(m.dV)
+				zs[j] =  zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
 				for h in eachindex(m.β)
 					zs[j] += product_characteristics[i][j, h] * m.β[h]
 				end
@@ -288,11 +296,12 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				end
 			end
 
-			# Update discovery value
-			zd =  zdfun(m.Ξ, m.ρ, pos) 
+			# Update discovery value and position 
+			pos += 1 				   # next position 
+			zd =  zdfun(m.Ξ, m.ρ, pos) # next position discovery value
 
 		# Stop and buy 
-		elseif ( max_u >= zd || pos == positions[i][end] ) && max_u > max_zs  
+		elseif ( max_u >= zd || pos > positions[i][end] ) && max_u >= max_zs  
 			if i == 1 && debug_print
 				println("############################")
 				println("PURCHASE  ")
@@ -332,7 +341,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			zs[ind_s] = typemin(eltype(zs))
 			
 			# Get utility of searched product 
-			u[ind_s] =  rand(m.dE) + rand(m.dV) 
+			# note: recovering previously stored v_j draw as enters utility and search value 
+			u[ind_s] =  rand(m.dE) + v[ind_s] 
 			for h in eachindex(m.β) 
 				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
 			end	
