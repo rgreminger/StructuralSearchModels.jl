@@ -214,6 +214,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	for j in eachindex(u) 
 		
 		if positions[i][j] > 0 # only for initial awareness set, indicated with position = 0. 
+			# Update index of current product 
+			ij = j - 1 # last 
 			break 
 		end
 
@@ -239,8 +241,6 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			end
 		end
 
-		# Update index of current product 
-		ij = j 
 	end
 
 	# Update position and get discovery value to next one to be revealed
@@ -277,7 +277,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			end
 
 			# Update reservation values for products in next position 
-			for j in ij+1:n_prod 
+			for j in ij + 1:n_prod 
 				# Reached next position 
 				if positions[i][j] > pos 
 					ij = j - 1 # current product is last in position
@@ -298,7 +298,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
 			# Update discovery value and position 
 			pos += 1 				   # next position 
-			zd =  zdfun(m.Ξ, m.ρ, pos) # next position discovery value
+			zd = zdfun(m.Ξ, m.ρ, pos) # next position discovery value
 
 		# Stop and buy 
 		elseif ( max_u >= zd || pos > positions[i][end] ) && max_u >= max_zs  
@@ -775,6 +775,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	fill_uzw_values!(u, zs, ws, ws_tilde,  m, zdfun, zsfun, d, i)
 
 	wm, im = findmax(ws)
+
 	position_chosen = d.positions[i][im]
 	wm_tilde = ws_tilde[im] # get w_tilde for chosen alternative
 
@@ -804,10 +805,10 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 		has_click = true 
 	else
 		for j in eachindex(d.product_ids[i])
-			if d.positions[i][j] < position_chosen && zs[j] > wm # searched before discovering chosen alternative
+			if d.positions[i][j] < position_chosen && zs[j] >= wm # searched before discovering chosen alternative
 				has_click = true 
 				break 
-			elseif zs[j] > wm_tilde # searched after discovering chosen alternative
+			elseif zs[j] >= wm_tilde # searched after discovering chosen alternative
 				has_click = true
 				break
 			end
@@ -826,7 +827,6 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 	chars = d.product_characteristics[i]
 	positions = d.positions[i]
 	product_ids = d.product_ids[i]
-
 	for j in eachindex(product_ids)
 
 		# Outside option
@@ -841,10 +841,6 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 
 			# Fill in search value
 			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
-			zs[j] = ξ_j + v + w 
-			for h in eachindex(m.β)
-				zs[j] += chars[j, h] * m.β[h]
-			end
 
 			# Fill in utility value
 			u[j] = e + v 

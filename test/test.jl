@@ -1,3 +1,4 @@
+using Revise 
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie
 
 m = SDCore( 
@@ -6,9 +7,9 @@ m = SDCore(
     ρ = [-0.5], 
     ξ = 5.0,
     ξρ = [0.0], 
-    dE = Normal(0, 1.0), 
-    dV = Normal(0, 3.0), 
-    dU0 = Normal(0, 1), 
+    dE = Normal(0, 0.0), 
+    dV = Normal(0, 5.0), 
+    dU0 = Normal(0, 0), 
     dW = Normal(0, 0) , 
     zdfun = "linear", 
     zsfun = "linear"
@@ -43,3 +44,4 @@ println("Discovery costs paid avg simulate paths = $(wc[1][4])")
 calculate_welfare(m, data, 1; method = "effective_values") ;
 
 calculate_welfare(m, data, 1; method = "simulate_paths") ;
+
