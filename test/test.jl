@@ -14,18 +14,21 @@ m = SDCore(
     zdfun = "log", 
     zsfun = "linear"
 )
-
-println("#########################################")
-n_consumers = 2000
-@time data, utility_purchases = 
+n_consumers = 20000
+data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
 
-click_stats, purchase_stats, b_click, b_purch = calcualte_fit_measures(m, d, 1000; return_bounds = true) 
+click_stats, purchase_stats, b_click, b_purch = calcualte_fit_measures(m, d, 50; return_bounds = true) 
 
 
 stats = (click_stats, purchase_stats)
 bounds = (b_click, b_purch)
 
 plot_across_positions(stats, bounds) 
+
+
+## 
+calculate_costs!(m, d, 100000)
+@time welfare = calculate_welfare(m, d, 100) 

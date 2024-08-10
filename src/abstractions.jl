@@ -66,9 +66,9 @@ function calculate_standard_errors(model::Model, data::Data, estimator::Estimato
 ##################################################################################
 # Welfare and demand 
 """ 
-    calculate_welfare_and_demand(model::Model, data::Data; kwargs...)
+    calculate_welfare(model::Model, data::Data; kwargs...)
 
-Calculate welfare and demand for the model `model` using the data `data`. 
+Calculate consumer welfare for the model `model` using the data `data`. 
 
 """
 function calculate_welfare_and_demand(model::Model, data::Data; kwargs...) end

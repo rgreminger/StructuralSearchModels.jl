@@ -47,9 +47,9 @@ function get_functional_form(s::String)
 	elseif s == "linear"
 		(Ξ, ρ, pos) -> Ξ + ρ[1] * pos 
 	elseif s == "log"
-		(Ξ, ρ, pos) -> Ξ + ρ[1] * _LP[pos]
+		(Ξ, ρ, pos) -> Ξ + ρ[1] * _LP[pos + 1]
 	elseif s == "exp"
-		(Ξ, ρ, pos) -> Ξ + ρ[1] * _EP[pos]
+		(Ξ, ρ, pos) -> Ξ + ρ[1] * _EP[pos + 1]
 	else
 		error("zdfun not correctly specified")
 	end
