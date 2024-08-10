@@ -36,7 +36,38 @@ function test_discovery_cost_correct()
     G = Normal(mean(xβ), sqrt(m.dV.σ^2 + var(xβ)) ) # products by default are drawn from normal distribution
     Ξ = calculate_discovery_value(G, m) 
 
+    println("###################")
     println("cd = $(m.cd)") 
     println("Ξ = $(Ξ)")
     println("m.Ξ = $(m.Ξ)")
 end
+
+test_discovery_cost_correct()
+
+function test_search_cost_correct()
+    # Verify costs correct: need that Ξ again same as m.Ξ after getting cd and recomputing Ξ
+    
+    m = SDCore( 
+        β = [0.0, 5.0], 
+        Ξ = 1.0, 
+        ρ = [-0.01], 
+        ξ = 3.0, 
+        ξρ = [0.0], 
+        dE = Normal(), 
+        dV = Normal(), 
+        dU0 = Normal(), 
+        dW = Normal(0, 0) , 
+        zdfun = "linear", 
+        zsfun = "linear"
+    )
+
+    calculate_costs!(m, data, 1) # cd irrelevant here, so few draws only 
+    
+    ξ = calculate_ξ(m) 
+    println("###################")
+    println("m.cs = $(m.cs)")
+    println("m.ξ = $(m.ξ)")
+    println("ξ = $(ξ)")
+end
+test_search_cost_correct()
+    

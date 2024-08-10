@@ -496,6 +496,20 @@ function integrate_cdfsingle(z, ξ, cs, μ, σ)
            1.0 / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2)))
 end
 
+function calculate_ξ(m::SD) 
+	cs = m.cs
+	F = m.dE
+	if F == Normal() # Faster way when having std normal, and also structured to be suitable for Autodiff
+		fz_N(cs) = fzero(ξ-> -ξ + ξ*cdf(F, ξ)+pdf(F, ξ) - cs ,-abs(cs) * 10, 100 * std(F))
+		ξ = fz_N(cs)
+		return ξ
+	else
+		fz(cs) = fzero(ξ -> zs_inner_integral(ξ, F) - cs, -cs, 30 * std(F))
+		ξ = fz(cs)
+		return ξ
+	end
+end
+
 
 # Consumer welfare
 """
@@ -509,10 +523,15 @@ function calculate_welfare(m::SDCore, data::DataSD, n_sim;
 										method = "effective_values",
 										kwargs...)
 
+	# Assert costs are part of model
+	if isnothing(m.cs) || isnothing(m.cd)
+		throw(ArgumentError("Search and discovery costs not calculated. Run calculate_costs! first."))
+	end
+	
 	if method == "simulate_paths"
 		return calculate_welfare_simpaths(m, data, n_sim; kwargs...)
 	elseif method == "effective_values"
-		return calculate_welfare_effective_values(m, data, n_sim, seed; kwargs...)
+		return calculate_welfare_effective_values(m, data, n_sim; kwargs...)
 	else
 		throw(ArgumentError("Method $method not recognized."))
 	end
