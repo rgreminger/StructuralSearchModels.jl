@@ -161,7 +161,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 			for i in chunk
 
 				# Reset 
-				u .= 0 
+				u .= typemin(Float64) 
 				zs .= typemin(Float64)
 				v .= 0
 
@@ -367,6 +367,9 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			end
 			# Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen. 
 			max_zs, ind_s = findmax(zs) 
+
+		else 
+			error("Should not reach this point.")
 		
 		end
 	end
@@ -619,7 +622,13 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_
 		utility_choice_conditional_on_purchase[sim] = sum(utility_purchases[i_ses_with_purchase]) / n_sessions_with_purchase
 		search_costs_conditional_on_purchase[sim] = sum(search_costs) / n_sessions_with_purchase
 		discovery_costs_conditional_on_purchase[sim] = sum(discovery_costs) / n_sessions_with_purchase
+
+		if sim == 1 
+			println("n_sessions_with_clicks = ", n_sessions_with_clicks)
+			println("n_sessions_with_purchase = ", n_sessions_with_purchase)
+		end
 	end
+
 
 	welfare_avg = utility_choice_avg - search_costs_avg - discovery_costs_avg
 	welfare_conditional_on_click = utility_choice_conditional_on_click - search_costs_conditional_on_click - discovery_costs_conditional_on_click
@@ -767,6 +776,9 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 	n_click = sum(clicked)
 	n_purch = sum(purchased)
 
+	println("n_click = ", n_click)
+	println("n_purch = ", n_purch)
+
 	# Return averages across simulations
 	return (sum(eff_value_choice_avg), 
 				sum(discovery_costs_avg)) ./ n_ses, 
@@ -821,10 +833,13 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 			if d.product_ids[i][j] == 0  # skip outside option 
 				continue 
 			end
-			if d.positions[i][j] < position_chosen && zs[j] > wm # searched before discovering chosen alternative
+			if d.positions[i][j] < position_chosen && zs[j] >= wm # searched before discovering chosen alternative
 				has_click = true 
 				break 
-			elseif min(zs[j], zd[j]) > wm_tilde # searched after discovering chosen alternative, requires that (i) discovered and that z_s > w_tilde
+			elseif d.positions[i][j] == position_chosen && zs[j] >= wm_tilde 
+				has_click = true 
+				break
+			elseif min(zs[j], zd[j]) >= wm_tilde # searched after discovering chosen alternative, requires that (i) discovered and that z_s > w_tilde
 				has_click = true
 				break
 			end
