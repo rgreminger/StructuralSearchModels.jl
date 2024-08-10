@@ -469,6 +469,10 @@ function calculate_discovery_value(G::Normal, m)
 
 	ξ, cs, cd = m.ξ, m.cs, m.cd  
 
+	if typeof(m.dE) <: Normal == false 
+		throw(ArgumentError("Discovery value computation currently only defined for normal distribution of ε."))
+	end
+
 	zd = 	if integrate_cdfsingle(cd, ξ, cs, mean(G), std(G))-cd ≈ -cd  # case where no convergence 
 				-cd
 			elseif cd <= 0 || (std(G) > 1e9 && cd <= 1e8) 
@@ -479,17 +483,17 @@ function calculate_discovery_value(G::Normal, m)
 	return zd 
 end
 
-function integrate_cdfsingle(z,ξ,cs,μ,σ)
-	a = z-μ ; b = σ
-	f(x) = pdf(Normal(),x)
-	F(x) = cdf(Normal(),x)
+function integrate_cdfsingle(z, ξ, cs, μ, σ)
+    a = z - μ
+    b = σ
+    f(x) = pdf(Normal(), x)
+    F(x) = cdf(Normal(), x)
 
-	return (1 - F((z - ξ - μ) / σ)) * (μ - z - cs) + σ * f((z - ξ - μ) / σ) +
-		(z - μ) * bvncdf(a / sqrt(1 + b^2), (μ + ξ - z) / σ, -b / sqrt(1 + b^2)) -
-		σ * (-b / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2))))
-		+ F(a - b * (z - ξ - μ) / σ) * f((z - ξ - μ) / σ) +
-		1.0 / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2)))
-
+    return (1 - F((z - ξ - μ) / σ)) * (μ - z - cs) + σ * f((z - ξ - μ) / σ) +
+           (z - μ) * bvncdf(a / sqrt(1 + b^2), (μ + ξ - z) / σ, -b / sqrt(1 + b^2)) -
+           σ * (-b / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2))) +
+                F(a - b * (z - ξ - μ) / σ) * f((z - ξ - μ) / σ)) +
+           1.0 / sqrt(1 + b^2) * f(a / sqrt(1 + b^2)) * (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2)))
 end
 
 
