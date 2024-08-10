@@ -475,7 +475,7 @@ Calculate the discovery value zd given cs, cd, and ξ from SD model `m`. Assumes
 
 """
 
-function calculate_discovery_value(G::Normal, m)
+function calculate_discovery_value(G::Normal, m::SD)
 
 	ξ, cs, cd = m.ξ, m.cs, m.cd  
 
@@ -572,15 +572,19 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_
 	
 
 	for sim in 1:n_sim
+		# Generate data from new seed 
 		new_seed = rand(1:1000000)
 		d_sim, utility_purchases = generate_data(m, data; seed = new_seed, kwargs_data_generation...) 
 
-		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim) # note: 0 draws for cd because requires that already calculated 
+		# Compute paid costs 
+		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim)
+
+		# Add averages 
 		utility_choice_avg[sim] = sum(utility_purchases) / n_ses 
 		search_costs_avg[sim] = sum(search_costs) / n_ses
 		discovery_costs_avg[sim] = sum(discovery_costs) / n_ses
 
-		# Conditional on click
+		# Conditional on click: compute only for sessions with at least one click
 		i_ses_with_clicks = sessions_with_clicks(d_sim) 
 		n_sessions_with_clicks = length(i_ses_with_clicks)
 
@@ -631,7 +635,7 @@ function calculate_costs_in_sessions(m::SDCore, d)
 	end
 	
 	# paid search costs are the number of searches multiplied with search costs
-	search_costs = [m.cs * sum(d.consideration_sets[i]) for i in eachindex(d)] 
+	search_costs = [m.cs * sum(path > 0 for path in d.search_paths[i]) for i in eachindex(d)] 
 
 	# number of discovery is equal to the position of the last product discovered because 
 	# position = 0 is initial awareness set. So if stops on position =1 is one discovery, and so on. 
@@ -640,3 +644,220 @@ function calculate_costs_in_sessions(m::SDCore, d)
 	return search_costs, discovery_costs	
 
 end
+
+function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
+
+	# Set seed
+	set_seed(kwargs)
+
+	# Average across all consumers 
+	eff_value_choice_avg = zeros(Float64, n_sim)
+	discovery_costs_avg = zeros(Float64, n_sim)
+
+	# Average conditional on click 
+	eff_value_choice_conditional_on_click = zeros(Float64, n_sim)
+	discovery_costs_conditional_on_click = zeros(Float64, n_sim)
+
+	# Average conditional on purchase
+	eff_value_choice_conditional_on_purchase = zeros(Float64, n_sim)
+	discovery_costs_conditional_on_purchase = zeros(Float64, n_sim)
+	
+	# Loop over sims and calculate welfare measures for each
+	for s in 1:n_sim 
+		# Generate welfare measures for new seed	
+		new_seed = rand(1:1000000)
+		welfare_measures = _calculate_welfare_effective_values(m, d; seed = new_seed, kwargs...)
+
+		# Unpack and fill in welfare measures
+		eff_value_choice_avg[s], discovery_costs_avg[s] = welfare_measures[1]
+		eff_value_choice_conditional_on_click[s], discovery_costs_conditional_on_click[s] = welfare_measures[2]
+		eff_value_choice_conditional_on_purchase[s], discovery_costs_conditional_on_purchase[s] = welfare_measures[3]
+	end
+
+
+	welfare_avg = eff_value_choice_avg - discovery_costs_avg
+	welfare_conditional_on_click = eff_value_choice_conditional_on_click - discovery_costs_conditional_on_click
+	welfare_conditional_on_purchase = eff_value_choice_conditional_on_purchase - discovery_costs_conditional_on_purchase
+
+	# Return averages across simulations 
+	# 1. Average welfare, utility, search costs, discovery costs
+	# 2. Average conditional on click
+	# 3. Average conditional on purchase
+
+	return mean.((welfare_avg, eff_value_choice_avg, discovery_costs_avg)), 
+			mean.((welfare_conditional_on_click, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click)), 
+			mean.((welfare_conditional_on_purchase, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase))
+end
+
+function _calculate_welfare_effective_values(m, d; kwargs...)
+
+
+	# Pre-allocate vectors to store welfare measures
+	n_ses = length(d)
+
+	# Extract funtional forms 
+	zdfun = get_functional_form(m.zdfun)
+	zsfun = get_functional_form(m.zsfun)
+
+	# Average across all consumers 
+	eff_value_choice_avg = get(kwargs, :eff_value_choice, zeros(Float64, n_ses))
+	discovery_costs_avg = get(kwargs, :discovery_costs_avg, zeros(Float64, n_ses))
+
+	# Average conditional on click 
+	eff_value_choice_conditional_on_click = get(kwargs, :eff_value_choice_conditional_on_click, zeros(Float64, n_ses))
+	discovery_costs_conditional_on_click = get(kwargs, :discovery_costs_conditional_on_click, zeros(Float64, n_ses))
+	clicked = fill(false, n_ses) # track number of clicks to calculate conditional 
+
+	# Average conditional on purchase
+	eff_value_choice_conditional_on_purchase = get(kwargs, :eff_value_choice_conditional_on_purchase, zeros(Float64, n_ses))
+	discovery_costs_conditional_on_purchase = get(kwargs, :discovery_costs_conditional_on_purchase, zeros(Float64, n_ses))
+	purchased = fill(false, n_ses) # track number of purchases to calculate conditional
+
+	vectors_to_fill = (eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased)
+
+	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
+	# creates the search path.
+	_, data_chunks = get_chunks(n_ses)
+
+	max_products_per_session = maximum(length.(d.product_ids))
+
+
+	# # Create and define tasks for each chunk
+	# tasks = map(data_chunks) do chunk 
+	# 	Threads.@spawn begin 
+
+			# Define local variables for each thread (pre-allocation)
+			local u 	= zeros(Float64, max_products_per_session)
+			local zs 	= zeros(Float64, max_products_per_session)
+			local ws 	= zeros(Float64, max_products_per_session)
+			local ws_tilde = zeros(Float64, max_products_per_session)
+
+			vectors_preallocated = (u, zs, ws, ws_tilde )
+
+			for i in eachindex(d) 
+				u .= typemin(Float64)
+				zs .= typemin(Float64)
+				ws .= typemin(Float64)
+				fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated, 
+													m, zdfun, zsfun,
+													d, i)
+			end
+		# end
+	# end
+
+	# fetch.(tasks)
+
+	n_click = sum(clicked)
+	n_purch = sum(purchased)
+
+	# Return averages across simulations
+	return (sum(eff_value_choice_avg), 
+				sum(discovery_costs_avg)) ./ n_ses, 
+		   (sum(eff_value_choice_conditional_on_click),
+		sum(discovery_costs_conditional_on_click)) ./ n_click,
+		   (sum(eff_value_choice_conditional_on_purchase), 
+		sum(discovery_costs_conditional_on_purchase)) ./ n_purch
+end
+
+function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated, 
+											m, zdfun, zsfun, 
+											d, i)
+
+	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
+
+	u, zs, ws, ws_tilde = vectors_preallocated
+
+	# fill in search and effective values for session i
+	fill_uzw_values!(u, zs, ws, ws_tilde,  m, zdfun, zsfun, d, i)
+
+	wm, im = findmax(ws)
+	position_chosen = d.positions[i][im]
+	wm_tilde = ws_tilde[im] # get w_tilde for chosen alternative
+
+	# Find number of discoveries 
+	zd = [zdfun(m.Ξ, m.ρ, d.positions[i][j]) for j in eachindex(d.product_ids[i])]
+	ndiscoveries = d.positions[i][min(searchsortedfirst(zd, wm; rev = true), end)]  # select position where discovery value is just below max effective value. note, zd is sorted in decreasing order. min accounts for case where wm < all zd, in which case searchsortedfirst returns end + 1 index.
+	
+	# Fill in welfare measures
+	eff_value_choice_avg[i] = wm_tilde   
+	discovery_costs_avg[i] = m.cd * ndiscoveries
+
+	# Conditional on purchase 
+	has_purchase = d.product_ids[i][im] > 1 
+	if has_purchase 
+		eff_value_choice_conditional_on_purchase[i] = wm_tilde 
+		discovery_costs_conditional_on_purchase[i] = m.cd * ndiscoveries
+		purchased[i] = true 
+	end
+
+	# Conditional on click
+	has_click = false 
+
+	if has_purchase # always clicked if purchased
+		has_click = true 
+	else
+		for j in eachindex(d.product_ids[i])
+			if d.positions[i][j] < position_chosen && zs[j] >= wm # searched before discovering chosen alternative
+				has_click = true 
+				break 
+			elseif zs[j] >= wm_tilde # searched after discovering chosen alternative
+				has_click = true
+				break
+			end
+		end
+	end
+
+	if has_click 
+		eff_value_choice_conditional_on_click[i] = wm_tilde
+		discovery_costs_conditional_on_click[i] = m.cd * ndiscoveries
+		clicked[i] = true 
+	end
+
+end
+
+function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
+	chars = d.product_characteristics[i]
+	positions = d.positions[i]
+	product_ids = d.product_ids[i]
+
+	for j in eachindex(product_ids)
+
+		# Outside option
+		if product_ids[j] == 0 
+			u[j] = rand(m.dU0) + chars[j, end] * m.β[end]
+			ws[j] = u[j]
+			ws_tilde[j] = u[j]
+			# zs not used 
+		else
+			# Take draws 
+			e = rand(m.dE); v = rand(m.dV) ; w = rand(m.dW)
+
+			# Fill in search value
+			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
+			zs[j] = ξ_j + v + w 
+			for h in eachindex(m.β)
+				zs[j] += chars[j, h] * m.β[h]
+			end
+
+			# Fill in utility value
+			u[j] = e + v 
+			for h in eachindex(m.β) 
+				u[j] += chars[j, h] * m.β[h] 
+			end	
+
+			# Fill in effective value 
+			# note: u[j] - e = xb + v 
+			ws[j] = u[j] - e + min(ξ_j + w, e) 
+			ws_tilde[j] = ws[j] 
+
+			if positions[j] > 0 # only account for discovery value when not in initial awareness set
+				zd_j = zdfun(m.Ξ, m.ρ, positions[j])
+				ws[j] = min(ws[j], zd_j - eps() * positions[j]) + ws[j] * eps() # eps solve indifferences when multiple products on same position, or when ρ = 0 
+			end
+		end
+
+	end
+	return nothing
+end
+
+

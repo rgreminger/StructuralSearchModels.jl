@@ -51,7 +51,7 @@ function test_search_cost_correct()
         β = [0.0, 5.0], 
         Ξ = 1.0, 
         ρ = [-0.01], 
-        ξ = 3.0, 
+        ξ = 0.5, 
         ξρ = [0.0], 
         dE = Normal(), 
         dV = Normal(), 
@@ -70,4 +70,49 @@ function test_search_cost_correct()
     println("ξ = $(ξ)")
 end
 test_search_cost_correct()
+
+##
+function test_welfare_calculations_same()
+
+    m = SDCore( 
+        β = [0.0, 1.0], 
+        Ξ = 5.0, 
+        ρ = [-0.05], 
+        ξ = 0.5,
+        ξρ = [0.0], 
+        dE = Normal(), 
+        dV = Normal(), 
+        dU0 = Normal(), 
+        dW = Normal() , 
+        zdfun = "linear", 
+        zsfun = "linear"
+    )
+
+
+    n_consumers = 5000
+    @time data, utility_purchases = 
+                    generate_data(m, n_consumers, 1; seed = 423, 
+                    conditional_on_click = false, conditional_on_click_iter = 100); 
+
+    calculate_costs!(m, data, 100000) 
+
+
+    we = calculate_welfare(m, data, 50; method = "effective_values") ; 
+
+    wc = calculate_welfare(m, data, 50; method = "simulate_paths") ;
+
+    println("###################")
+    println("Avg welfare effective values = $(we[1][1])")   
+    println("Avg welfare simulate paths = $(wc[1][1])")
+    println("Welfare conditional on click = $(we[2][1])")
+    println("Welfare conditional on click = $(wc[2][1])")
+    println("Welfare conditional on purchase = $(we[3][1])")
+    println("Welfare conditional on purchase = $(wc[3][1])")
+
+    println("###################")
+    println("Discovery costs paid avg effective values = $(we[1][3])")
+    println("Discovery costs paid avg simulate paths = $(wc[1][4])")
     
+end
+
+test_welfare_calculations_same() 
