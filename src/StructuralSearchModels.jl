@@ -8,6 +8,7 @@ export generate_data, generate_products, sessions_with_clicks, sessions_with_pur
 export estimate_model                                               # functions for estimation
 export evaluate_fit, calculate_standard_errors, calculate_welfare   # functions for post-estimation
 export calculate_costs!, calculate_discovery_value, calculate_search_cost, calculate_discovery_cost, calculate_ξ
+export plot_across_positions
 
 # Export concrete model types 
 export SD, SDCore 
@@ -16,6 +17,7 @@ export SD, SDCore
 using Revise                                                        # for package development 
 using Random, Distributions, StatsBase, QuadGK, Roots               # math and other 
 using Parameters                                                    # utils 
+using Colors, CairoMakie                                                   # plotting
 
 # Import functions to add own definitions 
 import Base: length, getindex, eachindex

@@ -888,4 +888,186 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 	return nothing
 end
 
+# Fit evaluations 
+function calcualte_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
+	# Set seed 
+	set_seed(kwargs)
+	
+	click_stats = [] 
+	purchase_stats = []
+
+	# Track statistics across simulations to get percentiles 
+	click_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
+	purchase_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
+
+	# Generate data from new seed 
+	for s in 1:n_sim 
+		new_seed = rand(1:1000000)
+		d_sim = generate_data(m, data; seed = new_seed, kwargs...)[1]
+
+		# Compute fit statistics 
+		click_stats_i, purchase_stats_i = calculate_statistics_from_data(d_sim) 
+
+		# Fill in statistics
+		if s == 1 
+			click_stats = click_stats_i
+			purchase_stats = purchase_stats_i
+		else
+			click_stats += click_stats_i
+			purchase_stats += purchase_stats_i
+		end
+
+		# Fill in statistics for percentiles
+		click_probability_per_pos[:, s] = click_stats_i[2]
+		purchase_probability_per_pos[:, s] = purchase_stats_i[2]
+
+	end
+
+	# Compute average 
+	click_stats_sim = click_stats ./ n_sim
+	purchase_stats_sim = purchase_stats ./ n_sim
+
+	# Get stats for data 
+	click_stats_data, purchase_stats_data = calculate_statistics_from_data(data) 
+
+	# Compute lower/upper bound based on given percentile 
+	percentile_across_sims = get(kwargs, :percentile, 0.95)
+	return_bounds = get(kwargs, :return_bounds, false)
+	if return_bounds
+		sort!(click_probability_per_pos, dims = 2)
+		sort!(purchase_probability_per_pos, dims = 2)
+		lb_click = click_probability_per_pos[:, ceil(Int, (1-percentile_across_sims) * n_sim)]
+		ub_click = click_probability_per_pos[:, floor(Int, percentile_across_sims * n_sim)]
+		lb_purchase = purchase_probability_per_pos[:, ceil(Int, (1-percentile_across_sims) * n_sim)]
+		ub_purchase = purchase_probability_per_pos[:, floor(Int, percentile_across_sims * n_sim)]
+
+		return (click_stats_sim, click_stats_data), (purchase_stats_sim, purchase_stats_data), (lb_click, ub_click), (lb_purchase, ub_purchase)
+	end 
+
+	# Return averages across simulations
+	return (click_stats_sim, click_stats_data), (purchase_stats_sim, purchase_stats_data) 
+end
+
+function calculate_statistics_from_data(d::DataSD)
+
+	# Set up click statistics that will be filled in by looping over sessions 
+	clicks_per_pos = zeros(Int, maximum(length.(d.product_ids)))
+	n_click_conditional_on_click = 0 
+	n_at_least_one_click = 0
+	characteristics_clicked = zeros(Float64, size(d.product_characteristics[1], 2))
+
+	# Purchase statistics
+	purchases_per_pos = zeros(Int, maximum(length.(d.product_ids)))
+	characteristics_purchased = zeros(Float64, size(d.product_characteristics[1], 2))
+
+	# Loop over sessions and fill in statistics
+	for i in eachindex(d) 
+		# Click statistics
+		clicked = false 
+		n_clicks_i = 0
+		for j in d.search_paths[i] 
+			if j == 0 
+				break # no further clicks 
+			end
+			clicked = true 
+			clicks_per_pos[j] += 1 
+			characteristics_clicked .+= d.product_characteristics[i][j, :]
+			n_clicks_i += 1 
+		end
+
+		if clicked 
+			n_click_conditional_on_click += n_clicks_i
+			n_at_least_one_click += 1
+		end
+
+		# Purchase statistics
+		if d.purchase_indices[i] > 1
+			purchases_per_pos[d.purchase_indices[i]] += 1
+			characteristics_purchased .+= d.product_characteristics[i][d.purchase_indices[i], :]
+		end
+	end
+	
+	n_clicks = sum(clicks_per_pos)
+	n_purchases = sum(purchases_per_pos)
+
+	n_ses = length(d)
+
+
+	# Gather click statistics
+	no_clicks_per_session = n_clicks / n_ses
+	click_probability_per_position = clicks_per_pos ./ n_ses
+	probability_at_least_one_click_in_session = n_at_least_one_click / n_ses
+	no_clicks_per_session_conditional_on_click = n_click_conditional_on_click / n_at_least_one_click
+	mean_characteristics_clicked = characteristics_clicked / n_clicks
+	click_stats = [no_clicks_per_session, click_probability_per_position, probability_at_least_one_click_in_session, no_clicks_per_session_conditional_on_click, mean_characteristics_clicked]
+
+	# Gather purchase statistics
+	purchase_probability = n_purchases / n_ses
+	purchase_probability_per_pos = purchases_per_pos ./ n_ses
+	characteristics_purchased = characteristics_purchased / n_purchases
+	purchase_stats = [purchase_probability, purchase_probability_per_pos, characteristics_purchased]
+
+	return click_stats, purchase_stats 
+end
+
+function plot_across_positions(stats, bounds; kwargs...) 
+
+	# Extract statistics 
+	click_stats_sim, click_stats_data = stats[1]
+	purchase_stats_sim, purchase_stats_data = stats[2]
+
+	clicks_per_pos_sim = click_stats_sim[2]
+	clicks_per_pos_data = click_stats_data[2]
+
+	purchases_per_pos_sim = purchase_stats_sim[2]
+	purchases_per_pos_data = purchase_stats_data[2]
+
+	# Extract bounds
+	lb_click, ub_click = bounds[1]
+	lb_purchase, ub_purchase = bounds[2]
+
+	# x-axis 
+	sel = if ub_click[1] == 0 # outside option -> no clicks on first element -> don't plot 
+			 2:length(lb_click) 
+		else
+			1:length(lb_click) # outside option -> no clicks on first element 
+		end
+	x = 1:length(lb_click[sel])
+
+	# set nice color  
+	base_color = RGB(62/255,100/255,125/255)
+
+	# Extract y-axis labels from keywords
+	ylabel1 = get(kwargs, :ylabel1, "Purchase probability")
+	ylabel2 = get(kwargs, :ylabel2, "Click probability")
+
+	fig = Figure()
+	ax_purch = Axis(fig[1,1],
+				xlabel = "Position",
+				ylabel = ylabel1)
+
+	# Plot purchase probabiltiy 
+	band!(ax_purch, x, lb_purchase[sel], ub_purchase[sel], color = (base_color,0.2) ) 
+	lines!(ax_purch, purchases_per_pos_sim[sel], label = "Predicted", color = base_color,linewidth = 3 )
+	lines!(ax_purch, purchases_per_pos_data[sel], label = "Data", color = :black, 
+				linestyle = :dash, linewidth = 2)
+	axislegend(; framevisible=false)
+	hidespines!(ax_purch, :t, :r) # only top and right
+
+	# Plot click probability
+	ax_clicks = Axis(fig[2,1],
+				xlabel = "Position",
+				ylabel = ylabel2)
+	band!(ax_clicks, x, lb_click[sel], ub_click[sel], color = (base_color,0.2) )
+	lines!(ax_clicks, clicks_per_pos_sim[sel], label = "Predicted", color = base_color,linewidth = 3 )
+	lines!(ax_clicks, clicks_per_pos_data[sel], label = "Data", color = :black, 
+				linestyle = :dash, linewidth = 2)
+	hidespines!(ax_clicks, :t, :r) # only top and right
+
+	display(fig) 
+
+	return fig 
+end
+
+				
