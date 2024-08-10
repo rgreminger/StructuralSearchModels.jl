@@ -80,14 +80,14 @@ test_search_cost_correct()
 function test_welfare_calculations_same()
 
     m = SDCore( 
-        β = [0.0, 2.0], 
-        Ξ = 3., 
-        ρ = [-0.2], 
+        β = [0.0, 0.0], 
+        Ξ = 4., 
+        ρ = [-0.5], 
         ξ = 3.0,
         ξρ = [0.0], 
-        dE = Normal(), 
-        dV = Normal(), 
-        dU0 = Normal(), 
+        dE = Normal(0, 0.0), 
+        dV = Normal(0, 0.0), 
+        dU0 = Normal(0, 0), 
         dW = Normal(0, 0) , 
         zdfun = "linear", 
         zsfun = "linear"
@@ -101,9 +101,9 @@ function test_welfare_calculations_same()
     calculate_costs!(m, data, 100000) 
 
 
-    we = calculate_welfare(m, data, 25; method = "effective_values") ; 
+    we = calculate_welfare(m, data, 100; method = "effective_values") ; 
 
-    wc = calculate_welfare(m, data, 25; method = "simulate_paths") ;
+    wc = calculate_welfare(m, data, 100; method = "simulate_paths") ;
 
     println("###################")
     println("Avg welfare effective values = $(we[1][1])")   

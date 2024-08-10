@@ -208,7 +208,6 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	ns = 0 	# number of searches
 	ij = 0  # Index tracking current product 
 	n_prod = length(product_ids[i]) # number of products for consumer
-	zd = zdfun(m.Ξ, m.ρ, pos) # discovery value for current position
 	
 
 	# Fill reservation values in initial awareness set
@@ -244,6 +243,10 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 		ij = j 
 	end
 
+	# Update position and get discovery value to next one to be revealed
+	pos += 1
+	zd = zdfun(m.Ξ, m.ρ, pos)
+
 	if i == 1 && debug_print 
 		println("############################")
 		println("ij = ", ij)
@@ -254,9 +257,6 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 		println("initial max_u = ", max_u)
 	end
 
-	# Update position and discovery value to next one to be revealed
-	pos += 1
-	zd = zdfun(m.Ξ, m.ρ, pos)
 
 	# Loop through discovering more products and searching 
 	while true 
@@ -342,7 +342,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			
 			# Get utility of searched product 
 			# note: recovering previously stored v_j draw as enters utility and search value 
-			u[ind_s] =  rand(m.dE) + v[ind_s] 
+			u[ind_s] = rand(m.dE) + v[ind_s] 
 			for h in eachindex(m.β) 
 				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
 			end	
@@ -779,8 +779,11 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	wm_tilde = ws_tilde[im] # get w_tilde for chosen alternative
 
 	# Find number of discoveries 
-	zd = [zdfun(m.Ξ, m.ρ, d.positions[i][j]) for j in eachindex(d.product_ids[i])]
-	ndiscoveries = d.positions[i][min(searchsortedfirst(zd, wm; rev = true), end)]  # select position where discovery value is just below max effective value. note, zd is sorted in decreasing order. min accounts for case where wm < all zd, in which case searchsortedfirst returns end + 1 index.
+	zd = [zdfun(m.Ξ, m.ρ, pos) for pos in d.positions[i]]
+	ndiscoveries = d.positions[i][max(searchsortedfirst(zd, wm; rev = true) - 1, 1)]  
+	# note: discovery must stop at position where the effective value of chosen alternative exceeds the discovery value.
+	# searchsorted first finds position of first discovery value where this is the case.
+	# ndiscoveries then is one less that position, where the max accounts for the case where multiple products have the same position=0. 
 	
 	# Fill in welfare measures
 	eff_value_choice_avg[i] = wm_tilde   
@@ -856,7 +859,7 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
 				zd_j = zdfun(m.Ξ, m.ρ, positions[j])
-				ws[j] = min(ws[j], zd_j - eps() * positions[j]) + ws[j] * eps() # eps solve indifferences when multiple products on same position, or when ρ = 0 
+				ws[j] = min(ws[j], zd_j)
 			end
 		end
 
