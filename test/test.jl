@@ -2,13 +2,13 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie
 
 m = SDCore( 
-    β = [0.0, 3.], 
-    Ξ = 4.0, 
-    ρ = [-0.5], 
-    ξ = -1.0,
+    β = [0.0, .5], 
+    Ξ = 5.0, 
+    ρ = [-0.9], 
+    ξ = -1.5,
     ξρ = [0.0], 
-    dE = Normal(0, 10.0), 
-    dV = Normal(0, 5.0), 
+    dE = Normal(0, 1.0), 
+    dV = Normal(0, 1.0), 
     dU0 = Normal(0, 0), 
     dW = Normal(0, 0) , 
     zdfun = "linear", 
@@ -18,17 +18,15 @@ m = SDCore(
 println("#########################################")
 n_consumers = 5000
 @time data, utility_purchases = 
-                generate_data(m, n_consumers, 1; 
+                generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
 
-
 calculate_costs!(m, data, 100000) 
-m.cd = 0.
 
-we = calculate_welfare(m, data, 1; method = "effective_values") ; 
+we = calculate_welfare(m, data, 100; method = "effective_values", seed = 1) ; 
 
-wc = calculate_welfare(m, data, 1; method = "simulate_paths") ;
+wc = calculate_welfare(m, data, 100; method = "simulate_paths", seed = 1) ;
 
 println("###################")
 println("Avg welfare effective values = $(we[1][1])")   
@@ -44,9 +42,9 @@ println("Discovery costs paid avg simulate paths = $(wc[1][4])")
 
 ## 
 
-we = calculate_welfare(m, data, 1; method = "effective_values") ;
+we = calculate_welfare(m, data, 500; method = "effective_values") ;
+wc = calculate_welfare(m, data, 500; method = "simulate_paths") ;
 
-wc = calculate_welfare(m, data, 1; method = "simulate_paths") ;
 
 println("###################")
 println("Avg welfare effective values = $(we[1][1])")   

@@ -331,7 +331,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			break 
 
 		# search next product 
-		else 
+		elseif (max_zs > max_u && max_zs >= zd) || pos > positions[i][end]
 			if i == 1 && debug_print
 				println("############################")
 				println("SEARCH  ")
@@ -623,10 +623,6 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_
 		search_costs_conditional_on_purchase[sim] = sum(search_costs) / n_sessions_with_purchase
 		discovery_costs_conditional_on_purchase[sim] = sum(discovery_costs) / n_sessions_with_purchase
 
-		if sim == 1 
-			println("n_sessions_with_clicks = ", n_sessions_with_clicks)
-			println("n_sessions_with_purchase = ", n_sessions_with_purchase)
-		end
 	end
 
 
@@ -775,9 +771,6 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 
 	n_click = sum(clicked)
 	n_purch = sum(purchased)
-
-	println("n_click = ", n_click)
-	println("n_purch = ", n_purch)
 
 	# Return averages across simulations
 	return (sum(eff_value_choice_avg), 
