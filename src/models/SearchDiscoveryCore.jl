@@ -286,7 +286,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
 				# Update reservation value and max 
 				v[j] = rand(m.dV)
-				zs[j] =  zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
+				zs[j] = zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
 				for h in eachindex(m.β)
 					zs[j] += product_characteristics[i][j, h] * m.β[h]
 				end
@@ -539,6 +539,10 @@ function calculate_welfare(m::SDCore, data::DataSD, n_sim;
 	end
 	
 	if method == "simulate_paths"
+		if var(m.dW) > 0 
+			throw(ArgumentError("Computing welfare using path simulations is not yet implemented for non-constant search cost shocks."))
+		end
+
 		return calculate_welfare_simpaths(m, data, n_sim; kwargs...)
 	elseif method == "effective_values"
 		return calculate_welfare_effective_values(m, data, n_sim; kwargs...)
@@ -723,8 +727,8 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 
 
 	# # Create and define tasks for each chunk
-	# tasks = map(data_chunks) do chunk 
-	# 	Threads.@spawn begin 
+	tasks = map(data_chunks) do chunk 
+		Threads.@spawn begin 
 
 			# Define local variables for each thread (pre-allocation)
 			local u 	= zeros(Float64, max_products_per_session)
@@ -734,7 +738,7 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 
 			vectors_preallocated = (u, zs, ws, ws_tilde )
 
-			for i in eachindex(d) 
+			for i in chunk
 				u .= typemin(Float64)
 				zs .= typemin(Float64)
 				ws .= typemin(Float64)
@@ -742,10 +746,10 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 													m, zdfun, zsfun,
 													d, i)
 			end
-		# end
-	# end
+		end
+	end
 
-	# fetch.(tasks)
+	fetch.(tasks)
 
 	n_click = sum(clicked)
 	n_purch = sum(purchased)
@@ -783,7 +787,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	discovery_costs_avg[i] = m.cd * ndiscoveries
 
 	# Conditional on purchase 
-	has_purchase = d.product_ids[i][im] > 1 
+	has_purchase = im > 1 
 	if has_purchase 
 		eff_value_choice_conditional_on_purchase[i] = wm_tilde 
 		discovery_costs_conditional_on_purchase[i] = m.cd * ndiscoveries
@@ -797,10 +801,10 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 		has_click = true 
 	else
 		for j in eachindex(d.product_ids[i])
-			if d.positions[i][j] < position_chosen && zs[j] >= wm # searched before discovering chosen alternative
+			if d.positions[i][j] < position_chosen && zs[j] > wm # searched before discovering chosen alternative
 				has_click = true 
 				break 
-			elseif zs[j] >= wm_tilde # searched after discovering chosen alternative
+			elseif zs[j] > wm_tilde # searched after discovering chosen alternative
 				has_click = true
 				break
 			end

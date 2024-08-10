@@ -28,7 +28,7 @@ function test_discovery_cost_correct()
     calculate_costs!(m, data, 10090000; seed = 127, position_at_which_correct_beliefs = 0)
 
     # Get discovery value 
-    chars = vcat([d.product_characteristics[i][d.product_ids[i] .> 0, :] for i in eachindex(d)]...) # excludes outside option 
+    chars = vcat([data.product_characteristics[i][data.product_ids[i] .> 0, :] for i in eachindex(data)]...) # excludes outside option 
     xβ = chars * m.β
     μ = xβ
     σ = std(xβ)
@@ -61,6 +61,11 @@ function test_search_cost_correct()
         zsfun = "linear"
     )
 
+    n_consumers = 20000
+    data, utility_purchases = 
+                    generate_data(m, n_consumers, 2; seed = 123, 
+                    conditional_on_click = false, conditional_on_click_iter = 100); 
+
     calculate_costs!(m, data, 1) # cd irrelevant here, so few draws only 
     
     ξ = calculate_ξ(m) 
@@ -75,19 +80,18 @@ test_search_cost_correct()
 function test_welfare_calculations_same()
 
     m = SDCore( 
-        β = [0.0, 1.0], 
-        Ξ = 5.0, 
-        ρ = [-0.05], 
-        ξ = 0.5,
+        β = [0.0, 2.0], 
+        Ξ = 3., 
+        ρ = [-0.2], 
+        ξ = 3.0,
         ξρ = [0.0], 
         dE = Normal(), 
         dV = Normal(), 
         dU0 = Normal(), 
-        dW = Normal() , 
+        dW = Normal(0, 0) , 
         zdfun = "linear", 
         zsfun = "linear"
     )
-
 
     n_consumers = 5000
     @time data, utility_purchases = 
@@ -97,9 +101,9 @@ function test_welfare_calculations_same()
     calculate_costs!(m, data, 100000) 
 
 
-    we = calculate_welfare(m, data, 50; method = "effective_values") ; 
+    we = calculate_welfare(m, data, 25; method = "effective_values") ; 
 
-    wc = calculate_welfare(m, data, 50; method = "simulate_paths") ;
+    wc = calculate_welfare(m, data, 25; method = "simulate_paths") ;
 
     println("###################")
     println("Avg welfare effective values = $(we[1][1])")   
@@ -112,6 +116,10 @@ function test_welfare_calculations_same()
     println("###################")
     println("Discovery costs paid avg effective values = $(we[1][3])")
     println("Discovery costs paid avg simulate paths = $(wc[1][4])")
+
+    println("###################")
+    println("cs = $(m.cs)")
+    println("cd = $(m.cd)")
     
 end
 
