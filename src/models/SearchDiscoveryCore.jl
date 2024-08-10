@@ -161,7 +161,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 			for i in chunk
 
 				# Reset 
-				u .= typemin(Float64)
+				u .= 0 
 				zs .= typemin(Float64)
 				v .= 0
 
@@ -251,7 +251,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 		println("############################")
 		println("ij = ", ij)
 		println("n_prod = ", n_prod)
-		println("Initial awareness set: ", zs)
+		println("zs[1:5] = ", zs[1:5])
 		println("initial zd = ", zd)
 		println("initial max_zs = ", max_zs)
 		println("initial max_u = ", max_u)
@@ -269,7 +269,9 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				println("DISCOVERY ")
 				println("ij = ", ij)
 				println("n_prod = ", n_prod)
-
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
 				println("Position ", pos)
 				println("zd = ", zd)
 				println("max_zs = ", max_zs)
@@ -307,6 +309,10 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				println("PURCHASE  ")
 				println("ij = ", ij)
 				println("n_prod = ", n_prod)
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
+
 				println("Position ", pos)
 				println("zd = ", zd)
 				println("max_zs = ", max_zs)
@@ -318,6 +324,10 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			indices_purchase[i] = ind_p 
 			indices_stop[i] = ij 
 			utility_purchases[i] = max_u
+
+			if i == 1 && debug_print 
+				println("utiltiy_purchase = ", utility_purchases[i])
+			end
 			break 
 
 		# search next product 
@@ -327,6 +337,9 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				println("SEARCH  ")
 				println("Position ", pos)
 				println("zd = ", zd)
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
 				println("max_zs = ", max_zs)
 				println("max_u = ", max_u)
 				println("ind_s = ", ind_s)	
@@ -346,6 +359,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			for h in eachindex(m.β) 
 				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
 			end	
+
 			# Update max utility 
 			if u[ind_s] > max_u 
 				max_u = u[ind_s]
@@ -695,7 +709,6 @@ end
 
 function _calculate_welfare_effective_values(m, d; kwargs...)
 
-
 	# Pre-allocate vectors to store welfare measures
 	n_ses = length(d)
 
@@ -787,7 +800,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	# ndiscoveries then is one less that position, where the max accounts for the case where multiple products have the same position=0. 
 	
 	# Fill in welfare measures
-	eff_value_choice_avg[i] = wm_tilde   
+	eff_value_choice_avg[i] = wm_tilde 
 	discovery_costs_avg[i] = m.cd * ndiscoveries
 
 	# Conditional on purchase 
@@ -805,10 +818,13 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 		has_click = true 
 	else
 		for j in eachindex(d.product_ids[i])
-			if d.positions[i][j] < position_chosen && zs[j] >= wm # searched before discovering chosen alternative
+			if d.product_ids[i][j] == 0  # skip outside option 
+				continue 
+			end
+			if d.positions[i][j] < position_chosen && zs[j] > wm # searched before discovering chosen alternative
 				has_click = true 
 				break 
-			elseif zs[j] >= wm_tilde # searched after discovering chosen alternative
+			elseif min(zs[j], zd[j]) > wm_tilde # searched after discovering chosen alternative, requires that (i) discovered and that z_s > w_tilde
 				has_click = true
 				break
 			end
@@ -816,7 +832,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	end
 
 	if has_click 
-		eff_value_choice_conditional_on_click[i] = wm_tilde
+		eff_value_choice_conditional_on_click[i] = wm_tilde 
 		discovery_costs_conditional_on_click[i] = m.cd * ndiscoveries
 		clicked[i] = true 
 	end
@@ -827,8 +843,8 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 	chars = d.product_characteristics[i]
 	positions = d.positions[i]
 	product_ids = d.product_ids[i]
-	for j in eachindex(product_ids)
 
+	for j in eachindex(product_ids)
 		# Outside option
 		if product_ids[j] == 0 
 			u[j] = rand(m.dU0) + chars[j, end] * m.β[end]
@@ -839,19 +855,20 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 			# Take draws 
 			e = rand(m.dE); v = rand(m.dV) ; w = rand(m.dW)
 
-			# Fill in search value
-			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
-
-			# Fill in utility value
+			# Fill in utility
 			u[j] = e + v 
 			for h in eachindex(m.β) 
 				u[j] += chars[j, h] * m.β[h] 
 			end	
 
-			# Fill in effective value 
+			# Fill in search value 
 			# note: u[j] - e = xb + v 
+			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
+			zs[j] = u[j] - e + ξ_j + w 
+
+			# Fill in effective value 
 			ws[j] = u[j] - e + min(ξ_j + w, e) 
-			ws_tilde[j] = ws[j] 
+			ws_tilde[j] = ws[j]
 
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
 				zd_j = zdfun(m.Ξ, m.ρ, positions[j])
