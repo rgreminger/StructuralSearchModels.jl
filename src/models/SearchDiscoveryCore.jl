@@ -1065,9 +1065,21 @@ function plot_across_positions(stats, bounds; kwargs...)
 				linestyle = :dash, linewidth = 2)
 	hidespines!(ax_clicks, :t, :r) # only top and right
 
-	display(fig) 
-
 	return fig 
 end
 
-				
+function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
+
+	# Calculate fit measures 
+	click_stats, purchase_stats, b_click, b_purch  = calcualte_fit_measures(m, data, n_sim; return_bounds = true, kwargs...)
+
+	# Put together plot 
+	fig = plot_across_positions((click_stats, purchase_stats), (b_click, b_purch); kwargs...)
+	# Plot fit measures 
+	show_plot = get(kwargs, :show_plot, true)
+	if show_plot
+		display(fig)
+	end
+
+	return click_stats, purchase_stats, fig 
+end

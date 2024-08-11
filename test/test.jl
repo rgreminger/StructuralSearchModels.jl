@@ -20,15 +20,4 @@ data, utility_purchases =
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
 
-click_stats, purchase_stats, b_click, b_purch = calcualte_fit_measures(m, d, 50; return_bounds = true) 
-
-
-stats = (click_stats, purchase_stats)
-bounds = (b_click, b_purch)
-
-plot_across_positions(stats, bounds) 
-
-
-## 
-calculate_costs!(m, d, 100000)
-@time welfare = calculate_welfare(m, d, 100) 
+click_stats, purchase_stats, fit_plot = evaluate_fit(m, d, 50) 
