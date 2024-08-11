@@ -35,7 +35,7 @@ abstract type SD end
 	zsfun::String
 	unobserved_heterogeneity::Dict = Dict()
 
-	@assert ρ[1] < 0 "ρ[1] must be negative for decreasing discovery value across positions."
+	@assert ρ[1] <= 0 "ρ[1] must be less or equal to zero for weakly decreasing discovery value across positions."
 end 
 
 
@@ -557,9 +557,11 @@ function calculate_welfare(m::SDCore, data::DataSD, n_sim;
 	
 	if method == "simulate_paths"
 		if var(m.dW) > 0 
-			throw(ArgumentError("Computing welfare using path simulations is not yet implemented for non-constant search cost shocks."))
+			throw(ArgumentError("Computing welfare using path simulations is not implemented for non-constant search cost shocks. Use effective values instead."))
 		end
-
+		if m.ξρ[1] != 0 
+			throw(ArgumentError("Computing welfare using path simulations is not implemented for position-specific search costs. Use effective values instead."))
+		end
 		return calculate_welfare_simpaths(m, data, n_sim; kwargs...)
 	elseif method == "effective_values"
 		return calculate_welfare_effective_values(m, data, n_sim; kwargs...)
