@@ -2,6 +2,8 @@
     options_optimization = (algorithm = LBFGS(), differentiation = Optimization.AutoForwardDiff())
     options_problem = () 
     options_solver = ()
+    options_numerical_integration = (n_draws = 100, n_draws_purchases = n_draws * 10)
+    conditional_on_search = false
 
 end 
 
