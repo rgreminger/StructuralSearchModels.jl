@@ -51,6 +51,7 @@ end
 - `search_paths::Union{Vector{Vector{Int}}, Nothing}`: search paths for each session, can be nothing
 - `consideration_sets::Vector{Vector{Bool}}`: consideration sets for each session, booleans whether searched or not
 - `purchase_indices::Vector{Int}`: which product within session is purchased
+- `min_discover_indices::Vector{Int}`: which product within session is the lowest position clicked on
 - `stop_indices::Vector{Int}`: which product within session is stopped a
 """
 @with_kw mutable struct DataSD{T} <: Data where T <: Real
@@ -61,10 +62,11 @@ end
 	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing
 	consideration_sets::Vector{Vector{Bool}}			
 	purchase_indices::Vector{Int} 						
-	stop_indices::Vector{Int}							
+	min_discover_indices::Vector{Int} 
+	stop_indices::Vector{Int}						
 
 	# Check that all vectors have the same length (number of sessions)
-	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(consideration_sets) == length(purchase_indices) == length(stop_indices)
+	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(consideration_sets) == length(purchase_indices) == length(min_discover_indices) == length(stop_indices) 
 	@assert isnothing(search_paths) || length(search_paths) == length(product_ids)
 end
 
@@ -116,8 +118,13 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	# Create consumer indices mapping consumers into sessions 
 	consumer_ids = repeat(1:n_consumers, n_sessions_per_consumer)
 
+	# Get last product that consumer MUST have discovered, i.e., all products on same position as the lowest one that was clicked on
+	index_click_lowest_position = Array{Union{Int,Nothing},1}([findlast(C) for C in consideration_sets])
+	index_click_lowest_position[isnothing.(index_click_lowest_position)] .= 1 # set to one for those who did not click
+	indices_min_discover =	[findlast(positions[i] .== positions[i][index_click_lowest_position[i]]) for i in eachindex(index_click_lowest_position)]
+	
 	# Create data object
-	data = DataSD(consumer_ids, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_stop)
+	data = DataSD(consumer_ids, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_min_discover, indices_stop)
 
 	# Return together with purchase utilities 
 	return data, utility_purchases
@@ -322,7 +329,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
 			# Fill in purchase and stop indices 
 			indices_purchase[i] = ind_p 
-			indices_stop[i] = ij 
+			indices_stop[i] = pos > positions[i][end] ? length(positions[i]) : ij # special case when discovered all positions, in which case ij was not updated 
 			utility_purchases[i] = max_u
 
 			if i == 1 && debug_print 
