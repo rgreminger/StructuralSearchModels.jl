@@ -100,7 +100,7 @@ end
 # Data generation 
 function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer; 
 						n_A0 = 1, n_d = 1, 
-						products = generate_products(n_consumers*n_sessions_per_consumer), 
+						products = generate_products(n_consumers*n_sessions_per_consumer; seed = 12837), 
 						kwargs...) 
 
 	n_sessions = n_consumers * n_sessions_per_consumer 
