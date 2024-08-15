@@ -15,7 +15,10 @@ m = SDCore(
     zsfun = "linear"
 )
 n_consumers = 20000
-data, utility_purchases = 
+@time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
+##
+
+evaluate_fit(m, d, 50) 

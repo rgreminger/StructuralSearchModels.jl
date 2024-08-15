@@ -59,15 +59,18 @@ end
 	product_ids::Vector{Vector{Int}}					
 	product_characteristics::Vector{Matrix{T}}			
 	positions::Vector{Vector{Int}}						
-	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing
 	consideration_sets::Vector{Vector{Bool}}			
 	purchase_indices::Vector{Int} 						
-	min_discover_indices::Vector{Int} 
-	stop_indices::Vector{Int}						
+	# The following fields are optional and not always part of the data 
+	min_discover_indices::Union{Vector{Int}, Nothing}	= nothing 
+	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing
+	stop_indices::Union{Vector{Int}, Nothing}			= nothing 
 
 	# Check that all vectors have the same length (number of sessions)
-	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(consideration_sets) == length(purchase_indices) == length(min_discover_indices) == length(stop_indices) 
+	@assert length(product_ids) == length(product_characteristics) == length(positions) == length(consideration_sets) == length(purchase_indices)
 	@assert isnothing(search_paths) || length(search_paths) == length(product_ids)
+	@assert isnothing(min_discover_indices) || length(min_discover_indices) == length(product_ids)
+	@assert isnothing(stop_indices) || length(stop_indices) == length(product_ids)
 end
 
 # Define base functions for working with the core data
@@ -124,7 +127,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	indices_min_discover =	[findlast(positions[i] .== positions[i][index_click_lowest_position[i]]) for i in eachindex(index_click_lowest_position)]
 	
 	# Create data object
-	data = DataSD(consumer_ids, product_ids, product_characteristics, positions, paths, consideration_sets, indices_purchase, indices_min_discover, indices_stop)
+	data = DataSD(consumer_ids, product_ids, product_characteristics, positions, consideration_sets, indices_purchase, indices_min_discover, paths, indices_stop)
 
 	# Return together with purchase utilities 
 	return data, utility_purchases
@@ -236,11 +239,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			# Fill in reservation value for product j
 			# note: storing v_j draw as also enters utility 
 			v[j] = rand(m.dV)
-			zs[j] =  zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
-			for h in eachindex(m.β)
-				zs[j] += product_characteristics[i][j, h] * m.β[h]
-			end
-
+			xβ = @views product_characteristics[i][j, :]' * m.β
+			zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
 			# Update max search value and index
 			if zs[j] > max_zs 
 				max_zs = zs[j]
@@ -295,10 +295,9 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
 				# Update reservation value and max 
 				v[j] = rand(m.dV)
-				zs[j] = zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
-				for h in eachindex(m.β)
-					zs[j] += product_characteristics[i][j, h] * m.β[h]
-				end
+				xβ = @views product_characteristics[i][j, :]' * m.β
+
+				zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
 				if zs[j] > max_zs 
 					max_zs = zs[j]
 					ind_s = j
@@ -363,7 +362,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			# Get utility of searched product 
 			# note: recovering previously stored v_j draw as enters utility and search value 
 			u[ind_s] = rand(m.dE) + v[ind_s] 
-			for h in eachindex(m.β) 
+
+			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
 				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
 			end	
 
@@ -383,6 +383,14 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	return nothing
 end
 
+function get_indices_min_discover(consideration_sets)
+	index_click_lowest_position = Array{Union{Int,Nothing},1}([findlast(C) for C in consideration_sets])
+	index_click_lowest_position[isnothing.(index_click_lowest_position)] .= 1 # set to one for those who did not click
+	indices_min_discover =	[findlast(positions[i] .== positions[i][index_click_lowest_position[i]]) for i in eachindex(index_click_lowest_position)]
+
+	return indices_min_discover
+end
+
 function generate_data(m::SDCore, d::DataSD; kwargs...) 
 	
 	# Set seed (is stable across threads) 
@@ -392,11 +400,17 @@ function generate_data(m::SDCore, d::DataSD; kwargs...)
 	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
 		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs...) 
 
+	# Get indices of minimum discovered product, if requested in kwargs. Otherwise not computed, which saves time during simulation of many paths. 
+	indices_min_discover = if haskey(kwargs, :min_discover_indices) && kwargs[:min_discover_indices] == true 
+								get_index_min_discover() 
+							else
+								nothing 
+							end
+
 	# Update and return data object
-	data = DataSD(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, paths, consideration_sets, indices_purchase, indices_stop)
+	data = DataSD(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, consideration_sets, indices_purchase, indices_min_discover, paths, indices_stop)
 
 	return data, utility_purchases
-
 end
 
 # Cost computations 
@@ -873,18 +887,15 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 			e = rand(m.dE); v = rand(m.dV) ; w = rand(m.dW)
 
 			# Fill in utility
-			u[j] = e + v 
-			for h in eachindex(m.β) 
-				u[j] += chars[j, h] * m.β[h] 
-			end	
+			xβ = chars[j, :] * m.β
+			u[j] = xβ + e + v
 
 			# Fill in search value 
-			# note: u[j] - e = xb + v 
 			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
-			zs[j] = u[j] - e + ξ_j + w 
+			zs[j] = xβ + ξ_j + w 
 
 			# Fill in effective value 
-			ws[j] = u[j] - e + min(ξ_j + w, e) 
+			ws[j] = xβ + v + min(ξ_j + w, e) 
 			ws_tilde[j] = ws[j]
 
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
