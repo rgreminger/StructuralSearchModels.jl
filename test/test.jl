@@ -19,14 +19,3 @@ data, utility_purchases =
                 generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
-
-# click_stats, purchase_stats, fit_plot = evaluate_fit(m, d, 50) 
-sum(d.min_discover_indices .> d.stop_indices)
-
-i = 300 
-
-## 
-println(d.min_discover_indices[i])
-println(d.stop_indices[i])
-
-hcat(d.min_discover_indices, d.stop_indices)
