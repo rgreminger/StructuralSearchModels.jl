@@ -221,52 +221,46 @@ end
 
 
 
-# function _logliki1!(m::SD3,Li,r,
-# 					β,ξ,zd::AbstractArray{T,2},chars,
-# 					dE, dV, dU0, 
-# 					ic,iz2,ddr,izr,
-# 					complement::Bool) where T <: Real 
+function ll_no_searches!(m::SD1, Li, r, d::dataSD, i, parameters...) 
 
-# 	activeLB,outDummy,nA0,nd = m.activeLB,m.outDummy,m.nA0,m.nd
-# 	maxnum = T(1e100)
 
-# 	for (idd,dd) in enumerate(ddr), (iizr,iz) in enumerate(izr)
-# 		r[end] = one(T) 
+	for (idd,dd) in enumerate(ddr), (iizr,iz) in enumerate(izr)
+		r[end] = one(T) 
 
-# 		lb = if iz < iz2 || activeLB  
-# 			zd[dd,iz] - (outDummy ? β[dd,end] : zero(T))
-# 		else
-# 			-maxnum 
-# 		end
+		lb = if iz < iz2 || activeLB  
+			zd[dd,iz] - (outDummy ? β[dd,end] : zero(T))
+		else
+			-MAX_NUMERCAL 
+		end
 
-# 		ub = if iz <= 1 + nA0 # first no upper bound if last click in initial awareness set 
-# 				maxnum 
-# 			else 
-# 				zd[dd,max(iz-nd,1)]  - (outDummy ? β[dd,end] : zero(T)) # Max accounts for case where nA0 < nd 
-# 		end
+		ub = if iz <= 1 + nA0 # first no upper bound if last click in initial awareness set 
+				MAX_NUMERCAL 
+			else 
+				zd[dd,max(iz-nd,1)]  - (outDummy ? β[dd,end] : zero(T)) # Max accounts for case where nA0 < nd 
+		end
 
-# 		truncCdf = trunc_cdf(dU0,lb,ub) 
+		truncCdf = trunc_cdf(dU0,lb,ub) 
 
-# 		r[1] = rand_trunc(dU0,lb,ub) + (outDummy ? β[dd,end] : 0)
+		r[1] = rand_trunc(dU0,lb,ub) + (outDummy ? β[dd,end] : 0)
 		
-# 		for h in 2:iz 
-# 			r[2] = ξ[dd,h]
-# 			for k in axes(β,2)
-# 				r[2] += chars[ic[h],k] * β[dd,k] 
-# 			end
-# 			r[end] *= cdf(dV,r[1] - r[2])
-# 			if r[end] == 0
-# 				r[end] = T(1e-100)  # adding this helps AD 
-# 				break
-# 			end
-# 		end
-# 		if complement 
-# 			Li[idd,iizr] = (1-r[end]) * truncCdf
-# 		else
-# 			Li[idd,iizr] = r[end] * truncCdf
-# 		end
-# 	end
-# end
+		for h in 2:iz 
+			r[2] = ξ[dd,h]
+			for k in axes(β,2)
+				r[2] += chars[ic[h],k] * β[dd,k] 
+			end
+			r[end] *= cdf(dV,r[1] - r[2])
+			if r[end] == 0
+				r[end] = T(1e-100)  # adding this helps AD 
+				break
+			end
+		end
+		if complement 
+			Li[idd,iizr] = (1-r[end]) * truncCdf
+		else
+			Li[idd,iizr] = r[end] * truncCdf
+		end
+	end
+end
 
 # function _logliki2!(m::SD3,Li,r,
 # 						β::AbstractArray{T,2},ξ,zd,chars,searched,

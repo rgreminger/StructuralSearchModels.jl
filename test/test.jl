@@ -14,11 +14,19 @@ m = SDCore(
     zdfun = "log", 
     zsfun = "linear"
 )
-n_consumers = 20000
+n_consumers = 100
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
+d0 = deepcopy(d) 
+
+## 
+@time data, utility_purchases = 
+                generate_data(m, n_consumers, 1; seed = 1, 
+                conditional_on_click = false, conditional_on_click_iter = 100); 
+isequal(data.search_paths, d0.search_paths) 
+
 ##
 
 evaluate_fit(m, d, 50) 

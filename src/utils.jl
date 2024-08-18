@@ -209,3 +209,153 @@ function bvnuppercdf(dh::T, dk::T, r::Tf)::T where {T<:Real,Tf}
 end
 
 @inline bvncdf(dh, dk, r) = bvnuppercdf(-dh, -dk, r)
+
+
+##################################################################################
+# Truncation of random variables -> use own functions for normal to avoid rejection sampling 
+
+
+# Normal distribution: helper functions 
+@inline cdf_n(z) = Distributions.erfc(-z * invsqrt2)/2
+
+function invcdf_n(z::T) where T <: Real
+	# Note: For z very close to 1 or zero, will return Inf
+	# Fixing bounds helps calculate gradient (and introduces little inaccuracy)
+	if z >= 1-eps(T)
+		return sqrt2*erfinv(1-eps(T))
+	elseif z <= eps(T) 
+		return sqrt2*erfinv(2*eps(T)-1)
+	else
+		return sqrt2*erfinv(2*z-1)
+	end
+end
+
+"""
+	rand_trunc(d::Normal, lb::T, ub::T) where T
+
+Take a random draw from a truncated normal distribution. 
+"""
+@inline function rand_trunc(d::Normal,lb::T,ub::T) where T
+
+	@assert d.μ == 0 
+	if lb >= ub 
+		return lb
+	end
+	# Differ whether in upper or lower tail. By symmetry same, but works more accurately. Further tests an improvements welcome. 
+    if lb > 0 && ub > 0
+        l = cdf(d, -ub)
+        u = cdf(d, -lb)
+        if l == u > 0 
+            u += eps(u)
+        end
+		q = quantile(d, max(min(l + rand() * (u - l), 1-1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
+        return max(min( - q, ub), lb)
+    else 
+        l = cdf(d, lb)
+        u = cdf(d, ub)
+        if l == u > 0 
+            u += eps(u)
+        end
+
+		r = l + rand() * (u - l)
+		q = quantile(d, max(min(l + rand() * (u - l), 1-1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
+        return max(min(q, ub), lb)
+    end
+end
+
+# @inline function rand_trunc(d::Gumbel,lb::T,ub::T) where T
+# 	if lb >= ub 
+# 		return lb 
+# 	end
+# 	if ub < -1e6 || lb > 1e6  || abs(ub-lb) < 1e-8
+# 		return (ub-lb) / 2 
+# 	end
+
+# 	tp = trunc_cdf(d,lb,ub)
+# 	r = if tp > sqrt(eps(T)) 
+# 			c1 = lb < -1e6 ? zero(T) : cdf(d,lb) 
+# 			rtcdf = rand(T)*trunc_cdf(d,lb,ub)
+# 			t = isnan(c1) ? rtcdf : rtcdf + c1
+# 			# note: cdf(d,lb) gives nan if lb too small because of gumbel cdf
+# 			# so accounting for c1 helps AD 
+# 			d.μ - d.θ*log(-log(t))
+# 		else 
+# 			loglcdf = max(logcdf(d,lb),-1e100)
+# 			logtp = log(tp) 
+# 			invlogcdf(d, Distributions.logaddexp(loglcdf, logtp - randexp(T)))
+# 		end
+# 	r = max(min(r,ub),lb)
+# 	return r::T	
+# end
+
+
+"""
+	trunc_cdf(d::Uniform, lb::T, ub::T) where T
+
+Calculate the cumulative distribution function of a truncated uniform distribution.
+"""
+@inline function trunc_cdf(d::Uniform,lb::T,ub::T) where T <: Real
+	if ub <= minimum(d) || lb >= maximum(d)
+		return zero(T)
+	end
+	return cdf(d,ub) - cdf(d,lb)
+end
+
+@inline function rand_trunc(d::Uniform,lb::T,ub::T) where T <: Real
+	if ub <= minimum(d) || lb >= maximum(d)
+		return zero(T)
+	end
+	if lb >= ub || isnan(ub)
+		return lb 
+	elseif isnan(lb) 
+		return ub 
+	end
+	return rand(truncated(d,lb,ub))
+end
+
+
+"""
+	function rand_trunc(d::Distribution, lb::T, ub::T) where T
+
+Calculate the cumulative distribution function of a generic truncated distribution.
+"""
+@inline function rand_trunc(d::Distribution, lb::T, ub::T) where T
+	if ub <= minimum(d) || lb >= maximum(d)
+		return zero(T)
+	end
+	if lb >= ub 
+		return lb 
+	end
+
+	tp = trunc_cdf(d,lb,ub)
+	loglcdf = max(logcdf(d,lb),-1e100)
+
+	r = if tp > sqrt(eps(T) )
+			c1 = lb < -1e12 ? zero(T) : cdf(d,lb) 
+			rtcdf = rand(T)*tp
+			t = isnan(c1) ? rtcdf : rtcdf + c1
+			# note: cdf(d,lb) gives nan if lb too small because of gumbel cdf
+			# so accounting for c1 helps AD 
+			quantile(d, min(exp(loglcdf) + t,1))
+		else 
+			invlogcdf(d, Distributions.logaddexp(loglcdf, log(tp) - randexp()))
+		end
+	r = max(min(r,ub),lb)
+	return r::T	
+end
+
+@inline function trunc_cdf(d,lb::T,ub::T) where T <: Real 
+	# Do calculation in log-scale to avoid numerical issues
+	# Note: follows truncate.jl in Distributions package 
+	# introduces additional max(..) to help AD avoid NaN
+	if ub <= minimum(d) || lb >= maximum(d) || lb >= ub 
+		return zero(T)
+	end
+	
+	x = max(- 1e100, logcdf(d,lb))
+	y = max(- 1e100, logcdf(d,ub))
+
+	tp = exp(Distributions.logsubexp(x,y))
+	return max(1e-300,tp)
+end 
+

@@ -60,7 +60,8 @@ end
 	product_characteristics::Vector{Matrix{T}}			
 	positions::Vector{Vector{Int}}						
 	consideration_sets::Vector{Vector{Bool}}			
-	purchase_indices::Vector{Int} 						
+	purchase_indices::Vector{Int} 	
+						
 	# The following fields are optional and not always part of the data 
 	min_discover_indices::Union{Vector{Int}, Nothing}	= nothing 
 	search_paths::Union{Vector{Vector{Int}}, Nothing} 	= nothing
