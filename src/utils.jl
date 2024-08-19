@@ -248,7 +248,8 @@ Take a random draw from a truncated normal distribution.
         if l == u > 0 
             u += eps(u)
         end
-		q = quantile(d, max(min(l + rand() * (u - l), 1-1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
+		r = l + rand() * (u - l)
+		q = quantile(d, max(min(r, 1-1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
         return max(min( - q, ub), lb)
     else 
         l = cdf(d, lb)
@@ -258,7 +259,7 @@ Take a random draw from a truncated normal distribution.
         end
 
 		r = l + rand() * (u - l)
-		q = quantile(d, max(min(l + rand() * (u - l), 1-1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
+		q = quantile(d, max(min(r, 1-1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
         return max(min(q, ub), lb)
     end
 end
