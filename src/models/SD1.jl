@@ -40,26 +40,65 @@ end
 
 
 # Estimation 
-function prepare_arguments_likelihood(d::DataSD, m::SD1, estimator::Estimator)
+function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD1	
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
-    zsfun = get_functional_form(m.zsfun)
+	
+    return zdfun, nothing 
+end
 
-    return zdfun, zsfun 
+# Vectorize parameters 
+
+function vectorize_parameters(m::SD1; kwargs...)
+	# Default estimate all parameters 
+	θ = if !haskey(kwargs, :fixed_parameters)
+			θ = vcat(m.β, m.ξ, m.Ξ, m.ρ) 
+		else
+			fixed_parameters = get(kwargs, :fixed_parameters, nothing)
+			if !isnothing(fixed_parameters)
+				β = !fixed_parameters[1] ? m.β : nothing
+				ξ = !fixed_parameters[2] ? m.ξ : nothing
+				Ξ = !fixed_parameters[3] ? m.Ξ : nothing
+				ρ = !fixed_parameters[4] ? m.ρ : nothing
+				θ = vcat(β, ξ, Ξ, ρ)
+
+			end
+		end
+
+	
+	# Default: estimate variance of ε, keep others fixed
+	if !haskey(kwargs, :distribution_options)
+		θ = vcat(θ, params(m.dE)[end]) 
+		return θ
+	end
+	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
+	# Extract distributions
+	if estimation_shock_distributions[1]
+		θ = vcat(θ, params(m.dE)[end])
+	end
+	if estimation_shock_distributions[2]
+		θ = vcat(θ, params(m.dV)[end])
+	end
+	if estimation_shock_distributions[4] 
+		θ = vcat(θ, params(m.dU0)[2:end])
+	end
+
+	return θ
+
 end
 
 ###############################################################################
 # Likelihood wrapper functions across models 
 ###############################################################################
-function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, args...; kwargs...) where {M <: SD1, T <: Real}
+function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD1, T <: Real}
 	
 	# Extract arguments 
 	zdfun, zsfun = args  
 
 	# Extract parameters implied by θ
-	parameters, ind_last_par  = extract_parameters(m, θ; kwargs...)
-	shock_distributions = extract_distributions(m, θ, ind_last_par; kwargs...)
+	parameters, ind_last_par  = extract_parameters(model, θ; kwargs...)
+	shock_distributions = extract_distributions(model, θ, ind_last_par; kwargs...)
 
 	# Pre-compute search and discovery values across positions -> same for all consumers 
 	zd_h = [zdfun(Ξ, ρ, h) for h in 1:max_n_products]
@@ -96,11 +135,11 @@ function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, 
 					@views ll_no_searches!(m, Li, r, data, i, parameters...) 
 					L += calc_logsum(Li, n_draws)
 				elseif purch[i] == 1 # Case 2: Some clicks but no purchase 
-					@views ll_search_no_purchase!(m, Li, r, data, i, parameters...)
-					L += calc_logsum(Li, n_draws)
+					# @views ll_search_no_purchase!(m, Li, r, data, i, parameters...)
+					# L += calc_logsum(Li, n_draws)
 				else 	# Case 3: Purchase a product 
-					@views ll_purchase!(m, Li, r, data, i, parameters...)
-					L += calc_logsum(Li, n_draws_purchase)
+					# @views ll_purchase!(m, Li, r, data, i, parameters...)
+					# L += calc_logsum(Li, n_draws_purchase)
 				end
 				
 			end
@@ -221,7 +260,7 @@ end
 
 
 
-function ll_no_searches!(m::SD1, Li, r, d::dataSD, i, parameters...) 
+function ll_no_searches!(m::SD1, Li, r, d::DataSD, i, parameters...) 
 
 
 	for (idd,dd) in enumerate(ddr), (iizr,iz) in enumerate(izr)

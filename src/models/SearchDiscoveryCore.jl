@@ -1,4 +1,4 @@
-abstract type SD end
+abstract type SD <: Model end
 
 """
 *Search and Discovery* (SD) core model. This model is a base model for all models that are subtypes of the Search and Discovery model. 

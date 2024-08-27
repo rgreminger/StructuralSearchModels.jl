@@ -30,3 +30,17 @@ isequal(data.search_paths, d0.search_paths)
 ##
 
 evaluate_fit(m, d, 50) 
+
+## 
+m = SD1( 
+    β = [1.0, .5], 
+    Ξ = 5.0, 
+    ρ = [-0.7], 
+    ξ = .5,
+    dE = Normal(0, 3.0), 
+    dV = Normal(0, 3.0), 
+    dU0 = Normal(0, 1), 
+    zdfun = "log", 
+)
+e = SmoothMLE()
+calculate_likelihood(m, e, d)
