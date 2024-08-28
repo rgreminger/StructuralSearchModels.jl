@@ -48,7 +48,7 @@ e = SmoothMLE(
 # e = SmoothMLE()
 fixed_parameters = [false, false, false, false]
 distribution_options = fill(false, 4)
-@time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, d, e; 
+@time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, e, d; 
                     startvals = vectorize_parameters(m_hat; fixed_parameters, distribution_options), 
                     distribution_options, fixed_parameters) 
 
