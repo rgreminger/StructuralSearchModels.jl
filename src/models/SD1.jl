@@ -102,7 +102,18 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
 	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
-	zd_h = [zdfun(Ξ, ρ, h) for h in 1:max_n_products]
+	zd_h = [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
+
+	if get(kwargs, :debug_print, false)
+		println("β = $β")
+		println("ξ = $ξ")
+		println("Ξ = $Ξ")
+		println("ρ = $ρ")
+		println("dE = $dE")
+		println("dV = $dV")
+		println("dU0 = $dU0")
+		println("zd_h[1:5] = $zd_h[1:5]")
+	end
 
 	# Set seed for random number generation
 	set_seed(kwargs)
@@ -200,7 +211,7 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <
 		β = θ[1:n_beta] ; ind_current += n_beta 
 		ξ = θ[ind_current] ; ind_current += 1
 		Ξ = θ[ind_current] ; ind_current += 1
-		ρ = θ[ind_current:ind_current+n_ρ] ; ind_current += n_ρ
+		ρ = θ[ind_current:ind_current + n_ρ - 1] ; ind_current += n_ρ
 		return β, ξ, Ξ, ρ, ind_current
 	end
 

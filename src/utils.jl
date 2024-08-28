@@ -58,7 +58,7 @@ end
 # Set seed 
 function set_seed(kwargs)
     # Set seed 
-	seed = get(kwargs, :seed, rand(1:1000000)) # if no seed set, just draw one
+	seed = get(kwargs, :seed, 29387) # if no seed set, just draw one
 	Random.seed!(seed)
     return nothing 
 end

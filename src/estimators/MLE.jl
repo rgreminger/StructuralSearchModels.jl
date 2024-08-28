@@ -22,7 +22,7 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
 	# Optimization.jl optimization (wrapper around many solvers)
 
 	# Define objective function as negative likelihood function 
-	objective_function(θ, p) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...)
+	objective_function(θ, p) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
 
     # Extract options 
     options_optimization = estimator.options_optimization

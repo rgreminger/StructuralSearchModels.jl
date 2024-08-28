@@ -2,10 +2,10 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie
 
 m = SDCore( 
-    β = [1.0, 5.5], 
-    Ξ = 1.0, 
-    ρ = [-0.7], 
-    ξ = 6.5,
+    β = [1.0, 4.5], 
+    Ξ = 4.5, 
+    ρ = [-0.5], 
+    ξ = 1.0,
     ξρ = [0.0], 
     dE = Normal(0, 1.0), 
     dV = Normal(0, 1.0), 
@@ -14,20 +14,12 @@ m = SDCore(
     zdfun = "log", 
     zsfun = "linear"
 )
-n_consumers = 500
+n_consumers = 200
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
 d0 = deepcopy(d) 
-
-## 
-@time data, utility_purchases = 
-                generate_data(m, n_consumers, 1; seed = 1, 
-                conditional_on_click = false, conditional_on_click_iter = 100); 
-isequal(data.search_paths, d0.search_paths) 
-
-##
 
 evaluate_fit(m, d, 50) 
 
@@ -44,12 +36,15 @@ m_hat = SD1(
 )
 e = SmoothMLE()
 
-@time calculate_likelihood(m_hat, e, d; debug_print=false)
+@time calculate_likelihood(m_hat, e, d; debug_print=true)
 
 ## 
 e = SmoothMLE(
     options_numerical_integration = (n_draws = 25, n_draws_purchases = 25),
-    options_solver = (show_trace = true, show_every = 1)
+    options_solver = (show_trace = false, show_every = 1)
     )
 # e = SmoothMLE()
-@time estimate_model(m_hat, d, e) 
+@time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, d, e; 
+distribution_options = fill(false,4)) 
+
+hcat(estimates, vectorize_parameters(m_hat))
