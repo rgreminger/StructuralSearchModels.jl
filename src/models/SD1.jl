@@ -40,30 +40,72 @@ end
 
 
 # Estimation 
-function prepare_arguments_likelihood(d::DataSD, m::SD1, estimator::Estimator)
+function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD1	
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
-    zsfun = get_functional_form(m.zsfun)
+	zsfun = nothing 
 
-    return zdfun, zsfun 
+	# Get maximum number of products
+	max_n_products = maximum(length.(d.product_ids))
+	
+    return max_n_products, zdfun, zsfun 
+end
+
+# Vectorize parameters 
+
+function vectorize_parameters(m::SD1; kwargs...)
+	# Default estimate all parameters 
+	θ = if !haskey(kwargs, :fixed_parameters)
+			θ = vcat(m.β, m.ξ, m.Ξ, m.ρ) 
+		else
+			fixed_parameters = get(kwargs, :fixed_parameters, nothing)
+			if !isnothing(fixed_parameters)
+				β = !fixed_parameters[1] ? m.β : nothing
+				ξ = !fixed_parameters[2] ? m.ξ : nothing
+				Ξ = !fixed_parameters[3] ? m.Ξ : nothing
+				ρ = !fixed_parameters[4] ? m.ρ : nothing
+				θ = vcat(β, ξ, Ξ, ρ)
+
+			end
+		end
+
+	
+	# Default: estimate variance of ε, keep others fixed
+	if !haskey(kwargs, :distribution_options)
+		θ = vcat(θ, params(m.dE)[end]) 
+		return θ
+	end
+	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
+	# Extract distributions
+	if estimation_shock_distributions[1]
+		θ = vcat(θ, params(m.dE)[end])
+	end
+	if estimation_shock_distributions[2]
+		θ = vcat(θ, params(m.dV)[end])
+	end
+	if estimation_shock_distributions[4] 
+		θ = vcat(θ, params(m.dU0)[2:end])
+	end
+
+	return θ
+
 end
 
 ###############################################################################
 # Likelihood wrapper functions across models 
 ###############################################################################
-function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, args...; kwargs...) where {M <: SD1, T <: Real}
+function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD1, T <: Real}
 	
 	# Extract arguments 
-	zdfun, zsfun = args  
+	max_n_products, zdfun  = args  
 
-	# Extract parameters implied by θ
-	parameters, ind_last_par  = extract_parameters(m, θ; kwargs...)
-	shock_distributions = extract_distributions(m, θ, ind_last_par; kwargs...)
-
+	# Extract parameters implied by θ 
+	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
+	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
+	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
 	zd_h = [zdfun(Ξ, ρ, h) for h in 1:max_n_products]
-	ξ_h  = [zsfun(ξ, ξρ, h) for h in 1:max_n_products]
 
 	# Set seed for random number generation
 	set_seed(kwargs)
@@ -82,25 +124,17 @@ function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, 
 
 			# Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer 
 			local L = zero(T)
-			local Li = zeros(T, n_draws_purchase, max_n_products) # use no. purchase draws since larger than nDraws. Rest of array will be filled with zeros. 
-			local r = zeros(T,6) 
-			local r1 = zeros(T,3)
 
 			for i in chunk  # Iterate over consumers in chunk 
-				r .= zero(T) 
-				r1 .= zero(T)
-				Li .= zero(T)
-
 				# Do inner likelihood calculations based on pre-allocated arrays
-				if nS[i] == 0 	# Case 1: no clicks (implies also no purchase)
-					@views ll_no_searches!(m, Li, r, data, i, parameters...) 
-					L += calc_logsum(Li, n_draws)
-				elseif purch[i] == 1 # Case 2: Some clicks but no purchase 
-					@views ll_search_no_purchase!(m, Li, r, data, i, parameters...)
-					L += calc_logsum(Li, n_draws)
+				if data.search_paths[i][1] == 0 	# Case 1: no clicks (implies also no purchase)
+					L += ll_no_searches(model, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws, false) 
+				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
+					# @views ll_search_no_purchase!(m, Li, r, data, i, parameters...)
+					# L += calc_logsum(Li, n_draws)
 				else 	# Case 3: Purchase a product 
-					@views ll_purchase!(m, Li, r, data, i, parameters...)
-					L += calc_logsum(Li, n_draws_purchase)
+					# @views ll_purchase!(m, Li, r, data, i, parameters...)
+					# L += calc_logsum(Li, n_draws_purchase)
 				end
 				
 			end
@@ -111,21 +145,15 @@ function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, 
 
 	LL1 = sum(fetch.(tasks)) 
 
-	LL2 = 	if conditional_on_search  
-				n_initial = typeof(m) <: Weitzman ? maxprod : 1 + m.nA0
+	LL2 = 	if estimator.conditional_on_search  
 				
 				tasks = map(data_chunks) do chunk 
 					Threads.@spawn begin 
 
 						local L = zero(T)
-						local Li = zeros(T, n_draws_purchase, max_n_products) # use no. purchase draws since larger than nDraws. Rest of array will be filled with zeros. 
-						local r = zeros(T,5) 
 
 						for i in chunk  # Iterate over consumers in chunk 
-							Li .= zero(T)
-							r .= zero(T) 	
-							@views 	ll_no_searches!(m, Li, r, data, i, parameters...; complement = true) 
-							L += calc_logsum(Li,nDraws)
+							L += ll_no_searches(m, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws, true) 
 						end
 
 						return L 
@@ -138,6 +166,11 @@ function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, 
 			end
 
 	LL = LL1 - LL2 
+	if get(kwargs, :debug_print, false)
+		println("LL = $LL")
+		println("LL1 = $LL1")
+		println("LL2 = $LL2")
+	end
 
 	# prevent Inf values, helps AD
 	if isinf(LL) || isnan(LL) || LL >= 0 
@@ -145,6 +178,46 @@ function loglikelihood(m::M, θ::Vector{T}, data::DataSD, estimator::Estimator, 
 	else
 		return LL
 	end
+end
+
+
+function construct_model_from_pars(θ::Vector{T}, m::SD1; kwargs...) where T <: Real
+
+	# Extract parameters from vector, some may be fixed through kwargs 
+	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(m, θ; kwargs...)
+	dE, dV, dU0 = extract_distributions(m, θ, ind_last_par; kwargs...)
+
+	# Construct model from parameters 
+	m_new = SD1{T}(; β, ξ, Ξ, ρ, dE, dV, dU0, zdfun = m.zdfun)
+
+    return m_new 
+end
+
+function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <: Real}
+
+	n_beta = length(m.β)
+	n_ρ = length(m.ρ)
+
+	# track where in parameter vector we are and move it. 
+	ind_current = 1 
+
+	# Default: estimate all parameters
+	if !haskey(kwargs, :fixed_parameters)
+		β = θ[1:n_beta] ; ind_current += n_beta 
+		ξ = θ[ind_current] ; ind_current += 1
+		Ξ = θ[ind_current] ; ind_current += 1
+		ρ = θ[ind_current:ind_current+n_ρ] ; ind_current += n_ρ
+		return β, ξ, Ξ, ρ, ind_current
+	end
+
+	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
+	fixed_parameters = get(kwargs, :fixed_parameters, nothing)
+	β = !fixed_parameters[1] ? θ[1:n_beta] : m.β;  ind_current += n_beta 
+	ξ = !fixed_parameters[2] ? θ[ind_current] : m.ξ; ind_current += 1
+	Ξ = !fixed_parameters[3] ? θ[ind_current] : m.Ξ;  ind_current += 1
+	ρ = !fixed_parameters[4] ? θ[ind_current:ind_current+n_ρ] : m.ρ ; ind_current += n_ρ + 1 
+
+	return (β, ξ, Ξ, ρ), ind_current
 end
 
 """
@@ -192,74 +265,61 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Un
 	return dE, dV, dU0
 end
 
-function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <: Real}
+function ll_no_searches(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
+	min_position_discover = d.min_discover_indices[i] 
+	n_products = length(d.product_ids[i])
+	positions = @views d.positions[i]
+	with_outside_option = d.product_ids[i][1] == 0
 
-	n_beta = length(m.β)
-	n_ρ = length(m.ρ)
+	LL = zero(T)
+	
+	for dd in 1:n_draws, h in min_position_discover:n_products
 
-	# track where in parameter vector we are and move it. 
-	ind_current = 1 
-
-	# Default: estimate all parameters
-	if !haskey(kwargs, :fixed_parameters)
-		β = θ[1:n_beta] ; ind_current += n_beta 
-		ξ = θ[ind_current] ; ind_current += 1
-		Ξ = θ[ind_current] ; ind_current += 1
-		ρ = θ[ind_current:ind_current+n_ρ] ; ind_current += n_ρ
-		return β, ξ, Ξ, ρ, ind_current
-	end
-
-	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
-	fixed_parameters = get(kwargs, :fixed_parameters, nothing)
-	β = !fixed_parameters[1] ? θ[1:n_beta] : m.β;  ind_current += n_beta 
-	ξ = !fixed_parameters[2] ? θ[ind_current] : m.ξ; ind_current += 1
-	Ξ = !fixed_parameters[3] ? θ[ind_current] : m.Ξ;  ind_current += 1
-	ρ = !fixed_parameters[4] ? θ[ind_current:ind_current+n_ρ] : m.ρ ; ind_current += n_ρ + 1 
-
-	return (β, ξ, Ξ, ρ), ind_current
-end
-
-
-
-function ll_no_searches!(m::SD1, Li, r, d::dataSD, i, parameters...) 
-
-
-	for (idd,dd) in enumerate(ddr), (iizr,iz) in enumerate(izr)
-		r[end] = one(T) 
-
-		lb = if iz < iz2 || activeLB  
-			zd[dd,iz] - (outDummy ? β[dd,end] : zero(T))
-		else
-			-MAX_NUMERCAL 
+		# If not last product in same position or last product, skip 
+		if h < n_products && positions[h] == positions[h+1]
+			continue
 		end
 
-		ub = if iz <= 1 + nA0 # first no upper bound if last click in initial awareness set 
-				MAX_NUMERCAL 
-			else 
-				zd[dd,max(iz-nd,1)]  - (outDummy ? β[dd,end] : zero(T)) # Max accounts for case where nA0 < nd 
-		end
-
-		truncCdf = trunc_cdf(dU0,lb,ub) 
-
-		r[1] = rand_trunc(dU0,lb,ub) + (outDummy ? β[dd,end] : 0)
-		
-		for h in 2:iz 
-			r[2] = ξ[dd,h]
-			for k in axes(β,2)
-				r[2] += chars[ic[h],k] * β[dd,k] 
+		# Set lower bound for truncation based on position 
+		lb = if h < n_products # not yet last position 
+				zd_h[h] - (with_outside_option ? β[end] : zero(T))
+			else # no lower bound if last position 
+				- MAX_NUMERICAL 
 			end
-			r[end] *= cdf(dV,r[1] - r[2])
-			if r[end] == 0
-				r[end] = T(1e-100)  # adding this helps AD 
+
+		# Set upper bound for truncation based on position
+		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+				MAX_NUMERICAL 
+			else 
+				zd_h[h]  - (with_outside_option ? β[end] : zero(T)) # Max accounts for case where nA0 < nd 
+			end
+
+		# Get probability of u0 in bounds and draw for u0 
+		prob_u0_in_bounds = trunc_cdf(dU0, lb, ub) 
+		u0_draw = rand_trunc(dU0, lb, ub) + (with_outside_option ? β[end] : zero(T))
+		
+		# Initialize for probability
+		prob_no_search_given_draw = one(T)
+
+		# Loop over products up to one discovered 
+		for j in 2:h 
+			zs_j = @views d.product_characteristics[i][j, :]' * β + ξ
+			prob_no_search_given_draw *= cdf(dV, u0_draw - zs_j)
+
+			if prob_no_search_given_draw == 0
+				prob_no_search_given_draw = T(1e-100)  # adding this helps AD 
 				break
 			end
 		end
 		if complement 
-			Li[idd,iizr] = (1-r[end]) * truncCdf
+			LL += (1-prob_no_search_given_draw) * prob_u0_in_bounds
 		else
-			Li[idd,iizr] = r[end] * truncCdf
+			LL += prob_no_search_given_draw * prob_u0_in_bounds
 		end
 	end
+
+	# println(log(LL / n_draws))
+	return log(LL / n_draws)
 end
 
 # function _logliki2!(m::SD3,Li,r,

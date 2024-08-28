@@ -1,10 +1,11 @@
-@with_kw mutable struct MLE <: Estimator
+abstract type MLE <: Estimator end 
+
+@with_kw mutable struct SmoothMLE <: MLE
     options_optimization = (algorithm = LBFGS(), differentiation = Optimization.AutoForwardDiff())
     options_problem = () 
     options_solver = ()
-    options_numerical_integration = (n_draws = 100, n_draws_purchases = n_draws * 10)
+    options_numerical_integration = (n_draws = 100, n_draws_purchases = 100 )
     conditional_on_search = false
-
 end 
 
 function estimate_model(model::Model, data::Data, estimator::MLE; 
@@ -49,17 +50,31 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
 	return estimates, likelihood_at_estimates, result_solver
 end
 
-function calculate_standard_errors(model::Model, data::Data, estimator::MLE; 
+function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
+
+    # Extract parameters 
+    θ = vectorize_parameters(model; kwargs...)
+
+    # Prepare additional arguments for objective function 
+	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
+
+	# return likelihood
+    return loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
+
+end
+
+
+function calculate_standard_errors(model::Model, estimator::MLE, data::Data; 
                                     bootstrap = false, kwargs...)
 
     # Extract parameters 
     θ = vectorize_parameters(model; kwargs...)
 
     # Prepare additional arguments for objective function 
-	args_obj_fun = prep_objfun(model, data)
+	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
 
 	# Compute Hessian for negative likelihood function 
-    f(θ) = - loglikelihood(model, θ, d, args_obj_fun...)
+    f(θ) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...)
 
     H = if options_optimization.differentiation == Optimization.AutoForwardDiff() # default, use autodiff 
 		    ForwardDiff.hessian(f, θ)
