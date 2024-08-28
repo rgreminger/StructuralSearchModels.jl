@@ -46,7 +46,7 @@ e = SmoothMLE()
 
 @time calculate_likelihood(m_hat, e, d; debug_print=false)
 
-# NOTES:
-# Need to reduce allocations!!
-# For this, need type inference  to work, which it does not based on constructing model etc.
-   
+## 
+e = SmoothMLE(options_solver = (show_trace = true))
+# e = SmoothMLE()
+estimate_model(m_hat, d, e; debug_print=false)

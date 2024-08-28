@@ -15,13 +15,13 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
     # Estimate the model using maximum likelihood estimation 
 
     # Prepare additional arguments for objective function 
-	args_obj_fun = prep_objfun(model, data)
+	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
 
 	############################################################################
 	# Optimization.jl optimization (wrapper around many solvers)
 
 	# Define objective function as negative likelihood function 
-	objective_function(θ, p) = - loglikelihood(model, estimator, θ, d, args_obj_fun...)
+	objective_function(θ, p) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...)
 
     # Extract options 
     options_optimization = estimator.options_optimization
@@ -29,13 +29,13 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
     options_solver = estimator.options_solver
 
     # Set up problem to solve for numerical optimizer
-    obj = OptimizationFunction(obj_fun, options_optimization.differentiation)
+    obj = OptimizationFunction(objective_function, options_optimization.differentiation)
 	prob = OptimizationProblem(obj, startvals; 
 									options_problem...)
 
 	# Run optimization 
-	result_solver = 	solve(prob, algorithm;
-				options_solver...)
+	result_solver = 	solve(prob, estimator.options_optimization.algorithm, 
+                            estimator.options_solver...);
 
     # Print complete solver solution if requested 
 	if print_solver_solution
