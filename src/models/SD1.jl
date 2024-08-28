@@ -92,9 +92,6 @@ function vectorize_parameters(m::SD1; kwargs...)
 
 end
 
-###############################################################################
-# Likelihood wrapper functions across models 
-###############################################################################
 function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD1, T <: Real}
 	
 	# Extract arguments 
@@ -128,12 +125,11 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 			for i in chunk  # Iterate over consumers in chunk 
 				# Do inner likelihood calculations based on pre-allocated arrays
 				if data.search_paths[i][1] == 0 	# Case 1: no clicks (implies also no purchase)
-					L += ll_no_searches(model, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws, false) 
+					L += ll_no_searches(model, zd_h, β, ξ, dV, dU0, data, i, n_draws, false) 
 				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
-					L += ll_search_no_purchase(model, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws) 
+					L += ll_search_no_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws) 
 				else 	# Case 3: Purchase a product 
-					# @views ll_purchase!(m, Li, r, data, i, parameters...)
-					# L += calc_logsum(Li, n_draws_purchase)
+					L += ll_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws) 
 				end
 				
 			end
@@ -152,7 +148,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 						local L = zero(T)
 
 						for i in chunk  # Iterate over consumers in chunk 
-							L += ll_no_searches(m, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws, true) 
+							L += ll_no_searches(m, zd_h, β, ξ, dV, dU0, data, i, n_draws, true) 
 						end
 
 						return L 
@@ -178,7 +174,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 		return LL
 	end
 end
-
 
 function construct_model_from_pars(θ::Vector{T}, m::SD1; kwargs...) where T <: Real
 
@@ -264,7 +259,7 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Un
 	return dE, dV, dU0
 end
 
-function ll_no_searches(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
+function ll_no_searches(m::SD1{T}, zd_h, β, ξ, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
 	positions = @views d.positions[i]
@@ -321,13 +316,13 @@ function ll_no_searches(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::DataSD,
 	return log(LL / n_draws)
 end
 
-
-function ll_search_no_purchase(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
+function ll_search_no_purchase(m::SD1{T}, zd_h, β, ξ, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
 
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
 	positions = @views d.positions[i]
 	with_outside_option = d.product_ids[i][1] == 0
+	consideration_set = @views d.consideration_sets[i]
 
 	LL = zero(T)
 
@@ -360,7 +355,7 @@ function ll_search_no_purchase(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::
 		for j in 2:h 
 			xβ = @views d.product_characteristics[i][j, :]' * β 
 
-			if d.consideration_sets[i][j] # searched item 
+			if consideration_set[j] # searched item 
 				prob_searches_given_draw *= prob_search_not_buy(m, xβ, ξ, u0_draw, u0_draw, dE, dV)
 			else
 				prob_searches_given_draw *= prob_not_search(m, u0_draw, xβ + ξ, dV)
@@ -376,6 +371,105 @@ function ll_search_no_purchase(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::
 	end
 	return log(LL / n_draws)
 end
+
+function ll_purchase(m::SD1{T}, zd_h, β, ξ, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
+
+	min_position_discover = d.min_discover_indices[i] 
+	n_products = length(d.product_ids[i])
+	positions = @views d.positions[i]
+	with_outside_option_dummy = d.product_ids[i][1] == 0
+	consideration_set = @views d.consideration_sets[i]
+
+	LL = zero(T)
+
+	k = d.purchase_indices[i] # index of purchased product
+
+	for dd in 1:n_draws, h in min_position_discover:n_products, ddd in 1:2
+
+		# If not last product in same position or last product, skip 
+		if h < n_products && positions[h] == positions[h+1]
+			continue
+		end
+		
+		# Reset for each draw
+		prob_searches_given_draw = one(T) 
+
+		# xb of purchased 
+		xβ_k = @views d.product_characteristics[i][k, :]' * β 
+
+		# Set lower bound for truncation based on position 
+		lb = if h < n_products # not yet last position 
+				zd_h[h] - xβ_k
+			else # no lower bound if last position 
+				- T(MAX_NUMERICAL)
+			end
+
+		# Set upper bound for truncation based on position
+		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+				T(MAX_NUMERICAL)
+			elseif positions[h] == positions[min_position_discover] == positions[k] # if position last click same as where purchased -> no upper bound 
+				T(MAX_NUMERICAL)
+			else 
+				zd_h[h] - xβ_k  # Max accounts for case where nA0 < nd 
+			end
+
+		# Fill 
+		if ddd == 1 # e < ξ
+				e =  rand_trunc(dE, -one(T)*MAX_NUMERICAL, ξ)
+				u_k = xβ_k + e + rand_trunc(dV, lb - e, ub - e)
+				z_k = u_k - e + ξ # this way v draw still stored in z_k
+				prob_draws_in_bounds = trunc_cdf(dE, -one(T)*MAX_NUMERICAL, ξ) * 
+								trunc_cdf(dV, lb - e, ub - e)
+		else # e >= ξ
+				e = rand_trunc(dE, ξ, one(T)*MAX_NUMERICAL)
+				z_k = xβ_k + ξ + rand_trunc(dV, lb - ξ, ub - ξ)
+				u_k = z_k - ξ + e # this way v draw still stored in z_k 
+				prob_draws_in_bounds = trunc_cdf(dE, ξ, one(T)*MAX_NUMERICAL) * 
+								trunc_cdf(dV, lb - ξ, ub - ξ)
+		end		
+		
+		# Get values only if last click not in initial awareness set 
+		wt_k = min(u_k, z_k) 
+		w_k = positions[h] == 0 ? wt_k : min(wt_k, zd_h[h])
+
+		# Get probability outside option P(u0 < min{wj,zd(j-1)})
+		if with_outside_option_dummy
+			prob_searches_given_draw *= cdf(dU0, w_k - β[end])
+		else
+			prob_searches_given_draw *= cdf(dU0, w_k)
+		end
+		
+		# Probabilities for other products
+		# Unsearched: P(zs <= min{wj,zd(j-1)})
+		# Searched: P(zs > min{wj,zd(j-1)} ∩ u < min{wj,zd(j-1)} )
+
+		for j in 2:h
+
+			xβ_j = @views d.product_characteristics[i][j, :]' * β
+
+			# searched, and discovered before the one that was purchased
+			if consideration_set[j] && positions[j] < positions[k]
+				prob_searches_given_draw *= prob_search_not_buy(m, xβ_j, ξ, w_k, w_k, dE, dV) 
+			# searched, and discovered after the one that was purchased
+			elseif consideration_set[j] && j != k &&	positions[j] >= positions[k]
+				prob_searches_given_draw *= prob_search_not_buy(m, xβ_j, ξ, wt_k, wt_k, dE, dV) 
+			# unsearched & discovered before 
+			elseif positions[j] < positions[k]
+				prob_searches_given_draw *= cdf(dV, w_k - ξ - xβ_j)
+			# unsearched & at same time or after 
+			elseif j != k  && positions[j] >= positions[k]
+				prob_searches_given_draw *= cdf(dV, wt_k - ξ - xβ_j)
+			end
+			if prob_searches_given_draw == 0 
+				prob_searches_given_draw = T(1e-100) 
+				break 
+			end
+		end	
+		LL += prob_searches_given_draw*prob_draws_in_bounds
+	end
+	return log(LL / n_draws)
+end
+
 """
 	function prob_search_not_buy(m::SD1, xβ::T, ξ::T, lb::T, ub::T, dE::Normal, dV::Normal)  where T 
 
@@ -405,110 +499,6 @@ Compute probaility of not searching alternaitve, given chosen option has utility
 	return cdf(dV, u - z_j)
 end
 
-
-
-# function _logliki3!(m::SD3,Li,r::AbstractArray{T,1},r1,
-# 						β,ξ,zd::AbstractArray{T,2},chars,searched,purch,
-# 						dE,dV,dU0,
-# 						maxClick,
-# 						ic,i,iz1,iz2,izr,e,ddr) where T 
-
-# 	activeLB,outDummy,nA0,nd = m.activeLB,m.outDummy,m.nA0,m.nd
-# 	maxnum = T(1e100)
-
-# 	@inbounds for (idd,dd) in enumerate(ddr), (iizr,iz) in enumerate(izr)
-# 		r1 .= zero(T) 
-# 		for ddd in 1:2
-# 			r[end] = one(T)
-
-# 			# xb of purchased 
-# 			r[1] = zero(T)
-# 			for k in axes(β,2)
-# 				r[1] += chars[ic[purch],k] * β[dd,k] 
-# 			end
-# 			# Bounds for draws to fit into different zd 
-# 			ub = 	if iz <= 1 + nA0  # Last click in initial awareness set -> initially no upper bound 
-# 				maxnum 
-# 			elseif iz == iz1 && checksamepos(purch,maxClick,nA0,nd) # if last clicked purchased -> initially no upper bound 
-# 				maxnum 
-# 			else
-# 				zd[dd,iz-nd] - r[1]
-# 			end
-
-# 			lb = 	if iz < iz2 || activeLB 
-# 						zd[dd,iz] - r[1]
-# 					else
-# 						-maxnum 
-# 					end
-			
-# 			# Fill 
-# 			# r[1] = wj 
-# 			# r[2] = uj 
-# 			if ddd == 1 # e < ξ
-# 					e[1] =  rand_trunc(dE,-one(T)*maxnum,ξ[dd,purch])
-# 					r[1] += e[1] + rand_trunc(dV,lb-e[1],ub-e[1])
-# 					r[2] = r[1] 
-# 					truncCdf = trunc_cdf(dE,-one(T)*maxnum,ξ[dd,purch]) * 
-# 									trunc_cdf(dV,lb-e[1],ub-e[1])
-# 			else # e >= ξ
-# 					e[1] = rand_trunc(dE,ξ[dd,purch],one(T)*maxnum)
-# 					r[1] += ξ[dd,purch] + 
-# 								rand_trunc(dV,lb-ξ[dd,purch],ub-ξ[dd,purch])
-# 					r[2] = r[1] - ξ[dd,purch] + e[1] 
-# 					truncCdf = trunc_cdf(dE,ξ[dd,purch],one(T)*maxnum) * 
-# 									trunc_cdf(dV,lb-ξ[dd,purch],ub-ξ[dd,purch])
-# 			end		
-			
-# 			# Get values only if last click not in initial awareness set 
-# 			r[3] = r[1] # min{wj,zd(j-1)}
-# 			r[4] = r[2] # min{uj,zd(j-1)}
-# 			if iz1 > 1 + nA0 
-# 				r[3] = min(r[3],zd[dd,iz-nd])
-# 				r[4] = min(r[4],zd[dd,iz-nd])
-# 			end
-
-# 			# Get probability outside option P(u0 < min{wj,zd(j-1)})
-# 			if outDummy
-# 				r[end] *= cdf(dU0,r[3]- β[dd,end])
-# 			else
-# 				r[end] *= cdf(dU0,r[3])
-# 			end
-			
-# 			# Probabilities for other products
-# 			# Unsearched: P(zs <= min{wj,zd(j-1)})
-# 			# Searched: P(zs > min{wj,zd(j-1)} ∩ u < min{wj,zd(j-1)} )
-
-# 			for h in 2:iz
-# 				# Get xβ
-# 				r[5] = zero(T)
-# 				for k in axes(β,2)
-# 					r[5] += chars[ic[h],k] * β[dd,k] 
-# 				end
-# 				# searched, and discovered before the one that was purchased
-# 				if searched[i][h] && 
-# 						get_pos(h,nA0,nd) < get_pos(purch,nA0,nd) 
-# 					r[end] *= cdf_ZWU(m,r[5],ξ[dd,h],r[3],dE,dV) 
-# 				# searched, and discovered after the one that was purchased
-# 				elseif searched[i][h] && h!= purch &&
-# 					get_pos(h,nA0,nd) >= get_pos(purch,nA0,nd) 
-# 					r[end] *= cdf_ZWU(m,r[5],ξ[dd,h],r[1],dE,dV) 
-# 				# unsearched & discovered before 
-# 				elseif h != purch  && get_pos(h,nA0,nd) < get_pos(purch,nA0,nd)
-# 					r[end] *= cdf(dV,r[3] - ξ[dd,h] - r[5])
-# 				# unsearched & at same time or after 
-# 				elseif h != purch  && get_pos(h,nA0,nd) >= get_pos(purch,nA0,nd)
-# 					r[end] *= cdf(dV,r[1] - ξ[dd,h] - r[5])
-# 				end
-# 				if r[end] == 0 
-# 					r[end] = T(1e-100) 
-# 					break 
-# 				end
-# 			end	
-# 			r1[ddd] = r[end]*truncCdf
-# 		end
-# 		Li[idd,iizr] = sum(@views r1) 
-# 	end
-# end
 
 
 # ######################################################################
