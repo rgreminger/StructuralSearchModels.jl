@@ -152,7 +152,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 						local L = zero(T)
 
 						for i in chunk  # Iterate over consumers in chunk 
-							L += ll_no_searches(m_hat, zd_h, data, i, n_draws, false) 
+							L += ll_no_searches(m_hat, zd_h, data, i, n_draws, true) 
 						end
 
 						return L 
@@ -318,6 +318,7 @@ function ll_no_searches(m::SD1{T}, zd_h, d::DataSD, i::Int, n_draws, complement)
 		end
 	end
 
+	# println(log(LL / n_draws))
 	return log(LL / n_draws)
 end
 
