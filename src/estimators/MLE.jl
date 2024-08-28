@@ -4,7 +4,7 @@ abstract type MLE <: Estimator end
     options_optimization = (algorithm = LBFGS(), differentiation = Optimization.AutoForwardDiff())
     options_problem = () 
     options_solver = ()
-    options_numerical_integration = (n_draws = 100)
+    options_numerical_integration = (n_draws = 100, n_draws_purchases = 100 )
     conditional_on_search = false
 end 
 

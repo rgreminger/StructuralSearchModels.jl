@@ -44,8 +44,12 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
+	zsfun = nothing 
+
+	# Get maximum number of products
+	max_n_products = maximum(length.(d.product_ids))
 	
-    return zdfun, nothing 
+    return max_n_products, zdfun, zsfun 
 end
 
 # Vectorize parameters 
@@ -94,15 +98,13 @@ end
 function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD1, T <: Real}
 	
 	# Extract arguments 
-	zdfun, zsfun = args  
+	max_n_products, zdfun  = args  
 
-	# Extract parameters implied by θ
-	parameters, ind_last_par  = extract_parameters(model, θ; kwargs...)
-	shock_distributions = extract_distributions(model, θ, ind_last_par; kwargs...)
+	# Extract parameters implied by θ 
+	m_hat = construct_model_from_pars(θ, model; kwargs...)
 
 	# Pre-compute search and discovery values across positions -> same for all consumers 
-	zd_h = [zdfun(Ξ, ρ, h) for h in 1:max_n_products]
-	ξ_h  = [zsfun(ξ, ξρ, h) for h in 1:max_n_products]
+	zd_h = [zdfun(m_hat.Ξ, m_hat.ρ, h) for h in 1:max_n_products]
 
 	# Set seed for random number generation
 	set_seed(kwargs)
@@ -186,6 +188,47 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	end
 end
 
+
+function construct_model_from_pars(θ::Vector{T}, m::SD1; kwargs...) where T <: Real
+
+	# Extract parameters from vector, some may be fixed through kwargs 
+	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(m, θ; kwargs...)
+	dE, dV, dU0 = extract_distributions(m, θ, ind_last_par; kwargs...)
+
+	# Construct model from parameters 
+	m_new = SD1{T}(; β, ξ, Ξ, ρ, dE, dV, dU0, zdfun = m.zdfun)
+
+    return m_new 
+end
+
+function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <: Real}
+
+	n_beta = length(m.β)
+	n_ρ = length(m.ρ)
+
+	# track where in parameter vector we are and move it. 
+	ind_current = 1 
+
+	# Default: estimate all parameters
+	if !haskey(kwargs, :fixed_parameters)
+		β = θ[1:n_beta] ; ind_current += n_beta 
+		ξ = θ[ind_current] ; ind_current += 1
+		Ξ = θ[ind_current] ; ind_current += 1
+		ρ = θ[ind_current:ind_current+n_ρ] ; ind_current += n_ρ
+		return β, ξ, Ξ, ρ, ind_current
+	end
+
+	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
+	fixed_parameters = get(kwargs, :fixed_parameters, nothing)
+	β = !fixed_parameters[1] ? θ[1:n_beta] : m.β;  ind_current += n_beta 
+	ξ = !fixed_parameters[2] ? θ[ind_current] : m.ξ; ind_current += 1
+	Ξ = !fixed_parameters[3] ? θ[ind_current] : m.Ξ;  ind_current += 1
+	ρ = !fixed_parameters[4] ? θ[ind_current:ind_current+n_ρ] : m.ρ ; ind_current += n_ρ + 1 
+
+	return (β, ξ, Ξ, ρ), ind_current
+end
+
+
 """
 Construct shock distributions using variances in vector θ. Starts from index c. 
 """
@@ -230,35 +273,6 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Un
 
 	return dE, dV, dU0
 end
-
-function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <: Real}
-
-	n_beta = length(m.β)
-	n_ρ = length(m.ρ)
-
-	# track where in parameter vector we are and move it. 
-	ind_current = 1 
-
-	# Default: estimate all parameters
-	if !haskey(kwargs, :fixed_parameters)
-		β = θ[1:n_beta] ; ind_current += n_beta 
-		ξ = θ[ind_current] ; ind_current += 1
-		Ξ = θ[ind_current] ; ind_current += 1
-		ρ = θ[ind_current:ind_current+n_ρ] ; ind_current += n_ρ
-		return β, ξ, Ξ, ρ, ind_current
-	end
-
-	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
-	fixed_parameters = get(kwargs, :fixed_parameters, nothing)
-	β = !fixed_parameters[1] ? θ[1:n_beta] : m.β;  ind_current += n_beta 
-	ξ = !fixed_parameters[2] ? θ[ind_current] : m.ξ; ind_current += 1
-	Ξ = !fixed_parameters[3] ? θ[ind_current] : m.Ξ;  ind_current += 1
-	ρ = !fixed_parameters[4] ? θ[ind_current:ind_current+n_ρ] : m.ρ ; ind_current += n_ρ + 1 
-
-	return (β, ξ, Ξ, ρ), ind_current
-end
-
-
 
 function ll_no_searches!(m::SD1, Li, r, d::DataSD, i, parameters...) 
 
