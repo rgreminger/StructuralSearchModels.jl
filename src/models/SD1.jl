@@ -61,15 +61,22 @@ function vectorize_parameters(m::SD1; kwargs...)
 		else
 			fixed_parameters = get(kwargs, :fixed_parameters, nothing)
 			if !isnothing(fixed_parameters)
-				β = !fixed_parameters[1] ? m.β : nothing
-				ξ = !fixed_parameters[2] ? m.ξ : nothing
-				Ξ = !fixed_parameters[3] ? m.Ξ : nothing
-				ρ = !fixed_parameters[4] ? m.ρ : nothing
-				θ = vcat(β, ξ, Ξ, ρ)
-
+				θ = eltype(m.β)[] 
+				if !fixed_parameters[1]
+					θ = vcat(θ, m.β)
+				end
+				if !fixed_parameters[2]
+					θ = vcat(θ, m.ξ)
+				end
+				if !fixed_parameters[3]
+					θ = vcat(θ, m.Ξ)
+				end
+				if !fixed_parameters[4]
+					θ = vcat(θ, m.ρ)
+				end
 			end
+			θ
 		end
-
 	
 	# Default: estimate variance of ε, keep others fixed
 	if !haskey(kwargs, :distribution_options)
@@ -100,6 +107,10 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	# Extract parameters implied by θ 
 	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
 	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
+
+	if ρ[1] > 0 
+		return -T(1e100)
+	end
 	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
 	zd_h = [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
