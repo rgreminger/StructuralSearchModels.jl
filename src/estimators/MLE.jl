@@ -53,8 +53,6 @@ end
 function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
     # Extract parameters 
-    println(kwargs)
-    println(!haskey(kwargs, :fixed_parameters))
     θ = vectorize_parameters(model; kwargs...)
 
     # Prepare additional arguments for objective function 

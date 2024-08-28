@@ -123,9 +123,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	consumer_ids = repeat(1:n_consumers, n_sessions_per_consumer)
 
 	# Get last product that consumer MUST have discovered, i.e., all products on same position as the lowest one that was clicked on
-	index_click_lowest_position = Array{Union{Int,Nothing},1}([findlast(C) for C in consideration_sets])
-	index_click_lowest_position[isnothing.(index_click_lowest_position)] .= 1 # set to one for those who did not click
-	indices_min_discover =	[findlast(positions[i] .== positions[i][index_click_lowest_position[i]]) for i in eachindex(index_click_lowest_position)]
+	indices_min_discover =	get_indices_min_discover(consideration_sets, positions)
 	
 	# Create data object
 	data = DataSD(consumer_ids, product_ids, product_characteristics, positions, consideration_sets, indices_purchase, indices_min_discover, paths, indices_stop)
@@ -384,7 +382,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	return nothing
 end
 
-function get_indices_min_discover(consideration_sets)
+function get_indices_min_discover(consideration_sets, positions)
 	index_click_lowest_position = Array{Union{Int,Nothing},1}([findlast(C) for C in consideration_sets])
 	index_click_lowest_position[isnothing.(index_click_lowest_position)] .= 1 # set to one for those who did not click
 	indices_min_discover =	[findlast(positions[i] .== positions[i][index_click_lowest_position[i]]) for i in eachindex(index_click_lowest_position)]
@@ -403,7 +401,7 @@ function generate_data(m::SDCore, d::DataSD; kwargs...)
 
 	# Get indices of minimum discovered product, if requested in kwargs. Otherwise not computed, which saves time during simulation of many paths. 
 	indices_min_discover = if haskey(kwargs, :min_discover_indices) && kwargs[:min_discover_indices] == true 
-								get_index_min_discover() 
+								get_indices_min_discover(consideration_sets, positions)
 							else
 								nothing 
 							end
@@ -465,6 +463,7 @@ function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
 	xβ = chars * m.β
 
 	# Get discovery value at position where beliefs are correct
+	# NEEDS TO BE UPDATED
 	zdfun = get_functional_form(m.zdfun)
 	position_at_which_correct_beliefs = get(kwargs, :position_at_which_correct_beliefs, calculate_mean_position(d))
 	zd = zdfun(m.Ξ, m.ρ, position_at_which_correct_beliefs)

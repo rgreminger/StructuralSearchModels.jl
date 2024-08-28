@@ -294,11 +294,11 @@ end
 
 Calculate the cumulative distribution function of a truncated uniform distribution.
 """
-@inline function trunc_cdf(d::Uniform,lb::T,ub::T) where T <: Real
+@inline function trunc_cdf(d::Uniform, lb::T, ub::T) where T <: Real
 	if ub <= minimum(d) || lb >= maximum(d)
 		return zero(T)
 	end
-	return cdf(d,ub) - cdf(d,lb)
+	return cdf(d, ub) - cdf(d, lb)
 end
 
 @inline function rand_trunc(d::Uniform,lb::T,ub::T) where T <: Real
@@ -344,7 +344,7 @@ Calculate the cumulative distribution function of a generic truncated distributi
 	return r::T	
 end
 
-@inline function trunc_cdf(d,lb::T,ub::T) where T <: Real 
+@inline function trunc_cdf(d, lb::T, ub::T) where T <: Real 
 	# Do calculation in log-scale to avoid numerical issues
 	# Note: follows truncate.jl in Distributions package 
 	# introduces additional max(..) to help AD avoid NaN
@@ -356,6 +356,6 @@ end
 	y = max(- 1e100, logcdf(d,ub))
 
 	tp = exp(Distributions.logsubexp(x,y))
-	return max(1e-300,tp)
+	return max(1e-300, tp)
 end 
 

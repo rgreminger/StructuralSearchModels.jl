@@ -123,20 +123,12 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 
 			# Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer 
 			local L = zero(T)
-			local Li = zeros(T, n_draws_purchase, max_n_products) # use no. purchase draws since larger than nDraws. Rest of array will be filled with zeros. 
-			local r = zeros(T,6) 
-			local r1 = zeros(T,3)
 
 			for i in chunk  # Iterate over consumers in chunk 
-				r .= zero(T) 
-				r1 .= zero(T)
-				Li .= zero(T)
-
 				# Do inner likelihood calculations based on pre-allocated arrays
-				if nS[i] == 0 	# Case 1: no clicks (implies also no purchase)
-					@views ll_no_searches!(m, Li, r, data, i, parameters...) 
-					L += calc_logsum(Li, n_draws)
-				elseif purch[i] == 1 # Case 2: Some clicks but no purchase 
+				if data.search_paths[i][1] == 0 	# Case 1: no clicks (implies also no purchase)
+					L += ll_no_searches(m_hat, zd_h, data, i, n_draws, false) 
+				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
 					# @views ll_search_no_purchase!(m, Li, r, data, i, parameters...)
 					# L += calc_logsum(Li, n_draws)
 				else 	# Case 3: Purchase a product 
@@ -152,21 +144,15 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 
 	LL1 = sum(fetch.(tasks)) 
 
-	LL2 = 	if conditional_on_search  
-				n_initial = typeof(m) <: Weitzman ? maxprod : 1 + m.nA0
+	LL2 = 	if estimator.conditional_on_search  
 				
 				tasks = map(data_chunks) do chunk 
 					Threads.@spawn begin 
 
 						local L = zero(T)
-						local Li = zeros(T, n_draws_purchase, max_n_products) # use no. purchase draws since larger than nDraws. Rest of array will be filled with zeros. 
-						local r = zeros(T,5) 
 
 						for i in chunk  # Iterate over consumers in chunk 
-							Li .= zero(T)
-							r .= zero(T) 	
-							@views 	ll_no_searches!(m, Li, r, data, i, parameters...; complement = true) 
-							L += calc_logsum(Li,nDraws)
+							L += ll_no_searches(m_hat, zd_h, data, i, n_draws, false) 
 						end
 
 						return L 
@@ -179,6 +165,11 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 			end
 
 	LL = LL1 - LL2 
+	if get(kwargs, :debug_print, false)
+		println("LL = $LL")
+		println("LL1 = $LL1")
+		println("LL2 = $LL2")
+	end
 
 	# prevent Inf values, helps AD
 	if isinf(LL) || isnan(LL) || LL >= 0 
@@ -228,7 +219,6 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <
 	return (β, ξ, Ξ, ρ), ind_current
 end
 
-
 """
 Construct shock distributions using variances in vector θ. Starts from index c. 
 """
@@ -274,45 +264,61 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Un
 	return dE, dV, dU0
 end
 
-function ll_no_searches!(m::SD1, Li, r, d::DataSD, i, parameters...) 
+function ll_no_searches(m::SD1{T}, zd_h, d::DataSD, i::Int, n_draws, complement) where T <: Real
 
+	min_position_discover = d.min_discover_indices[i] 
+	n_products = length(d.product_ids[i])
+	positions = @views d.positions[i]
+	with_outside_option = d.product_ids[i][1] == 0
 
-	for (idd,dd) in enumerate(ddr), (iizr,iz) in enumerate(izr)
-		r[end] = one(T) 
+	LL = zero(T)
+	
+	for dd in 1:n_draws, h in min_position_discover:n_products
 
-		lb = if iz < iz2 || activeLB  
-			zd[dd,iz] - (outDummy ? β[dd,end] : zero(T))
-		else
-			-MAX_NUMERCAL 
+		# If not last product in same position or last product, skip 
+		if h < n_products && positions[h] == positions[h+1]
+			continue
 		end
 
-		ub = if iz <= 1 + nA0 # first no upper bound if last click in initial awareness set 
-				MAX_NUMERCAL 
-			else 
-				zd[dd,max(iz-nd,1)]  - (outDummy ? β[dd,end] : zero(T)) # Max accounts for case where nA0 < nd 
-		end
-
-		truncCdf = trunc_cdf(dU0,lb,ub) 
-
-		r[1] = rand_trunc(dU0,lb,ub) + (outDummy ? β[dd,end] : 0)
-		
-		for h in 2:iz 
-			r[2] = ξ[dd,h]
-			for k in axes(β,2)
-				r[2] += chars[ic[h],k] * β[dd,k] 
+		# Set lower bound for truncation based on position 
+		lb = if h < n_products # not yet last position 
+				zd_h[h] - (with_outside_option ? m.β[end] : zero(T))
+			else # no lower bound if last position 
+				- MAX_NUMERICAL 
 			end
-			r[end] *= cdf(dV,r[1] - r[2])
-			if r[end] == 0
-				r[end] = T(1e-100)  # adding this helps AD 
+
+		# Set upper bound for truncation based on position
+		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+				MAX_NUMERICAL 
+			else 
+				zd_h[h]  - (with_outside_option ? m.β[end] : zero(T)) # Max accounts for case where nA0 < nd 
+			end
+
+		# Get probability of u0 in bounds and draw for u0 
+		prob_u0_in_bounds = trunc_cdf(m.dU0, lb, ub) 
+		u0_draw = rand_trunc(m.dU0, lb, ub) + (with_outside_option ? m.β[end] : zero(T))
+		
+		# Initialize for probability
+		prob_no_search_given_draw = one(T)
+
+		# Loop over products up to one discovered 
+		for j in 2:h 
+			zs_j = @views d.product_characteristics[i][j, :]' * m.β + m.ξ
+			prob_no_search_given_draw *= cdf(m.dV, u0_draw - zs_j)
+
+			if prob_no_search_given_draw == 0
+				prob_no_search_given_draw = T(1e-100)  # adding this helps AD 
 				break
 			end
 		end
 		if complement 
-			Li[idd,iizr] = (1-r[end]) * truncCdf
+			LL += (1-prob_no_search_given_draw) * prob_u0_in_bounds
 		else
-			Li[idd,iizr] = r[end] * truncCdf
+			LL += prob_no_search_given_draw * prob_u0_in_bounds
 		end
 	end
+
+	return log(LL / n_draws)
 end
 
 # function _logliki2!(m::SD3,Li,r,
