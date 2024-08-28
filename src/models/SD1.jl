@@ -53,7 +53,6 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 end
 
 # Vectorize parameters 
-
 function vectorize_parameters(m::SD1; kwargs...)
 	# Default estimate all parameters 
 	θ = if !haskey(kwargs, :fixed_parameters)
@@ -107,10 +106,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	# Extract parameters implied by θ 
 	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
 	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
-
-	if ρ[1] > 0 
-		return -T(1e100)
-	end
 	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
 	zd_h = [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
@@ -126,6 +121,11 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 		println("dU0 = $dU0")
 		println("zd_h[1:5] = $zd_h[1:5]")
 	end
+
+	if ρ[1] > 0 
+		return -T(1e100)
+	end
+
 
 	# Set seed for random number generation
 	set_seed(kwargs)
@@ -232,7 +232,7 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <
 	β = if fixed_parameters[1];  T.(m.β) ; else ; ind_current += n_beta; θ[1:n_beta] ; end
 	ξ = if fixed_parameters[2];  T(m.ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ; end
 	Ξ = if fixed_parameters[3];  T(m.Ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ;end
-	ρ = if fixed_parameters[4];  T.(m.ρ) ; else ; ind_current += n_ρ ;  θ[ind_current:ind_current + n_ρ - 1 - 1] ; end
+	ρ = if fixed_parameters[4];  T.(m.ρ) ; else ; ind_current += n_ρ ;  θ[ind_current - n_ρ:ind_current - 1] ; end
 	return β, ξ, Ξ, ρ, ind_current
 end
 
@@ -282,6 +282,7 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Un
 end
 
 function ll_no_searches(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
+
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
 	positions = @views d.positions[i]
@@ -298,7 +299,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dV, dU0, 
 
 		# Set lower bound for truncation based on position 
 		lb = if h < n_products # not yet last position 
-				zd_h[h] - (with_outside_option_dummy ? β[end] : zero(T))
+				zd_h[h + 1] - (with_outside_option_dummy ? β[end] : zero(T))
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
@@ -355,14 +356,14 @@ function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dE
 			continue
 		end
 		# Set lower bound for truncation based on position 
-		lb::T = if h < n_products # not yet last position 
-				zd_h[h] - (with_outside_option_dummy ? β[end] : zero(T))
+		lb = if h < n_products # not yet last position 
+				zd_h[h + 1] - (with_outside_option_dummy ? β[end] : zero(T))
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
 
 		# Set upper bound for truncation based on position
-		ub::T = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
 				T(MAX_NUMERICAL)
 			else 
 				zd_h[h]  - (with_outside_option_dummy ? β[end] : zero(T)) # Max accounts for case where nA0 < nd 
@@ -421,7 +422,7 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dE, dV, dU0,
 
 		# Set lower bound for truncation based on position 
 		lb = if h < n_products # not yet last position 
-				zd_h[h] - xβ_k
+				zd_h[h + 1] - xβ_k
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
