@@ -44,7 +44,7 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
 	end
 
 	estimates = result_solver.minimizer
-	likelihood_at_estimates = result_solver.minimum
+	likelihood_at_estimates =  - result_solver.minimum
 				
     GC.gc()  
 	return estimates, likelihood_at_estimates, result_solver

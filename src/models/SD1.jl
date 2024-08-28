@@ -116,6 +116,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	zd_h = [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
 
 	if get(kwargs, :debug_print, false)
+		println("θ = $θ")
 		println("β = $β")
 		println("ξ = $ξ")
 		println("Ξ = $Ξ")
@@ -228,12 +229,11 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <
 
 	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
 	fixed_parameters = get(kwargs, :fixed_parameters, nothing)
-	β = !fixed_parameters[1] ? θ[1:n_beta] : m.β;  ind_current += n_beta 
-	ξ = !fixed_parameters[2] ? θ[ind_current] : m.ξ; ind_current += 1
-	Ξ = !fixed_parameters[3] ? θ[ind_current] : m.Ξ;  ind_current += 1
-	ρ = !fixed_parameters[4] ? θ[ind_current:ind_current+n_ρ] : m.ρ ; ind_current += n_ρ + 1 
-
-	return (β, ξ, Ξ, ρ), ind_current
+	β = if fixed_parameters[1];  T.(m.β) ; else ; ind_current += n_beta; θ[1:n_beta] ; end
+	ξ = if fixed_parameters[2];  T(m.ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ; end
+	Ξ = if fixed_parameters[3];  T(m.Ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ;end
+	ρ = if fixed_parameters[4];  T.(m.ρ) ; else ; ind_current += n_ρ ;  θ[ind_current:ind_current + n_ρ - 1 - 1] ; end
+	return β, ξ, Ξ, ρ, ind_current
 end
 
 """
@@ -462,9 +462,6 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dE, dV, dU0,
 		end
 		
 		# Probabilities for other products
-		# Unsearched: P(zs <= min{wj,zd(j-1)})
-		# Searched: P(zs > min{wj,zd(j-1)} ∩ u < min{wj,zd(j-1)} )
-
 		for j in 2:h
 
 			xβ_j = @views d.product_characteristics[i][j, :]' * β
