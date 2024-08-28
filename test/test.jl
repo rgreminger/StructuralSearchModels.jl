@@ -47,6 +47,9 @@ e = SmoothMLE()
 @time calculate_likelihood(m_hat, e, d; debug_print=false)
 
 ## 
-e = SmoothMLE(options_solver = (show_trace = true, show_every = 1))
+e = SmoothMLE(
+    options_numerical_integration = (n_draws = 25, n_draws_purchases = 25),
+    options_solver = (show_trace = true, show_every = 1)
+    )
 # e = SmoothMLE()
-estimate_model(m_hat, d, e) 
+@time estimate_model(m_hat, d, e) 

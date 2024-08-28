@@ -1,7 +1,8 @@
 abstract type MLE <: Estimator end 
 
 @with_kw mutable struct SmoothMLE <: MLE
-    options_optimization = (algorithm = LBFGS(), differentiation = Optimization.AutoForwardDiff())
+    options_optimization = (algorithm = LBFGS(;linesearch = Optim.BackTracking(order=2)),
+    differentiation = Optimization.AutoForwardDiff())
     options_problem = () 
     options_solver = ()
     options_numerical_integration = (n_draws = 100, n_draws_purchases = 100 )
@@ -42,10 +43,9 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
 		println(res.original)
 	end
 
-	estimates = res.minimizer
-	likelihood_at_estimates = res.minimum
+	estimates = result_solver.minimizer
+	likelihood_at_estimates = result_solver.minimum
 				
-    
     GC.gc()  
 	return estimates, likelihood_at_estimates, result_solver
 end
