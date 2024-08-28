@@ -23,6 +23,9 @@ using Optimization, OptimizationOptimJL                             # optimizati
 using Parameters                                                    # utils 
 using Colors, CairoMakie                                            # plotting
 
+using StatsFuns: sqrt2, invsqrt2
+using SpecialFunctions: erf, erfinv
+
 # Import functions to add own definitions 
 import Base: length, getindex, eachindex
 

@@ -216,9 +216,9 @@ end
 
 
 # Normal distribution: helper functions 
-@inline cdf_n(z) = Distributions.erfc(-z * invsqrt2)/2
+@inline cdf_n(z::T) where T <: Real = Distributions.erfc(-z * invsqrt2)/2
 
-function invcdf_n(z::T) where T <: Real
+@inline function invcdf_n(z::T) where T <: Real
 	# Note: For z very close to 1 or zero, will return Inf
 	# Fixing bounds helps calculate gradient (and introduces little inaccuracy)
 	if z >= 1-eps(T)
