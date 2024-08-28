@@ -101,10 +101,11 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	max_n_products, zdfun  = args  
 
 	# Extract parameters implied by θ 
-	m_hat = construct_model_from_pars(θ, model; kwargs...)
-
+	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
+	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
+	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
-	zd_h = [zdfun(m_hat.Ξ, m_hat.ρ, h) for h in 1:max_n_products]
+	zd_h = [zdfun(Ξ, ρ, h) for h in 1:max_n_products]
 
 	# Set seed for random number generation
 	set_seed(kwargs)
@@ -127,7 +128,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 			for i in chunk  # Iterate over consumers in chunk 
 				# Do inner likelihood calculations based on pre-allocated arrays
 				if data.search_paths[i][1] == 0 	# Case 1: no clicks (implies also no purchase)
-					L += ll_no_searches(m_hat, zd_h, data, i, n_draws, false) 
+					L += ll_no_searches(model, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws, false) 
 				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
 					# @views ll_search_no_purchase!(m, Li, r, data, i, parameters...)
 					# L += calc_logsum(Li, n_draws)
@@ -152,7 +153,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 						local L = zero(T)
 
 						for i in chunk  # Iterate over consumers in chunk 
-							L += ll_no_searches(m_hat, zd_h, data, i, n_draws, true) 
+							L += ll_no_searches(m, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, data, i, n_draws, true) 
 						end
 
 						return L 
@@ -264,8 +265,7 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Un
 	return dE, dV, dU0
 end
 
-function ll_no_searches(m::SD1{T}, zd_h, d::DataSD, i::Int, n_draws, complement) where T <: Real
-
+function ll_no_searches(m::SD1{T}, zd_h, β, ξ, Ξ, ρ, dE, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
 	positions = @views d.positions[i]
@@ -282,7 +282,7 @@ function ll_no_searches(m::SD1{T}, zd_h, d::DataSD, i::Int, n_draws, complement)
 
 		# Set lower bound for truncation based on position 
 		lb = if h < n_products # not yet last position 
-				zd_h[h] - (with_outside_option ? m.β[end] : zero(T))
+				zd_h[h] - (with_outside_option ? β[end] : zero(T))
 			else # no lower bound if last position 
 				- MAX_NUMERICAL 
 			end
@@ -291,20 +291,20 @@ function ll_no_searches(m::SD1{T}, zd_h, d::DataSD, i::Int, n_draws, complement)
 		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
 				MAX_NUMERICAL 
 			else 
-				zd_h[h]  - (with_outside_option ? m.β[end] : zero(T)) # Max accounts for case where nA0 < nd 
+				zd_h[h]  - (with_outside_option ? β[end] : zero(T)) # Max accounts for case where nA0 < nd 
 			end
 
 		# Get probability of u0 in bounds and draw for u0 
-		prob_u0_in_bounds = trunc_cdf(m.dU0, lb, ub) 
-		u0_draw = rand_trunc(m.dU0, lb, ub) + (with_outside_option ? m.β[end] : zero(T))
+		prob_u0_in_bounds = trunc_cdf(dU0, lb, ub) 
+		u0_draw = rand_trunc(dU0, lb, ub) + (with_outside_option ? β[end] : zero(T))
 		
 		# Initialize for probability
 		prob_no_search_given_draw = one(T)
 
 		# Loop over products up to one discovered 
 		for j in 2:h 
-			zs_j = @views d.product_characteristics[i][j, :]' * m.β + m.ξ
-			prob_no_search_given_draw *= cdf(m.dV, u0_draw - zs_j)
+			zs_j = @views d.product_characteristics[i][j, :]' * β + ξ
+			prob_no_search_given_draw *= cdf(dV, u0_draw - zs_j)
 
 			if prob_no_search_given_draw == 0
 				prob_no_search_given_draw = T(1e-100)  # adding this helps AD 

@@ -44,8 +44,8 @@ m_hat = SD1(
 )
 e = SmoothMLE()
 
-@time calculate_likelihood(m_hat, e, d; debug_print=true)
+@time calculate_likelihood(m_hat, e, d; debug_print=false)
 
 # NOTES:
-# ll should be very clost to zero (-1e-8 or so) because it should be log(1) = 0
-# ll should be much faster!  
+# Need to reduce allocations!!
+# For this, need type inference  to work, which it does not based on constructing model etc.
