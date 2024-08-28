@@ -34,8 +34,8 @@ function estimate_model(model::Model, data::Data, estimator::MLE;
 									options_problem...)
 
 	# Run optimization 
-	result_solver = 	solve(prob, estimator.options_optimization.algorithm, 
-                            estimator.options_solver...);
+	result_solver = 	solve(prob, options_optimization.algorithm; 
+                            options_solver...);
 
     # Print complete solver solution if requested 
 	if print_solver_solution
