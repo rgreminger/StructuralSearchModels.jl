@@ -44,11 +44,11 @@ distribution_options[1] = false
 e = SmoothMLE(
     options_numerical_integration = (n_draws = 100, n_draws_purchases = 100),
     options_solver = (show_trace = true, show_every = 50), 
-    options_optimization = (algorithm = StructuralSearchModels.NelderMead(), differentiation = Optimization.AutoForwardDiff())
+    options_optimization = (algorithm = StructuralSearchModels.LBFGS(), differentiation = Optimization.AutoForwardDiff())
     )
 
 startvals = vectorize_parameters(m_hat; distribution_options) .* 0.8
-@time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, d, e; 
+@time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, e, d; 
                                                                         startvals, 
                                                                         distribution_options) 
 

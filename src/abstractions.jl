@@ -34,11 +34,11 @@ function generate_data(model::Model, data::Data; kwargs...  ) end
 # Estimation 
 
 """
-    estimate_model(model::Model, data::Data, estimator::Estimator; kwargs...)
+    estimate_model(model::Model, estimator::Estimator, data::Data; kwargs...)
 
 Estimate the `model` using `data` and `estimator`. Returns the estimated model.
 """
-function estimate_model(model::Model, data::Data, estimator::Estimator; kwargs...) end
+function estimate_model(model::Model, estimator::Estimator, data::Data; kwargs...) end
 
 
 ##################################################################################
@@ -56,11 +56,11 @@ function evaluate_fit(model::Model, data::Data; kwargs...) end
 
 # Abstract function to calculate standard errors 
 """ 
-    calculate_standard_errors(model::Model, data::Data, estimator::Estimator; bootstrap = false, kwargs...)
+    calculate_standard_errors(model::Model, estimator::Estimator, data::Data; bootstrap = false, kwargs...)
 
 Calculate standard errors for the model `model` using the data `data` and estimator `estimator`. Set `bootstrap` to true to use bootstrap for standard error calculation. 
 """
-function calculate_standard_errors(model::Model, data::Data, estimator::Estimator; bootstrap = false, kwargs...) end    
+function calculate_standard_errors(model::Model, estimator::Estimator, data::Data; bootstrap = false, kwargs...) end    
     
 
 ##################################################################################
