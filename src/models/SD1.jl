@@ -1,10 +1,9 @@
 """
 *Search and Discovery* SD1 model with the following parameterization: 
 - uᵢⱼ = xⱼ'β + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
-- zsᵢⱼ = xⱼ'β + ξ(hᵢⱼ) + νᵢⱼ 
+- zsᵢⱼ = xⱼ'β + ξ + νᵢⱼ 
 - uᵢ₀ = x₀'β + η , η_i ~ dU0
 - Ξ(h) = zdfun(Ξ, ρ, pos) with ρ ≤ 0
-- ξ(h) = zsfun(ξ, ξρ, pos)
 
 
 # Fields:  
@@ -18,7 +17,6 @@
 - `dV::Distribution`: distribution of ν_{ij}.
 - `dU0::Distribution`: distribution of u_{i0}. 
 - `zdfun::String`: select functional form f(Ξ, ρ, h) that determines the discovery value in position h. 
-- `zsfun::String`: select functional form f(ξ, ξρ, h) that determines the search value in position h.
 - `unobserved_heterogeneity::Dict`: dictionary of unobserved heterogeneity parameters and options. Currently not used. 
 """
 
@@ -44,12 +42,11 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
-	zsfun = nothing 
 
 	# Get maximum number of products
 	max_n_products = maximum(length.(d.product_ids))
 	
-    return max_n_products, zdfun, zsfun 
+    return max_n_products, zdfun
 end
 
 # Vectorize parameters 
@@ -77,26 +74,11 @@ function vectorize_parameters(m::SD1; kwargs...)
 			end
 			θ
 		end
-	
-	# Default: estimate variance of ε, keep others fixed
-	if !haskey(kwargs, :distribution_options)
-		θ = vcat(θ, params(m.dE)[end]) 
-		return θ
-	end
-	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
-	# Extract distributions
-	if estimation_shock_distributions[1]
-		θ = vcat(θ, params(m.dE)[end])
-	end
-	if estimation_shock_distributions[2]
-		θ = vcat(θ, params(m.dV)[end])
-	end
-	if estimation_shock_distributions[4] 
-		θ = vcat(θ, params(m.dU0)[2:end])
-	end
+
+
+	θ = add_distribution_parameters(m, θ, kwargs)
 
 	return θ
-
 end
 
 function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD1, T <: Real}
@@ -152,7 +134,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
 					L += ll_search_no_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws) 
 				else 	# Case 3: Purchase a product 
-					L += ll_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws) 
+					L += ll_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws_purchase) 
 				end
 				
 			end

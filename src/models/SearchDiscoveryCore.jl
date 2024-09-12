@@ -448,7 +448,6 @@ end
 
 """
 	calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
-
 """
 
 function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...) 
@@ -1103,3 +1102,25 @@ function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 	return click_stats, purchase_stats, fig 
 end
+
+function add_distribution_parameters(m::M, θ, kwargs) where M <: SD 
+
+	# Default: estimate variance of ε, keep others fixed
+	if !haskey(kwargs, :distribution_options)
+		θ = vcat(θ, params(m.dE)[end]) 
+		return θ
+	end
+	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
+	# Extract distributions
+	if estimation_shock_distributions[1]
+		θ = vcat(θ, params(m.dE)[end])
+	end
+	if estimation_shock_distributions[2]
+		θ = vcat(θ, params(m.dV)[end])
+	end
+	if estimation_shock_distributions[4] 
+		θ = vcat(θ, params(m.dU0)[2:end])
+	end
+
+	return θ
+end	
