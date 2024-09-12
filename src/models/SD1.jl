@@ -42,15 +42,14 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
-
+	
 	# Get maximum number of products
 	max_n_products = maximum(length.(d.product_ids))
 	
-    return max_n_products, zdfun
+    return max_n_products, zdfun, nothing 
 end
 
 # Vectorize parameters 
-
 function vectorize_parameters(m::SD1; kwargs...)
 	# Default estimate all parameters 
 	θ = if !haskey(kwargs, :fixed_parameters)
@@ -81,109 +80,10 @@ function vectorize_parameters(m::SD1; kwargs...)
 	return θ
 end
 
-function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD1, T <: Real}
-	
-	# Extract arguments 
-	max_n_products, zdfun  = args  
-
-	# Extract parameters implied by θ 
-	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
-	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
-
-	if ρ[1] > 0 
-		return -T(1e100)
-	end
-	
-	# Pre-compute search and discovery values across positions -> same for all consumers 
-	zd_h = [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
-
-	if get(kwargs, :debug_print, false)
-		println("θ = $θ")
-		println("β = $β")
-		println("ξ = $ξ")
-		println("Ξ = $Ξ")
-		println("ρ = $ρ")
-		println("dE = $dE")
-		println("dV = $dV")
-		println("dU0 = $dU0")
-		println("zd_h[1:5] = $zd_h[1:5]")
-	end
-
-	# Set seed for random number generation
-	set_seed(kwargs)
-
-    # Extract number of draws 
-	n_draws = estimator.options_numerical_integration.n_draws  
-    n_draws_purchase = estimator.options_numerical_integration.n_draws_purchases
-    
-	# Define chunks for parallelization. Each chunk is a range of consumers for which a single task 
-	# calculates and sums up the likelihood. 
-	_, data_chunks = get_chunks(length(data))
-
-	# Create and define tasks for each chunk
-	tasks = map(data_chunks) do chunk 
-		Threads.@spawn begin 
-
-			# Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer 
-			local L = zero(T)
-
-			for i in chunk  # Iterate over consumers in chunk 
-				# Do inner likelihood calculations based on pre-allocated arrays
-				if data.search_paths[i][1] == 0 	# Case 1: no clicks (implies also no purchase)
-					L += ll_no_searches(model, zd_h, β, ξ, dV, dU0, data, i, n_draws, false) 
-				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
-					L += ll_search_no_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws) 
-				else 	# Case 3: Purchase a product 
-					L += ll_purchase(model, zd_h, β, ξ, dE, dV, dU0, data, i, n_draws_purchase) 
-				end
-				
-			end
-
-			return L # Return likelihood for chunk
-		end
-	end
-
-	LL1 = sum(fetch.(tasks)) 
-
-	LL2 = 	if estimator.conditional_on_search  
-				
-				tasks = map(data_chunks) do chunk 
-					Threads.@spawn begin 
-
-						local L = zero(T)
-
-						for i in chunk  # Iterate over consumers in chunk 
-							L += ll_no_searches(m, zd_h, β, ξ, dV, dU0, data, i, n_draws, true) 
-						end
-
-						return L 
-					end
-				end
-				
-				sum(fetch.(tasks))
-			else
-				zero(T)
-			end
-
-	LL = LL1 - LL2 
-	if get(kwargs, :debug_print, false)
-		println("LL = $LL")
-		println("LL1 = $LL1")
-		println("LL2 = $LL2")
-	end
-
-	# prevent Inf values, helps AD
-	if isinf(LL) || isnan(LL) || LL >= 0 
-		return -T(1e100)
-	else
-		return LL
-	end
-end
-
 function construct_model_from_pars(θ::Vector{T}, m::SD1; kwargs...) where T <: Real
 
 	# Extract parameters from vector, some may be fixed through kwargs 
-	β, ξ, Ξ, ρ, ind_last_par  = extract_parameters(m, θ; kwargs...)
+	β, Ξ, ρ, ξ,	_, ind_last_par  = extract_parameters(model, θ; kwargs...)
 	dE, dV, dU0 = extract_distributions(m, θ, ind_last_par; kwargs...)
 
 	# Construct model from parameters 
@@ -206,7 +106,7 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <
 		ξ = θ[ind_current] ; ind_current += 1
 		Ξ = θ[ind_current] ; ind_current += 1
 		ρ = θ[ind_current:ind_current + n_ρ - 1] ; ind_current += n_ρ
-		return β, ξ, Ξ, ρ, ind_current
+		return β, Ξ, ρ, ξ, nothing, ind_current
 	end
 
 	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
@@ -215,55 +115,11 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <
 	ξ = if fixed_parameters[2];  T(m.ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ; end
 	Ξ = if fixed_parameters[3];  T(m.Ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ;end
 	ρ = if fixed_parameters[4];  T.(m.ρ) ; else ; ind_current += n_ρ ;  θ[ind_current:ind_current + n_ρ - 1 - 1] ; end
-	return β, ξ, Ξ, ρ, ind_current
+	return β, Ξ, ρ, ξ, nothing, ind_current
 end
 
-"""
-Construct shock distributions using variances in vector θ. Starts from index c. 
-"""
-function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: Union{SD1},T <: Real}
 
-	# Default: estimate variance of ε, keep others fixed 
-	if !haskey(kwargs, :distribution_options)
-		dE = eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[end])) # convoluted way to allow for distributions other than Normal 
-		dV = m.dV
-		dU0 = m.dU0
-		return dE, dV, dU0
-	end 
-
-	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
-
-	# Extract distributions
-	dE = 	if estimation_shock_distributions[1]
-				c += 1 
-				eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[c]))
-			else 	
-				m.dE
-			end
-
-	dV =	if estimation_shock_distributions[2]
-				c += 1 
-				eval(nameof(typeof(m.dV)))(params(m.dV)[1:end-1]...,abs(θ[c]))
-			else 	
-				m.dV
-			end
-
-	dU0 = 	if estimation_shock_distributions[3] && estimation_shock_distributions[1]
-				dE 
-			elseif estimation_shock_distributions[3] && estimation_shock_distributions[2]
-				dV
-			elseif estimation_shock_distributions[4] 
-				np = length(params(m.dU0))
-				c += 1
-				eval(nameof(typeof(m.dU0)))(params(m.dU0)[1:end-np+1]...,abs.(θ[c:end])...)
-			else 	
-				m.dU0
-			end
-
-	return dE, dV, dU0
-end
-
-function ll_no_searches(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
+function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
 	positions = @views d.positions[i]
@@ -320,7 +176,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dV, dU0, 
 	return log(max(T(ALMOST_ZERO_NUMERICAL), LL / n_draws))
 end
 
-function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
+function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
 
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
@@ -376,7 +232,7 @@ function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dE
 	return log(max(T(ALMOST_ZERO_NUMERICAL), LL / n_draws))
 end
 
-function ll_purchase(m::SD1, zd_h::Vector{T}, β::Vector{T}, ξ::T, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
+function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0, d::DataSD, i::Int, n_draws) where T <: Real
 
 	min_position_discover = d.min_discover_indices[i] 
 	n_products = length(d.product_ids[i])
