@@ -134,7 +134,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0, 
 
 		# Set lower bound for truncation based on position 
 		lb = if h < n_products # not yet last position 
-				zd_h[h] - (with_outside_option_dummy ? β[end] : zero(T))
+				zd_h[h + 1] - (with_outside_option_dummy ? β[end] : zero(T))
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
@@ -192,7 +192,7 @@ function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE
 		end
 		# Set lower bound for truncation based on position 
 		lb::T = if h < n_products # not yet last position 
-				zd_h[h] - (with_outside_option_dummy ? β[end] : zero(T))
+				zd_h[h + 1] - (with_outside_option_dummy ? β[end] : zero(T))
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
@@ -257,7 +257,7 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0,
 
 		# Set lower bound for truncation based on position 
 		lb = if h < n_products # not yet last position 
-				zd_h[h] - xβ_k
+				zd_h[h + 1] - xβ_k
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end

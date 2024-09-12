@@ -14,7 +14,7 @@ m = SDCore(
     zdfun = "log", 
     zsfun = "linear"
 )
-n_consumers = 200
+n_consumers = 1000
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed = 1, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
