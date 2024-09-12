@@ -1,6 +1,6 @@
 using Revise 
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
-
+seed = 123 
 m = SDCore( 
     β = [2.0, 4.5], 
     Ξ = 5.5, 
@@ -16,13 +16,13 @@ m = SDCore(
 )
 n_consumers = 1000
 @time data, utility_purchases = 
-                generate_data(m, n_consumers, 1; seed = 1, 
+                generate_data(m, n_consumers, 1; seed, 
                 conditional_on_click = false, conditional_on_click_iter = 100); 
 d = data
 d0 = deepcopy(d) 
 
 evaluate_fit(m, d, 50) 
-##
+
 m_hat = SD1( 
     β = m.β,
     Ξ = m.Ξ,
@@ -42,8 +42,8 @@ distribution_options[1] = false
 
 
 e = SmoothMLE(
-    options_numerical_integration = (n_draws = 100, n_draws_purchases = 100),
-    options_solver = (show_trace = true, show_every = 50), 
+    options_numerical_integration = (n_draws = 25, n_draws_purchases = 25),
+    options_solver = (show_trace = true, show_every = 1), 
     options_optimization = (algorithm = StructuralSearchModels.LBFGS(), differentiation = Optimization.AutoForwardDiff())
     )
 

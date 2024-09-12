@@ -38,12 +38,12 @@ function estimate_model(model::Model, estimator::MLE, data::Data;
 									options_problem...)
 
 	# Run optimization 
-	result_solver = 	solve(prob, options_optimization.algorithm; 
+	result_solver = solve(prob, options_optimization.algorithm; 
                             options_solver...);
 
     # Print complete solver solution if requested 
 	if print_solver_solution
-		println(res.original)
+		println(result_solver.original)
 	end
 
 	estimates = result_solver.minimizer
