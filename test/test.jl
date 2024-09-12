@@ -36,7 +36,10 @@ m_hat = SD1(
 )
 e = SmoothMLE()
 
-@time calculate_likelihood(m_hat, e, d; debug_print=true)
+distribution_options = fill(false, 4) 
+distribution_options[1] = false
+
+@time calculate_likelihood(m_hat, e, d; debug_print=true, distribution_options)
 
 ## 
 e = SmoothMLE(
@@ -46,6 +49,6 @@ e = SmoothMLE(
 
 
 @time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, d, e; 
-                                                                        distribution_options = fill(false,4)) 
+                                                                        distribution_options) 
 
 hcat(estimates, vectorize_parameters(m_hat))

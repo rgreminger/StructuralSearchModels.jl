@@ -36,7 +36,6 @@
 	@assert ρ[1] <= 0 "ρ[1] must be less or equal to zero for weakly decreasing discovery value across positions."
 end 
 
-
 # Estimation 
 function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD1	
 	

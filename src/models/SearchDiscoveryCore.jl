@@ -1320,7 +1320,7 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SD
 
 	# Default: estimate variance of ε, keep others fixed 
 	if !haskey(kwargs, :distribution_options)
-		dE = eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[end])) # convoluted way to allow for distributions other than Normal 
+		dE = eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[c])) # convoluted way to allow for distributions other than Normal 
 		dV = m.dV
 		dU0 = m.dU0
 		return dE, dV, dU0
@@ -1330,15 +1330,17 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SD
 
 	# Extract distributions
 	dE = 	if estimation_shock_distributions[1]
+				dE = eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[c]))
 				c += 1 
-				eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[c]))
+				dE 
 			else 	
 				m.dE
 			end
 
 	dV =	if estimation_shock_distributions[2]
+				dV = eval(nameof(typeof(m.dV)))(params(m.dV)[1:end-1]...,abs(θ[c]))
 				c += 1 
-				eval(nameof(typeof(m.dV)))(params(m.dV)[1:end-1]...,abs(θ[c]))
+				dV 
 			else 	
 				m.dV
 			end
@@ -1349,7 +1351,6 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SD
 				dV
 			elseif estimation_shock_distributions[4] 
 				np = length(params(m.dU0))
-				c += 1
 				eval(nameof(typeof(m.dU0)))(params(m.dU0)[1:end-np+1]...,abs.(θ[c:end])...)
 			else 	
 				m.dU0
