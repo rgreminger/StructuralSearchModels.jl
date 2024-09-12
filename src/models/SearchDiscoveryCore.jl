@@ -1308,7 +1308,7 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD, T <:
 	ξ = if fixed_parameters[4];  T(m.ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ; end
 	ξρ = if fixed_parameters[5];  T.(m.ξρ) ; else ; ind_current += n_ξρ ; θ[ind_current:ind_current + n_ξρ - 1 - 1] ; end
 
-	return β, Ξ, ρ, ξ,	ξρ, ind_current
+	return β, Ξ, ρ, ξ, ξρ, ind_current
 end
 
 function construct_model_from_pars(θ::Vector{T}, m::M; kwargs...) where {M <: SD, T <: Real}

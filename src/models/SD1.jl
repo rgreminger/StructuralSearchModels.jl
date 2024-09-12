@@ -101,9 +101,9 @@ function extract_parameters(m::SD1, θ::Vector{T}; kwargs...) where T <: Real
 	# Default: estimate all parameters
 	if !haskey(kwargs, :fixed_parameters)
 		β = θ[1:n_beta] ; ind_current += n_beta 
-		ξ = θ[ind_current] ; ind_current += 1
 		Ξ = θ[ind_current] ; ind_current += 1
 		ρ = θ[ind_current:ind_current + n_ρ - 1] ; ind_current += n_ρ
+		ξ = θ[ind_current] ; ind_current += 1
 		return β, Ξ, ρ, ξ, nothing, ind_current
 	end
 
