@@ -11,7 +11,7 @@ export calculate_costs!, calculate_discovery_value, calculate_search_cost, calcu
 export plot_across_positions, vectorize_parameters
 
 # Export concrete model types 
-export SDCore, SD1
+export SDCore, SD1, WM1
 
 # Export concrete estimator types
 export SmoothMLE
@@ -39,6 +39,7 @@ include("estimators/MLE.jl")                 # Maximum likelihood estimation
 
 # Load concrete model code 
 include("models/SearchDiscoveryCore.jl")     # Search and Discovery core model
+include("models/WM1.jl")
 include("models/SD1.jl")
 
 

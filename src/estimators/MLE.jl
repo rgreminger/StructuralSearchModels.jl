@@ -10,13 +10,16 @@ abstract type MLE <: Estimator end
 end 
 
 function estimate_model(model::Model, data::Data, estimator::MLE; 
-                            startvals = vectorize_parameters(model),
+                            startvals = nothing,
                             print_solver_solution = false,
                             kwargs...) 
     # Estimate the model using maximum likelihood estimation 
 
     # Prepare additional arguments for objective function 
 	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
+
+    # Set starting values based on defaults or user input
+    startvals = isnothing(startvals) ? vectorize_parameters(model; kwargs...) : startvals
 
 	############################################################################
 	# Optimization.jl optimization (wrapper around many solvers)
