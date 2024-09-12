@@ -37,7 +37,7 @@
 end 
 
 # Estimation 
-function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD1	
+function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD) 
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
@@ -52,7 +52,7 @@ end
 function vectorize_parameters(m::SD1; kwargs...)
 	# Default estimate all parameters 
 	θ = if !haskey(kwargs, :fixed_parameters)
-			θ = vcat(m.β, m.ξ, m.Ξ, m.ρ) 
+			θ = vcat(m.β, m.Ξ, m.ρ, m.ξ) 
 		else
 			fixed_parameters = get(kwargs, :fixed_parameters, nothing)
 			if !isnothing(fixed_parameters)
@@ -61,18 +61,17 @@ function vectorize_parameters(m::SD1; kwargs...)
 					θ = vcat(θ, m.β)
 				end
 				if !fixed_parameters[2]
-					θ = vcat(θ, m.ξ)
-				end
-				if !fixed_parameters[3]
 					θ = vcat(θ, m.Ξ)
 				end
-				if !fixed_parameters[4]
+				if !fixed_parameters[3]
 					θ = vcat(θ, m.ρ)
+				end
+				if !fixed_parameters[4]
+					θ = vcat(θ, m.ξ)
 				end
 			end
 			θ
 		end
-
 
 	θ = add_distribution_parameters(m, θ, kwargs)
 
@@ -86,12 +85,12 @@ function construct_model_from_pars(θ::Vector{T}, m::SD1; kwargs...) where T <: 
 	dE, dV, dU0 = extract_distributions(m, θ, ind_last_par; kwargs...)
 
 	# Construct model from parameters 
-	m_new = SD1{T}(; β, ξ, Ξ, ρ, dE, dV, dU0, zdfun = m.zdfun)
+	m_new = SD1{T}(; β, Ξ, ρ, ξ, dE, dV, dU0, zdfun = m.zdfun)
 
     return m_new 
 end
 
-function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD1, T <: Real}
+function extract_parameters(m::SD1, θ::Vector{T}; kwargs...) where T <: Real
 
 	n_beta = length(m.β)
 	n_ρ = length(m.ρ)
@@ -331,7 +330,7 @@ end
 
 Compute probability of searching without buying. This probability is given by P(xβ + ξ + ν_j >= lb ∩ xβ + ξ + ν_j + ε_j < ub). 
 """
-@inline function prob_search_not_buy(m::SD1, xβ::T, ξ::T, lb::T, ub::T,
+@inline function prob_search_not_buy(m::Union{SD1, WM1}, xβ::T, ξ::T, lb::T, ub::T,
 							dE::Normal{R1}, dV::Normal{R2})  where {T <: Real, R1 <: Real, R2 <: Real} 
 
 	σe = std(dE) 
@@ -351,7 +350,7 @@ end
 	function prob_not_search(u, z_j, dV)
 Compute probaility of not searching alternaitve, given chosen option has utility u. 
 """
-@inline function prob_not_search(m::SD1, u::T, z_j::T, dV) where T 
+@inline function prob_not_search(m::Union{SD1, WM1}, u::T, z_j::T, dV) where T 
 	return cdf(dV, u - z_j)
 end
 

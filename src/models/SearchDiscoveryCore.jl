@@ -1180,14 +1180,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	β, Ξ, ρ, ξ,	ξρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
 	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
 
-	if !isnothing(ρ) && ρ[1] > 0 
-		return -T(1e100)
-	end
-	
-	# Pre-compute search and discovery values across positions -> same for all consumers 
-	zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
-	zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, data.positions[1][h]) for h in 1:max_n_products]
-
 	if get(kwargs, :debug_print, false)
 		println("θ = $θ")
 		println("β = $β")
@@ -1199,6 +1191,24 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 		println("dV = $dV")
 		println("dU0 = $dU0")
 	end
+
+	if !isnothing(ρ) && ρ[1] > 0 
+		return -T(1e100)
+	end
+	
+	# Pre-compute search and discovery values across positions -> same for all consumers 
+	zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
+	zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, data.positions[1][h]) for h in 1:max_n_products]
+
+	if get(kwargs, :debug_print, false)
+		if !isnothing(zdfun)
+			println("zd_h = $(zd_h[1:min(5, end)])")
+		end
+		if !isnothing(zsfun)
+			println("zs_h = $(zs_h[1:min(5, end)])")
+		end
+	end
+
 
 	# Set seed for random number generation
 	set_seed(kwargs)
