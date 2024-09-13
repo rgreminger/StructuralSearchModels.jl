@@ -1,11 +1,11 @@
 using Revise 
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
-seed = 123 
+seed = 122 
 m = SDCore( 
-    β = [2.0, 4.5], 
-    Ξ = 5.5, 
-    ρ = [-0.5], 
-    ξ = 3.0,
+    β = [-0.05, 3.0], 
+    Ξ = 2.5, 
+    ρ = [-0.1], 
+    ξ = 1.5,
     ξρ = [0.0], 
     dE = Normal(0, 1.0), 
     dV = Normal(0, 1.0), 
@@ -17,7 +17,8 @@ m = SDCore(
 n_consumers = 1000
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
-                conditional_on_click = false, conditional_on_click_iter = 100); 
+                conditional_on_click = false, conditional_on_click_iter = 100,
+                products = generate_products(n_consumers; distribution = Normal(0,3)));
 d = data
 d0 = deepcopy(d) 
 
@@ -38,12 +39,11 @@ e = SmoothMLE()
 distribution_options = fill(false, 4) 
 distribution_options[1] = false
 
-@time calculate_likelihood(m_hat, e, d; debug_print=true, distribution_options)
-
+@time calculate_likelihood(m_hat, e, d; distribution_options)
 
 e = SmoothMLE(
     options_numerical_integration = (n_draws = 25, n_draws_purchases = 25),
-    options_solver = (show_trace = true, show_every = 1), 
+    options_solver = (show_trace = false, show_every = 1), 
     options_optimization = (algorithm = StructuralSearchModels.LBFGS(), differentiation = Optimization.AutoForwardDiff())
     )
 
