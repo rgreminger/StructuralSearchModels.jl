@@ -80,27 +80,26 @@ test_search_cost_correct()
 function test_welfare_calculations_same()
 
     m = SDCore( 
-        β = [1.0, 2.0], 
+        β = [0.0, -1e-16], 
         Ξ = -10.0, 
         ρ = [-0.6], 
-        ξ = -.5,
+        ξ = -1e-16,
         ξρ = [0.0], 
-        dE = Normal(0, 1.0), 
-        dV = Normal(0, 0.0), 
-        dU0 = Normal(0, 0.0), 
-        dW = Normal(0, 0) , 
+        dE = Normal(0.0, 0.5), 
+        dV = Normal(0.0, 1.0), 
+        dU0 = Normal(0, 0.1), 
+        dW = Normal(0, 0.0) , 
         zdfun = "linear", 
         zsfun = "linear"
     )
 
     n_consumers = 1
-    seed = 589542 # seed only matters for products, rest shocks are zero 
+    seed = 92458 # seed only matters for products, rest shocks are zero 
     @time data, utility_purchases = 
                     generate_data(m, n_consumers, 10000; seed , 
                     conditional_on_click = false, conditional_on_click_iter = 100); 
 
     calculate_costs!(m, data, 100000) 
-
 
     @time we = calculate_welfare(m, data, 1; method = "effective_values", seed ) ; 
 

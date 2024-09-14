@@ -3,24 +3,31 @@ using StructuralSearchModels, Revise, Distributions, StatsBase, Random, Benchmar
 seed = 122 
 m = SDCore( 
     β = [-0.05, 3.0], 
-    Ξ = 2.5, 
+    Ξ = 4.5, 
     ρ = [-0.1], 
-    ξ = 1.5,
+    ξ = 2.5,
     ξρ = [0.0], 
-    dE = Normal(0, 1.0), 
+    dE = Normal(1.0, 0.0), 
     dV = Normal(0, 1.0), 
     dU0 = Normal(0, 1), 
     dW = Normal(0, 0) , 
     zdfun = "log", 
     zsfun = "linear"
 )
-n_consumers = 1000
+n_consumers = 10000
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
+                # draws_e = fill(fill(2., 31), n_consumers),
                 conditional_on_click = false, conditional_on_click_iter = 100,
-                products = generate_products(n_consumers; distribution = Normal(0,3)));
+                products = generate_products(n_consumers; distribution = Normal(0,3)))
+
+isequal(data.search_paths, d0.)
+## 
+d0 = deepcopy(data)
+
+## 
+
 d = data
-d0 = deepcopy(d) 
 
 evaluate_fit(m, d, 50) 
 

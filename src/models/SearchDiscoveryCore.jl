@@ -280,74 +280,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	while true 
 
 		no_further_discoveries = pos > positions[i][end]
-		# Stop and buy 
-		if ( max_u >= zd || no_further_discoveries ) && max_u >= max_zs  
-			if i == 1 && debug_print
-				println("############################")
-				println("PURCHASE  ")
-				println("ij = ", ij)
-				println("n_prod = ", n_prod)
-				println("zs[1:5] = ", zs[1:5])
-				println("u[1:5] = ", u[1:5])
-				println("v[1:5] = ", v[1:5])
-
-				println("Position ", pos)
-				println("zd = ", zd)
-				println("max_zs = ", max_zs)
-				println("max_u = ", max_u)
-				println("ind_p = ", ind_p)
-			end
-
-			# Fill in purchase and stop indices 
-			indices_purchase[i] = ind_p 
-			indices_stop[i] = pos > positions[i][end] ? length(positions[i]) : ij # special case when discovered all positions, in which case ij was not updated 
-			utility_purchases[i] = max_u
-
-			if i == 1 && debug_print 
-				println("utiltiy_purchase = ", utility_purchases[i])
-			end
-			break 
-
-		# search next product 
-		elseif max_zs > max_u && (max_zs >= zd || no_further_discoveries)
-			if i == 1 && debug_print
-				println("############################")
-				println("SEARCH  ")
-				println("Position ", pos)
-				println("zd = ", zd)
-				println("zs[1:5] = ", zs[1:5])
-				println("u[1:5] = ", u[1:5])
-				println("v[1:5] = ", v[1:5])
-				println("max_zs = ", max_zs)
-				println("max_u = ", max_u)
-				println("ind_s = ", ind_s)	
-			end
-
-			# Increase number of searches and fill in next search 
-			ns += 1 
-			paths[i][min(ns, end)] = ind_s 
-			consideration_sets[i][ind_s] = true
-			
-			# Set search value to neg. infinity so that it is not searched again
-			zs[ind_s] = typemin(eltype(zs))
-			
-			# Get utility of searched product 
-			# note: recovering previously stored v_j draw as enters utility and search value 
-			u[ind_s] = take_or_generate_draw(e_draws, m.dE, i, ind_s) + v[ind_s] 
-
-			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
-				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
-			end	
-
-			# Update max utility 
-			if u[ind_s] > max_u 
-				max_u = u[ind_s]
-				ind_p = ind_s 
-			end
-			# Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen. 
-			max_zs, ind_s = findmax(zs) 
 		# discover more products
-		elseif max_u < zd && max_zs < zd && !no_further_discoveries
+		if zd >= max_u && zd >= max_zs && !no_further_discoveries
 
 			if i == 1 && debug_print 
 				println("############################")
@@ -386,6 +320,73 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			pos += 1 				   # next position 
 			zd = zdfun(m.Ξ, m.ρ, pos) # next position discovery value
 
+		# search next product 
+		elseif max_zs >= max_u && (max_zs >= zd || no_further_discoveries)
+			if i == 1 && debug_print
+				println("############################")
+				println("SEARCH  ")
+				println("Position ", pos)
+				println("zd = ", zd)
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
+				println("max_zs = ", max_zs)
+				println("max_u = ", max_u)
+				println("ind_s = ", ind_s)	
+			end
+
+			# Increase number of searches and fill in next search 
+			ns += 1 
+			paths[i][min(ns, end)] = ind_s 
+			consideration_sets[i][ind_s] = true
+			
+			# Set search value to neg. infinity so that it is not searched again
+			zs[ind_s] = typemin(eltype(zs))
+			
+			# Get utility of searched product 
+			# note: recovering previously stored v_j draw as enters utility and search value 
+			u[ind_s] = take_or_generate_draw(e_draws, m.dE, i, ind_s) + v[ind_s] 
+
+			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
+				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
+			end	
+
+			# Update max utility 
+			if u[ind_s] > max_u 
+				max_u = u[ind_s]
+				ind_p = ind_s 
+			end
+			# Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen. 
+			max_zs, ind_s = findmax(zs) 
+
+		# Stop and buy 
+		elseif ( max_u > zd || no_further_discoveries ) && max_u > max_zs  
+			if i == 1 && debug_print
+				println("############################")
+				println("PURCHASE  ")
+				println("ij = ", ij)
+				println("n_prod = ", n_prod)
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
+
+				println("Position ", pos)
+				println("zd = ", zd)
+				println("max_zs = ", max_zs)
+				println("max_u = ", max_u)
+				println("ind_p = ", ind_p)
+			end
+
+			# Fill in purchase and stop indices 
+			indices_purchase[i] = ind_p 
+			indices_stop[i] = pos > positions[i][end] ? length(positions[i]) : ij # special case when discovered all positions, in which case ij was not updated 
+			utility_purchases[i] = max_u
+
+			if i == 1 && debug_print 
+				println("utiltiy_purchase = ", utility_purchases[i])
+			end
+			break 
+		
 		else 
 			error("Should not reach this point.")
 		
@@ -639,7 +640,6 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_
 	search_costs_conditional_on_purchase = zeros(Float64, n_sim)
 	discovery_costs_conditional_on_purchase = zeros(Float64, n_sim)
 	
-
 	for sim in 1:n_sim
 		# Generate data from new seed 
 		new_seed = rand(1:1000000)
@@ -735,16 +735,14 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 	
 	# Loop over sims and calculate welfare measures for each
 	for s in 1:n_sim 
-		# Generate welfare measures for new seed	
-		new_seed = rand(1:1000000)
-		welfare_measures = _calculate_welfare_effective_values(m, d; seed = new_seed, kwargs...)
+		# Generate welfare measures 
+		welfare_measures = _calculate_welfare_effective_values(m, d; kwargs...)
 
 		# Unpack and fill in welfare measures
 		eff_value_choice_avg[s], discovery_costs_avg[s] = welfare_measures[1]
 		eff_value_choice_conditional_on_click[s], discovery_costs_conditional_on_click[s] = welfare_measures[2]
 		eff_value_choice_conditional_on_purchase[s], discovery_costs_conditional_on_purchase[s] = welfare_measures[3]
 	end
-
 
 	welfare_avg = eff_value_choice_avg - discovery_costs_avg
 	welfare_conditional_on_click = eff_value_choice_conditional_on_click - discovery_costs_conditional_on_click
@@ -760,7 +758,7 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 			mean.((welfare_conditional_on_purchase, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase))
 end
 
-function _calculate_welfare_effective_values(m, d; kwargs...)
+function _calculate_welfare_effective_values(m::SDCore, d::DataSD; kwargs...)
 
 	# Pre-allocate vectors to store welfare measures
 	n_ses = length(d)
@@ -791,8 +789,7 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 
 	max_products_per_session = maximum(length.(d.product_ids))
 
-
-	# # Create and define tasks for each chunk
+	# Create and define tasks for each chunk
 	tasks = map(data_chunks) do chunk 
 		Threads.@spawn begin 
 
@@ -819,10 +816,11 @@ function _calculate_welfare_effective_values(m, d; kwargs...)
 
 	n_click = sum(clicked)
 	n_purch = sum(purchased)
+	println("n_click = $n_click ")
+	println("n_purch = $n_purch ")
 
 	# Return averages across simulations
-	return (sum(eff_value_choice_avg), 
-				sum(discovery_costs_avg)) ./ n_ses, 
+	return (sum(eff_value_choice_avg), sum(discovery_costs_avg)) ./ n_ses, 
 		   (sum(eff_value_choice_conditional_on_click),
 		sum(discovery_costs_conditional_on_click)) ./ n_click,
 		   (sum(eff_value_choice_conditional_on_purchase), 
@@ -847,8 +845,9 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 
 	# Find number of discoveries 
 	zd = [zdfun(m.Ξ, m.ρ, pos) for pos in d.positions[i]]
-	last_product_discovered = max(searchsortedfirst(zd, wm - eps(typeof(wm)); rev = true) -1, 1)
-	ndiscoveries = d.positions[i][last_product_discovered]  
+	last_position_discovered = searchsortedfirst(zd, wm; rev = true) 
+	ndiscoveries = last_position_discovered - 1 # first one for free 
+
 	# note: discovery must stop at position where the effective value of chosen alternative exceeds the discovery value.
 	# searchsorted first finds position of first discovery value where this is the case, using eps() gives the value before the one found 
 	# ndiscoveries then is one less that position, where the max accounts for the case where multiple products have the same position=0. 
@@ -868,20 +867,16 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	# Conditional on click
 	has_click = false 
 
-	if has_purchase # always clicked if purchased
-		has_click = true 
-	else
-		for j in eachindex(d.product_ids[i])
-			if d.product_ids[i][j] == 0  # skip outside option 
-				continue 
-			end
-			if d.positions[i][j] < position_chosen && zs[j] >= wm # discovered before chosen alternative
-				has_click = true 
-				break 
-			elseif j <= last_product_discovered && zs[j] >= wm_tilde # discovered at the same time or after chosen alternative. 
-				has_click = true 
-				break
-			end
+	for j in eachindex(d.product_ids[i])
+		if d.product_ids[i][j] == 0  # skip outside option 
+			continue 
+		end
+		if d.positions[i][j] < position_chosen && zs[j] >= wm # discovered before chosen alternative
+			has_click = true 
+			break 
+		elseif d.positions[i][j] <= last_position_discovered && zs[j] >= wm_tilde # discovered at the same time or after chosen alternative. 
+			has_click = true 
+			break
 		end
 	end
 
@@ -924,7 +919,6 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
 				zd_j = zdfun(m.Ξ, m.ρ, positions[j])
 				ws[j] = min(ws[j], zd_j)
-
 			end
 		end
 
@@ -933,7 +927,7 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 end
 
 # Fit evaluations 
-function calcualte_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
+function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 	# Set seed 
 	set_seed(kwargs)
@@ -1115,7 +1109,7 @@ end
 function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 	# Calculate fit measures 
-	click_stats, purchase_stats, b_click, b_purch  = calcualte_fit_measures(m, data, n_sim; return_bounds = true, kwargs...)
+	click_stats, purchase_stats, b_click, b_purch  = calculate_fit_measures(m, data, n_sim; return_bounds = true, kwargs...)
 
 	# Put together plot 
 	fig = plot_across_positions((click_stats, purchase_stats), (b_click, b_purch); kwargs...)
