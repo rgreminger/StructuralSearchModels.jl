@@ -98,7 +98,16 @@ end
 
 function sessions_with_purchase(d::DataSD) 
 
-	return [d.product_ids[i][d.purchase_indices[i]] > 0 for i in eachindex(d)]
+	sp = Int64[] 
+	for i in 1:length(d) 
+		if d.product_ids[i][d.purchase_indices[i]] > 0 # if product_id > 0 -> not outside option /  purchase 
+			push!(sp, i)
+		end
+	end
+
+	return sp 
+
+	
 end
 
 # Data generation 
