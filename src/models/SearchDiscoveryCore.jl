@@ -5,12 +5,13 @@ abstract type SD <: Model end
 
 # Fields:  
 - `β::Vector{T}`: vector of preference weights. 
-- `cs`: search costs. Initialized as nothing by to avoid computational cost. Can be updated through `calculate_costs!(m, data; kwargs...)`. 
-- `cd`: discovery costs. Initialized in the same way as `cs`, and is also added in `calculate_costs!(m, data; kwargs...)`.
 - `Ξ::T`: baseline Ξ.
 - `ρ::Vector{T}`: parameters governing decrease of Ξ across positions.
 - `ξ::T`: baseline ξ.
 - `ξρ::Vector{T}`: parameters governing decrease of ξ across positions.
+- `cd::Union{T, Nothing}`: discovery costs. Initialized as nothing by to avoid computational cost. Can be updated through `calculate_costs!(m, data; kwargs...)`. 
+- `cs::Union{T, Nothing}`: baseline search costs. Initialized in the same way as `cd`, and is also added in `calculate_costs!(m, data; kwargs...)`.
+- `cs_h::Union{Vector{T}, T}`: position-specific search costs. Initialized in the same way as `cd`, and is also added in `calculate_costs!(m, data; kwargs...)`.
 - `dE::Distribution`: distribution of ε_{ij}.
 - `dV::Distribution`: distribution of ν_{ij}.
 - `dU0::Distribution`: distribution of u_{i0}. 
@@ -21,12 +22,13 @@ abstract type SD <: Model end
 """
 @with_kw mutable struct SDCore{T} <: SD where T <: Real
 	β::Vector{T} 
-	cs::Union{T, Nothing}	= nothing 
-	cd::Union{T, Nothing}	= nothing 
 	Ξ::T
 	ρ::Vector{T}
 	ξ::T
 	ξρ::Vector{T}
+	cd::Union{T, Nothing}	= nothing 
+	cs::Union{T, Nothing}	= nothing 
+	cs_h::Union{Vector{T}, Nothing}	= nothing 
 	dE::Distribution
 	dV::Distribution
 	dU0::Distribution
@@ -81,7 +83,8 @@ end
 function getindex(d::DataSD, elements...) 
 	i = vcat(elements...)
 	
-	return DataSD(d.consumer_ids[i], d.product_ids[i], d.product_characteristics[i], d.positions[i], d.search_paths == nothing ? nothing : d.search_paths[i], d.consideration_sets[i], d.purchase_indices[i], d.stop_indices[i])
+	return DataSD(d.consumer_ids[i], d.product_ids[i], d.product_characteristics[i], d.positions[i], d.consideration_sets[i], d.purchase_indices[i], 
+	isnothing(d.min_discover_indices) ? nothing : d.min_discover_indices[i], isnothing(d.search_paths) ? nothing : d.search_paths[i], isnothing(d.stop_indices) ? nothing : d.stop_indices[i])
 end
 
 function eachindex(d::DataSD) 
@@ -419,12 +422,13 @@ end
 Calculate search and discovery costs for the Search and Discovery model `m` and data `d`. Uses `n_draws` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true, the costs are recomputed even if they are already present in the model.
 	
 """
-function calculate_costs!(m::SD, d, n_draws_cd; 
+function calculate_costs!(m::SDCore, d, n_draws_cd; 
 							force_recompute = true,
 							cd_kwargs...)
 	# Search costs 
 	if isnothing(m.cs) || force_recompute
 		m.cs = calculate_search_cost(m) 
+		m.cs_h = calculate_position_specific_search_costs(m, d)
 	end
 	# Discovery costs
 	if isnothing(m.cd) || force_recompute
@@ -434,7 +438,7 @@ function calculate_costs!(m::SD, d, n_draws_cd;
 end
 
 """ 
-	calculate_search_cost(m::SearchDiscovery)
+	calculate_search_cost(m::SD)
 
 Calculate search costs for the SD model given `ξ` and the distribution of ε `dE`. 
 """
@@ -445,6 +449,19 @@ function calculate_search_cost(m::SD)
 	return quadgk(e->(1-cdf(F ,e)), ξ, maximum(F))[1]
 end
 
+""" 
+	calculate_position_specific_search_costs(m::SD, d::DataSD)
+
+Calculate position-specific search costs for the SD model given `ξ`, `ξρ` and the distribution of ε `dE`. 
+"""
+function calculate_position_specific_search_costs(m::SD, d::DataSD)
+	F = m.dE
+	zsfun = get_functional_form(m.zsfun)
+	max_n_products = maximum(length.(d.product_ids))
+	ξ_j = [zsfun(m.ξ, m.ξρ, h) for h in 1:max_n_products]
+
+	return [quadgk(e->(1-cdf(F ,e)), ξ, maximum(F))[1] for ξ in ξ_j]
+end
 
 """
 	calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
@@ -821,9 +838,10 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 
 	# Find number of discoveries 
 	zd = [zdfun(m.Ξ, m.ρ, pos) for pos in d.positions[i]]
-	ndiscoveries = d.positions[i][max(searchsortedfirst(zd, wm; rev = true) - 1, 1)]  
+	last_product_discovered = max(searchsortedfirst(zd, wm - eps(typeof(wm)); rev = true) -1, 1)
+	ndiscoveries = d.positions[i][last_product_discovered]  
 	# note: discovery must stop at position where the effective value of chosen alternative exceeds the discovery value.
-	# searchsorted first finds position of first discovery value where this is the case.
+	# searchsorted first finds position of first discovery value where this is the case, using eps() gives the value before the one found 
 	# ndiscoveries then is one less that position, where the max accounts for the case where multiple products have the same position=0. 
 	
 	# Fill in welfare measures
@@ -831,7 +849,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	discovery_costs_avg[i] = m.cd * ndiscoveries
 
 	# Conditional on purchase 
-	has_purchase = im > 1 
+	has_purchase = d.product_ids[i][im] > 0 # purchased if not outside option
 	if has_purchase 
 		eff_value_choice_conditional_on_purchase[i] = wm_tilde 
 		discovery_costs_conditional_on_purchase[i] = m.cd * ndiscoveries
@@ -848,14 +866,11 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 			if d.product_ids[i][j] == 0  # skip outside option 
 				continue 
 			end
-			if d.positions[i][j] < position_chosen && zs[j] >= wm # searched before discovering chosen alternative
+			if d.positions[i][j] < position_chosen && zs[j] >= wm # discovered before chosen alternative
 				has_click = true 
 				break 
-			elseif d.positions[i][j] == position_chosen && zs[j] >= wm_tilde 
+			elseif j <= last_product_discovered && zs[j] >= wm_tilde # discovered at the same time or after chosen alternative. 
 				has_click = true 
-				break
-			elseif min(zs[j], zd[j]) >= wm_tilde # searched after discovering chosen alternative, requires that (i) discovered and that z_s > w_tilde
-				has_click = true
 				break
 			end
 		end
@@ -886,12 +901,12 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 			e = rand(m.dE); v = rand(m.dV) ; w = rand(m.dW)
 
 			# Fill in utility
-			xβ = chars[j, :] * m.β
+			xβ = @views chars[j, :]' * m.β
 			u[j] = xβ + e + v
 
 			# Fill in search value 
 			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
-			zs[j] = xβ + ξ_j + w 
+			zs[j] = xβ + ξ_j + v + w
 
 			# Fill in effective value 
 			ws[j] = xβ + v + min(ξ_j + w, e) 
@@ -900,6 +915,7 @@ function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
 				zd_j = zdfun(m.Ξ, m.ρ, positions[j])
 				ws[j] = min(ws[j], zd_j)
+
 			end
 		end
 

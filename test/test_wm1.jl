@@ -80,3 +80,8 @@ for s in 1:n_sim
 end
 
 hcat(mean(estimates_store, dims = 2), std(estimates_store, dims = 2), minimum(estimates_store, dims = 2), maximum(estimates_store, dims = 2))
+
+
+## welfare
+calculate_costs!(m_hat, d)
+calculate_welfare(m_hat, d, 1000) 

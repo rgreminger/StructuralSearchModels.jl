@@ -53,3 +53,8 @@ startvals = vectorize_parameters(m_hat; distribution_options) .* 0.8
                                                                         distribution_options) 
 
 hcat(estimates, vectorize_parameters(m_hat; distribution_options))
+
+
+## 
+calculate_costs!(m_hat, d, 10000)
+calculate_welfare(m_hat, d, 100) 

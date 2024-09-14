@@ -36,6 +36,27 @@
 	@assert ρ[1] <= 0 "ρ[1] must be less or equal to zero for weakly decreasing discovery value across positions."
 end 
 
+# Functions from SDCore to SD1
+SDCore(m::SD1) = SDCore(; β = m.β, Ξ = m.Ξ, ρ = m.ρ, ξ = m.ξ, ξρ = [0.0], cs = m.cs, cd = m.cd, 
+							dE = m.dE, dV = m.dV, dU0 = m.dU0, dW = Normal(0, 0), zdfun = m.zdfun, zsfun = "linear", unobserved_heterogeneity = m.unobserved_heterogeneity)
+
+calculate_welfare(model::SD1, data::DataSD, n_sim; method = "effective_values", kwargs...) = calculate_welfare(SDCore(model), data, n_sim; method = method, kwargs...)
+
+function calculate_costs!(m::SD1, d, n_draws_cd; 
+							force_recompute = true,
+							cd_kwargs...)
+
+	m1 = SDCore(m) 
+	calculate_costs!(m1, d, n_draws_cd; force_recompute, cd_kwargs...) 
+
+	m.cs = m1.cs
+	m.cd = m1.cd 
+
+	return nothing 
+end
+
+
+
 # Estimation 
 function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD) 
 	

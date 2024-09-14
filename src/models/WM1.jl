@@ -20,17 +20,37 @@
 
 @with_kw mutable struct WM1{T} <: SD where T <: Real
 	β::Vector{T} 
-	cs::Union{T, Nothing}	= nothing 
-	cd::Union{T, Nothing}	= nothing 
 	ξ::T
 	ρ::Vector{T}
+	cs::Union{T, Nothing}	= nothing 
+	cs_h::Union{Vector{T}, Nothing}	= nothing 
 	dE::Distribution
 	dV::Distribution
 	dU0::Distribution
 	zsfun::String 
 	unobserved_heterogeneity::Dict = Dict()
-
 end 
+
+# Functions from SDCore to WM1 
+SDCore(m::WM1) = SDCore(; β = m.β, Ξ = Inf, ρ = [-1e-100], ξ = m.ξ, ξρ = m.ρ, cd = 0.0, cs = m.cs, cs_h = m.cs_h, dE = m.dE, dV = m.dV, dU0 = m.dU0, dW = Normal(0, 0), zdfun = "linear", zsfun = m.zsfun,  unobserved_heterogeneity = m.unobserved_heterogeneity)
+
+calculate_welfare(model::WM1, data::DataSD, n_sim; method = "effective_values", kwargs...) = calculate_welfare(SDCore(model), data, n_sim; method = method, kwargs...)
+
+function calculate_costs!(m::WM1, d; 
+	force_recompute = true,
+	cd_kwargs...)
+
+	m1 = SDCore(m) 
+	calculate_costs!(m1, d, 1; force_recompute, cd_kwargs...) 
+
+	m.cs = m1.cs
+	m.cs_h = m1.cs_h
+
+	return nothing 
+end
+
+
+
 
 # Estimation 
 function prepare_arguments_likelihood(m::WM1, estimator::Estimator, d::DataSD) 
