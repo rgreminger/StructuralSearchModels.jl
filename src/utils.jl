@@ -57,9 +57,11 @@ end
 
 # Set seed 
 function set_seed(kwargs)
-    # Set seed 
-	seed = get(kwargs, :seed, 29387) # if no seed set, just draw one
-	Random.seed!(seed)
+    # Set seed if given 
+	seed = get(kwargs, :seed, nothing) # if no seed set, just draw one
+	if !isnothing(seed)
+		Random.seed!(seed)
+	end
     return nothing 
 end
 
@@ -72,6 +74,29 @@ end
 		return draws[i][j]
 	end
 end
+
+function get_precomputed_draws(kwargs) 
+	draws_u0 = get(kwargs, :draws_u0, nothing)
+	draws_e = get(kwargs, :draws_e, nothing)
+	draws_v = get(kwargs, :draws_v, nothing)
+	draws_w = get(kwargs, :draws_w, nothing)
+
+	return (draws_u0, draws_e, draws_v, draws_w)
+end
+
+function get_precomputed_draws_indexed(kwargs, s) 
+
+	draws_u0, draws_e, draws_v, draws_w = get_precomputed_draws(kwargs)
+
+	draws_u0 = isnothing(draws_u0) ? nothing : @views draws_u0[s]
+	draws_e = isnothing(draws_e) ? nothing : @views draws_e[s]
+	draws_v = isnothing(draws_v) ? nothing : @views draws_v[s]
+	draws_w = isnothing(draws_w) ? nothing : @views draws_w[s]
+
+	return (draws_u0, draws_e, draws_v, draws_w)
+end
+
+	
 
 ##################################################################################
 # Computations for bivariate normal 

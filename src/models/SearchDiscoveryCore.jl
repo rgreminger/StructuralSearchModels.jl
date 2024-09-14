@@ -113,7 +113,7 @@ end
 # Data generation 
 function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer; 
 						n_A0 = 1, n_d = 1, 
-						products = generate_products(n_consumers*n_sessions_per_consumer; seed = 12837), 
+						products = generate_products(n_consumers*n_sessions_per_consumer;), 
 						kwargs...) 
 
 	n_sessions = n_consumers * n_sessions_per_consumer 
@@ -166,12 +166,8 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 	utility_purchases = zeros(Float64, n_sessions)
 
 	# Get draws from kwargs
-	draws_u0 = get(kwargs, :draws_u0, nothing)
-	draws_e = get(kwargs, :draws_e, nothing)
-	draws_v = get(kwargs, :draws_v, nothing)
-	draws_w = get(kwargs, :draws_w, nothing)
-	draws_shocks = (draws_u0, draws_e, draws_v, draws_w)
-
+	draws_shocks = get_precomputed_draws(kwargs)
+	
 	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
 	# creates the search path.
 	_, data_chunks = get_chunks(n_sessions)
@@ -626,12 +622,10 @@ function calculate_welfare(m::SDCore, data::DataSD, n_sim;
 	end
 end
 
-function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_generation...)
+function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 	# Set seed 
-	set_seed(kwargs_data_generation)
-
-	# Iterate over simulation draws and calculate welfare measures for each 
+	set_seed(kwargs)
 
 	# Average across all consumers 
 	utility_choice_avg = zeros(Float64, n_sim)
@@ -649,11 +643,17 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs_data_
 	search_costs_conditional_on_purchase = zeros(Float64, n_sim)
 	discovery_costs_conditional_on_purchase = zeros(Float64, n_sim)
 	
+	# Iterate over simulation draws and calculate welfare measures for each 
 	for sim in 1:n_sim
-		# Generate data from new seed 
-		new_seed = rand(1:1000000)
-		d_sim, utility_purchases = generate_data(m, data; seed = new_seed, kwargs_data_generation...) 
 
+		# Get draws shocks if provided 
+		draws_u0, draws_e, draws_v, draws_w = get_precomputed_draws_indexed(kwargs, sim)
+
+		# Generate data from new seed 
+		new_seed = rand(1:10^9)
+		d_sim, utility_purchases = generate_data(m, data; kwargs..., 
+									seed = new_seed, draws_u0, draws_e, draws_v, draws_w) 
+		
 		# Compute paid costs 
 		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim)
 
@@ -742,10 +742,26 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 	eff_value_choice_conditional_on_purchase = zeros(Float64, n_sim)
 	discovery_costs_conditional_on_purchase = zeros(Float64, n_sim)
 	
+	# Pre-allocate vectors to store welfare measures
+	n_ses = length(d)
+	vectors_to_fill = preallocate_welfare_vectors(n_ses)
+
+	# Extract funtional forms 
+	zdfun = get_functional_form(m.zdfun)
+	zsfun = get_functional_form(m.zsfun)	
+
+	# Get draws shocks if provided 
+	draws_u0_store, draws_e_store, draws_v_store, draws_w_store = get_precomputed_draws(kwargs)
+
 	# Loop over sims and calculate welfare measures for each
 	for s in 1:n_sim 
+
+		# Retrieve draws for current simulation (if available)
+		draws_s = get_precomputed_draws_indexed(kwargs, s)
+
 		# Generate welfare measures 
-		welfare_measures = _calculate_welfare_effective_values(m, d; kwargs...)
+		welfare_measures = _calculate_welfare_effective_values(m, d, vectors_to_fill, zdfun, zsfun, 
+																draws_s)
 
 		# Unpack and fill in welfare measures
 		eff_value_choice_avg[s], discovery_costs_avg[s] = welfare_measures[1]
@@ -767,31 +783,31 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 			mean.((welfare_conditional_on_purchase, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase))
 end
 
-function _calculate_welfare_effective_values(m::SDCore, d::DataSD; kwargs...)
-
-	# Pre-allocate vectors to store welfare measures
-	n_ses = length(d)
-
-	# Extract funtional forms 
-	zdfun = get_functional_form(m.zdfun)
-	zsfun = get_functional_form(m.zsfun)
+function preallocate_welfare_vectors(n_ses) 
 
 	# Average across all consumers 
-	eff_value_choice_avg = get(kwargs, :eff_value_choice, zeros(Float64, n_ses))
-	discovery_costs_avg = get(kwargs, :discovery_costs_avg, zeros(Float64, n_ses))
+	eff_value_choice_avg = zeros(Float64, n_ses)
+	discovery_costs_avg = zeros(Float64, n_ses)
 
 	# Average conditional on click 
-	eff_value_choice_conditional_on_click = get(kwargs, :eff_value_choice_conditional_on_click, zeros(Float64, n_ses))
-	discovery_costs_conditional_on_click = get(kwargs, :discovery_costs_conditional_on_click, zeros(Float64, n_ses))
+	eff_value_choice_conditional_on_click = zeros(Float64, n_ses)
+	discovery_costs_conditional_on_click = zeros(Float64, n_ses)
 	clicked = fill(false, n_ses) # track number of clicks to calculate conditional 
 
 	# Average conditional on purchase
-	eff_value_choice_conditional_on_purchase = get(kwargs, :eff_value_choice_conditional_on_purchase, zeros(Float64, n_ses))
-	discovery_costs_conditional_on_purchase = get(kwargs, :discovery_costs_conditional_on_purchase, zeros(Float64, n_ses))
+	eff_value_choice_conditional_on_purchase = zeros(Float64, n_ses)
+	discovery_costs_conditional_on_purchase =  zeros(Float64, n_ses)
+
 	purchased = fill(false, n_ses) # track number of purchases to calculate conditional
 
 	vectors_to_fill = (eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased)
 
+	return vectors_to_fill
+end	
+function _calculate_welfare_effective_values(m::SDCore, d::DataSD, vectors_to_fill, zdfun, zsfun, draws_shocks)
+
+	n_ses = length(d)
+	
 	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
 	# creates the search path.
 	_, data_chunks = get_chunks(n_ses)
@@ -816,15 +832,18 @@ function _calculate_welfare_effective_values(m::SDCore, d::DataSD; kwargs...)
 				ws .= typemin(Float64)
 				fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated, 
 													m, zdfun, zsfun,
-													d, i)
+													d, i,
+													draws_shocks)
 			end
 		end
 	end
 
 	fetch.(tasks)
 
-	n_click = sum(clicked)
-	n_purch = sum(purchased)
+	@views	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
+
+	n_click = sum(vectors_to_fill[5])
+	n_purch = sum(vectors_to_fill[end])
 
 	# Return averages across simulations
 	return (sum(eff_value_choice_avg), sum(discovery_costs_avg)) ./ n_ses, 
@@ -836,14 +855,17 @@ end
 
 function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated, 
 											m, zdfun, zsfun, 
-											d, i)
-
-	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
-
-	u, zs, ws, ws_tilde = vectors_preallocated
+											d, i,
+											draws_shocks)
 
 	# fill in search and effective values for session i
-	fill_uzw_values!(u, zs, ws, ws_tilde,  m, zdfun, zsfun, d, i) 
+	fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks) 
+
+	# Extract pre-allocated vectors   
+	u, zs, ws, ws_tilde = vectors_preallocated
+
+	# extract vectors to track welfare measures
+	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
 
 	wm, im = findmax(ws)
 
@@ -895,21 +917,26 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 
 end
 
-function fill_uzw_values!(u, zs, ws, ws_tilde, m, zdfun, zsfun, d, i)
+function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks)
 	chars = d.product_characteristics[i]
 	positions = d.positions[i]
 	product_ids = d.product_ids[i]
 
+	u, zs, ws, ws_tilde = vectors_preallocated
+	u0_draws, e_draws, v_draws, w_draws = draws_shocks 
+
 	for j in eachindex(product_ids)
 		# Outside option
 		if product_ids[j] == 0 
-			u[j] = rand(m.dU0) + chars[j, end] * m.β[end]
+			u[j] = take_or_generate_draw(u0_draws, m.dU0, i, j) + chars[j, end] * m.β[end]
 			ws[j] = u[j]
 			ws_tilde[j] = u[j]
 			# zs not used 
 		else
 			# Take draws 
-			e = rand(m.dE); v = rand(m.dV) ; w = rand(m.dW)
+			e = take_or_generate_draw(e_draws, m.dE, i, j)
+			v = take_or_generate_draw(v_draws, m.dV, i, j)
+			w = take_or_generate_draw(w_draws, m.dW, i, j)
 
 			# Fill in utility
 			xβ = @views chars[j, :]' * m.β

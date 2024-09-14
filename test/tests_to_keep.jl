@@ -122,3 +122,43 @@ function test_welfare_calculations_same()
 end
 
 test_welfare_calculations_same() 
+
+##
+
+m = SDCore( 
+    β = [0.3, -1e-16], 
+    Ξ = 5.0, 
+    ρ = [-0.6], 
+    ξ = -1e-17,
+    ξρ = [0.0], 
+    dE = Normal(0.0, 1.0), 
+    dV = Normal(0.0, 1.0), 
+    dU0 = Normal(0, 1.0), 
+    dW = Normal(0, 0.0) , 
+    zdfun = "linear", 
+    zsfun = "linear"
+)
+
+n_consumers = 100
+seed = 928 # seed only matters for products, rest shocks are zero 
+data, utility_purchases = 
+                generate_data(m, n_consumers, 1; 
+                seed = 1, 
+                conditional_on_click = false, conditional_on_click_iter = 100); 
+
+calculate_costs!(m, data, 100000) 
+
+
+n_sim = 10 
+n_products = maximum(length.(d.product_ids))
+# draws_u0 = [[rand(m.dU0) for i in 1:length(d)] for s in 1:n_sim] 
+@time wc = calculate_welfare(m, data, n_sim; method = "simulate_paths", draws_u0) ;
+
+println("Avg. welfare = $(wc[1][1])") 
+
+## 
+
+draws_u0 = [[rand(m.dU0) for i in 1:length(d)] for s in 1:n_sim] 
+
+## 
+@time wc = calculate_welfare(m, data, n_sim; method = "effective_values") ;
