@@ -55,6 +55,11 @@ startvals = vectorize_parameters(m_hat; distribution_options) .* 0.8
 hcat(estimates, vectorize_parameters(m_hat; distribution_options))
 
 
+## Standard errors 
+m_hat = construct_model_from_pars(estimates, m_hat; distribution_options) 
+se = calculate_standard_errors(m_hat, e, d)
+
+
 ## 
 calculate_costs!(m_hat, d, 10000)
 calculate_welfare(m_hat, d, 100) 

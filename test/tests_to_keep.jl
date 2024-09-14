@@ -80,30 +80,31 @@ test_search_cost_correct()
 function test_welfare_calculations_same()
 
     m = SDCore( 
-        β = [0.0, 0.0], 
-        Ξ = 4., 
-        ρ = [-0.5], 
-        ξ = 3.0,
+        β = [1.0, 2.0], 
+        Ξ = -10.0, 
+        ρ = [-0.6], 
+        ξ = -.5,
         ξρ = [0.0], 
-        dE = Normal(0, 0.0), 
+        dE = Normal(0, 1.0), 
         dV = Normal(0, 0.0), 
-        dU0 = Normal(0, 0), 
+        dU0 = Normal(0, 0.0), 
         dW = Normal(0, 0) , 
         zdfun = "linear", 
         zsfun = "linear"
     )
 
-    n_consumers = 5000
+    n_consumers = 1
+    seed = 589542 # seed only matters for products, rest shocks are zero 
     @time data, utility_purchases = 
-                    generate_data(m, n_consumers, 1; seed = 423, 
+                    generate_data(m, n_consumers, 10000; seed , 
                     conditional_on_click = false, conditional_on_click_iter = 100); 
 
     calculate_costs!(m, data, 100000) 
 
 
-    we = calculate_welfare(m, data, 100; method = "effective_values") ; 
+    @time we = calculate_welfare(m, data, 1; method = "effective_values", seed ) ; 
 
-    wc = calculate_welfare(m, data, 100; method = "simulate_paths") ;
+    @time wc = calculate_welfare(m, data, 1; method = "simulate_paths", seed ) ;
 
     println("###################")
     println("Avg welfare effective values = $(we[1][1])")   
@@ -124,3 +125,4 @@ function test_welfare_calculations_same()
 end
 
 test_welfare_calculations_same() 
+

@@ -3,7 +3,7 @@ using StructuralSearchModels, Revise, Distributions, StatsBase, Random, Benchmar
 
 seed = 12125
 m = SDCore( 
-    β = [-0.05, 3.0], 
+    β = [-0.2, 3.0], 
     Ξ = 100000., 
     ρ = [-1e-100], 
     ξ = 1.5,
@@ -54,6 +54,11 @@ startvals = vectorize_parameters(m_hat; distribution_options) .* 0.5
                                                                         distribution_options) 
 
 hcat(estimates, vectorize_parameters(m_hat; distribution_options))
+
+
+## standard errors 
+m_hat = construct_model_from_pars(estimates, m_hat) 
+se = calculate_standard_errors(m_hat, e, d)
 
 ## 
 @time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, d, e) 

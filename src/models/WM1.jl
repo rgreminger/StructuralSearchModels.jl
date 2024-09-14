@@ -94,11 +94,11 @@ end
 function construct_model_from_pars(θ::Vector{T}, m::WM1; kwargs...) where T <: Real
 
 	# Extract parameters from vector, some may be fixed through kwargs 
-	β, _, _, ξ,	ρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
+	β, _, _, ξ,	ρ, ind_last_par  = extract_parameters(m, θ; kwargs...)
 	dE, dV, dU0 = extract_distributions(m, θ, ind_last_par; kwargs...)
 
 	# Construct model from parameters 
-	m_new = WM1{T}(; β, ξ, ρ, dE, dV, dU0, zdfun = m.zdfun)
+	m_new = WM1{T}(; β, ξ, ρ, dE, dV, dU0, zsfun = m.zsfun)
 
     return m_new 
 end

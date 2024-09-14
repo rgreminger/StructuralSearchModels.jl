@@ -79,6 +79,8 @@ function calculate_standard_errors(model::Model, estimator::MLE, data::Data;
 	# Compute Hessian for negative likelihood function 
     f(θ) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...)
 
+    options_optimization = estimator.options_optimization
+
     H = if options_optimization.differentiation == Optimization.AutoForwardDiff() # default, use autodiff 
 		    ForwardDiff.hessian(f, θ)
         elseif options_optimization.differentiation == Optimization.AutoFiniteDiff() # use finite differences
