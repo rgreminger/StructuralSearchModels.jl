@@ -269,9 +269,76 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
 	# Loop through discovering more products and searching 
 	while true 
-	
+
+		no_further_discoveries = pos > positions[i][end]
+		# Stop and buy 
+		if ( max_u >= zd || no_further_discoveries ) && max_u >= max_zs  
+			if i == 1 && debug_print
+				println("############################")
+				println("PURCHASE  ")
+				println("ij = ", ij)
+				println("n_prod = ", n_prod)
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
+
+				println("Position ", pos)
+				println("zd = ", zd)
+				println("max_zs = ", max_zs)
+				println("max_u = ", max_u)
+				println("ind_p = ", ind_p)
+			end
+
+			# Fill in purchase and stop indices 
+			indices_purchase[i] = ind_p 
+			indices_stop[i] = pos > positions[i][end] ? length(positions[i]) : ij # special case when discovered all positions, in which case ij was not updated 
+			utility_purchases[i] = max_u
+
+			if i == 1 && debug_print 
+				println("utiltiy_purchase = ", utility_purchases[i])
+			end
+			break 
+
+		# search next product 
+		elseif max_zs > max_u && (max_zs >= zd || no_further_discoveries)
+			if i == 1 && debug_print
+				println("############################")
+				println("SEARCH  ")
+				println("Position ", pos)
+				println("zd = ", zd)
+				println("zs[1:5] = ", zs[1:5])
+				println("u[1:5] = ", u[1:5])
+				println("v[1:5] = ", v[1:5])
+				println("max_zs = ", max_zs)
+				println("max_u = ", max_u)
+				println("ind_s = ", ind_s)	
+			end
+
+			# Increase number of searches and fill in next search 
+			ns += 1 
+			paths[i][min(ns, end)] = ind_s 
+			consideration_sets[i][ind_s] = true
+			
+			# Set search value to neg. infinity so that it is not searched again
+			zs[ind_s] = typemin(eltype(zs))
+			
+			# Get utility of searched product 
+			# note: recovering previously stored v_j draw as enters utility and search value 
+			u[ind_s] = rand(m.dE) + v[ind_s] 
+
+			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
+				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
+			end	
+
+			# Update max utility 
+			if u[ind_s] > max_u 
+				max_u = u[ind_s]
+				ind_p = ind_s 
+			end
+			# Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen. 
+			max_zs, ind_s = findmax(zs) 
 		# discover more products
-		if max_u < zd && max_zs < zd && pos <= positions[i][end]
+		elseif max_u < zd && max_zs < zd && !no_further_discoveries
 
 			if i == 1 && debug_print 
 				println("############################")
@@ -309,73 +376,6 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			# Update discovery value and position 
 			pos += 1 				   # next position 
 			zd = zdfun(m.Ξ, m.ρ, pos) # next position discovery value
-
-		# Stop and buy 
-		elseif ( max_u >= zd || pos > positions[i][end] ) && max_u >= max_zs  
-			if i == 1 && debug_print
-				println("############################")
-				println("PURCHASE  ")
-				println("ij = ", ij)
-				println("n_prod = ", n_prod)
-				println("zs[1:5] = ", zs[1:5])
-				println("u[1:5] = ", u[1:5])
-				println("v[1:5] = ", v[1:5])
-
-				println("Position ", pos)
-				println("zd = ", zd)
-				println("max_zs = ", max_zs)
-				println("max_u = ", max_u)
-				println("ind_p = ", ind_p)
-			end
-
-			# Fill in purchase and stop indices 
-			indices_purchase[i] = ind_p 
-			indices_stop[i] = pos > positions[i][end] ? length(positions[i]) : ij # special case when discovered all positions, in which case ij was not updated 
-			utility_purchases[i] = max_u
-
-			if i == 1 && debug_print 
-				println("utiltiy_purchase = ", utility_purchases[i])
-			end
-			break 
-
-		# search next product 
-		elseif (max_zs > max_u && max_zs >= zd) || pos > positions[i][end]
-			if i == 1 && debug_print
-				println("############################")
-				println("SEARCH  ")
-				println("Position ", pos)
-				println("zd = ", zd)
-				println("zs[1:5] = ", zs[1:5])
-				println("u[1:5] = ", u[1:5])
-				println("v[1:5] = ", v[1:5])
-				println("max_zs = ", max_zs)
-				println("max_u = ", max_u)
-				println("ind_s = ", ind_s)	
-			end
-
-			# Increase number of searches and fill in next search 
-			ns += 1 
-			paths[i][min(ns, end)] = ind_s 
-			consideration_sets[i][ind_s] = true
-			
-			# Set search value to neg. infinity so that it is not searched again
-			zs[ind_s] = typemin(eltype(zs))
-			
-			# Get utility of searched product 
-			# note: recovering previously stored v_j draw as enters utility and search value 
-			u[ind_s] = rand(m.dE) + v[ind_s] 
-
-			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
-				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
-			end	
-
-			# Update max utility 
-			if u[ind_s] > max_u 
-				max_u = u[ind_s]
-				ind_p = ind_s 
-			end
-			# Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen. 
-			max_zs, ind_s = findmax(zs) 
 
 		else 
 			error("Should not reach this point.")
