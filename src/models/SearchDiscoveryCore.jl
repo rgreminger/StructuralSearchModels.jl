@@ -97,8 +97,8 @@ function sessions_with_clicks(d::DataSD)
 end
 
 function sessions_with_purchase(d::DataSD) 
-	has_purchase = x -> x > 1
-	return findall(has_purchase, d.purchase_indices)
+
+	return [d.product_ids[i][d.purchase_indices[i]] > 0 for i in eachindex(d)]
 end
 
 # Data generation 
