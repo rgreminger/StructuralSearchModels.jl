@@ -63,6 +63,16 @@ function set_seed(kwargs)
     return nothing 
 end
 
+# Take or generate draw
+@inline function take_or_generate_draw(draws, distribution::Distribution, i, j)
+	new_draw = rand(distribution) # by taking draw, keeping seed same as with generating draws
+	if isnothing(draws)
+		return new_draw
+	else
+		return draws[i][j]
+	end
+end
+
 ##################################################################################
 # Computations for bivariate normal 
 

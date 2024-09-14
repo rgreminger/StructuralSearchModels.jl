@@ -156,6 +156,12 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 	indices_stop = fill(max_products_per_session, n_sessions)
 	utility_purchases = zeros(Float64, n_sessions)
 
+	# Get draws from kwargs
+	draws_u0 = get(kwargs, :draws_u0, nothing)
+	draws_e = get(kwargs, :draws_e, nothing)
+	draws_v = get(kwargs, :draws_v, nothing)
+	draws_w = get(kwargs, :draws_w, nothing)
+	draws_shocks = (draws_u0, draws_e, draws_v, draws_w)
 
 	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
 	# creates the search path.
@@ -180,7 +186,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases,
 								m, i, 
 								product_ids, product_characteristics, positions, 
-								u, zs, v, zdfun, zsfun)
+								u, zs, v, zdfun, zsfun, draws_shocks) 
 
 				# If conditional on click, iterate until have at least one 
 				if conditional_on_click 
@@ -189,7 +195,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
 										m, i, 
 										product_ids, product_characteristics, positions, 
-										u, zs, v, zdfun, zsfun)
+										u, zs, v, zdfun, zsfun, draws_shocks)
 						iter += 1 
 					end
 				end
@@ -208,7 +214,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 						utility_purchases, 
 						m, i, 
 						product_ids, product_characteristics, positions, 
-						u, zs, v, zdfun, zsfun; 
+						u, zs, v, zdfun, zsfun, 
+						draws_shocks; 
 						debug_print = false)
 
 	# Define variables tracking state during search 
@@ -220,8 +227,10 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 	ns = 0 	# number of searches
 	ij = 0  # Index tracking current product 
 	n_prod = length(product_ids[i]) # number of products for consumer
-	
 
+	# Extract shock draws 
+	u0_draws, e_draws, v_draws, w_draws = draws_shocks
+	
 	# Fill reservation values in initial awareness set
 	for j in eachindex(u) 
 		
@@ -234,13 +243,13 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 		# Outside option 
 		if product_ids[i][j] == 0
 			# draw outside option utility 
-			u[j] = rand(m.dU0) + product_characteristics[i][1, end] * m.β[end]
+			u[j] = take_or_generate_draw(u0_draws, m.dU0, i, 1) + product_characteristics[i][1, end] * m.β[end]
 			max_u = u[j]
 			ind_p = 1 
 		else
 			# Fill in reservation value for product j
 			# note: storing v_j draw as also enters utility 
-			v[j] = rand(m.dV)
+			v[j] = take_or_generate_draw(v_draws, m.dV, i, j)
 			xβ = @views product_characteristics[i][j, :]' * m.β
 			zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
 			# Update max search value and index
