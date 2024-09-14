@@ -816,8 +816,6 @@ function _calculate_welfare_effective_values(m::SDCore, d::DataSD; kwargs...)
 
 	n_click = sum(clicked)
 	n_purch = sum(purchased)
-	println("n_click = $n_click ")
-	println("n_purch = $n_purch ")
 
 	# Return averages across simulations
 	return (sum(eff_value_choice_avg), sum(discovery_costs_avg)) ./ n_ses, 
@@ -836,7 +834,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	u, zs, ws, ws_tilde = vectors_preallocated
 
 	# fill in search and effective values for session i
-	fill_uzw_values!(u, zs, ws, ws_tilde,  m, zdfun, zsfun, d, i)
+	fill_uzw_values!(u, zs, ws, ws_tilde,  m, zdfun, zsfun, d, i) 
 
 	wm, im = findmax(ws)
 
@@ -845,8 +843,8 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 
 	# Find number of discoveries 
 	zd = [zdfun(m.Ξ, m.ρ, pos) for pos in d.positions[i]]
-	last_position_discovered = searchsortedfirst(zd, wm; rev = true) 
-	ndiscoveries = last_position_discovered  
+	last_position_discovered = d.positions[i][max(searchsortedfirst(zd, wm; rev = true) - 1, 1)]
+	ndiscoveries =  last_position_discovered
 
 	# note: discovery must stop at position where the effective value of chosen alternative exceeds the discovery value.
 	# searchsorted first finds position of first discovery value where this is the case, using eps() gives the value before the one found 
