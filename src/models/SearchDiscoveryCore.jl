@@ -846,7 +846,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	# Find number of discoveries 
 	zd = [zdfun(m.Ξ, m.ρ, pos) for pos in d.positions[i]]
 	last_position_discovered = searchsortedfirst(zd, wm; rev = true) 
-	ndiscoveries = last_position_discovered - 1 # first one for free 
+	ndiscoveries = last_position_discovered  
 
 	# note: discovery must stop at position where the effective value of chosen alternative exceeds the discovery value.
 	# searchsorted first finds position of first discovery value where this is the case, using eps() gives the value before the one found 
