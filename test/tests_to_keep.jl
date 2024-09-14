@@ -46,7 +46,6 @@ test_discovery_cost_correct()
 
 function test_search_cost_correct()
     # Verify costs correct: need that Ξ again same as m.Ξ after getting cd and recomputing Ξ
-    
     m = SDCore( 
         β = [0.0, 5.0], 
         Ξ = 1.0, 
@@ -80,30 +79,30 @@ test_search_cost_correct()
 function test_welfare_calculations_same()
 
     m = SDCore( 
-        β = [0.0, -1e-16], 
-        Ξ = -10.0, 
+        β = [0.3, -1e-16], 
+        Ξ = 5.0, 
         ρ = [-0.6], 
-        ξ = -1e-16,
+        ξ = -1e-17,
         ξρ = [0.0], 
-        dE = Normal(0.0, 0.5), 
+        dE = Normal(0.0, 1.0), 
         dV = Normal(0.0, 1.0), 
-        dU0 = Normal(0, 0.1), 
+        dU0 = Normal(0, 1.0), 
         dW = Normal(0, 0.0) , 
         zdfun = "linear", 
         zsfun = "linear"
     )
 
-    n_consumers = 1
+    n_consumers = 100
     seed = 92458 # seed only matters for products, rest shocks are zero 
     @time data, utility_purchases = 
-                    generate_data(m, n_consumers, 10000; seed , 
+                    generate_data(m, n_consumers, 1; seed , 
                     conditional_on_click = false, conditional_on_click_iter = 100); 
 
     calculate_costs!(m, data, 100000) 
 
-    @time we = calculate_welfare(m, data, 1; method = "effective_values", seed ) ; 
+    @time we = calculate_welfare(m, data, 1000; method = "effective_values", seed ) ; 
 
-    @time wc = calculate_welfare(m, data, 1; method = "simulate_paths", seed ) ;
+    @time wc = calculate_welfare(m, data, 1000; method = "simulate_paths", seed ) ;
 
     println("###################")
     println("Avg welfare effective values = $(we[1][1])")   
@@ -120,8 +119,6 @@ function test_welfare_calculations_same()
     println("###################")
     println("cs = $(m.cs)")
     println("cd = $(m.cd)")
-    
 end
 
 test_welfare_calculations_same() 
-
