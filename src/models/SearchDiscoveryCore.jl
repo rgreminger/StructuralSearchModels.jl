@@ -251,7 +251,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			# note: storing v_j draw as also enters utility 
 			v[j] = take_or_generate_draw(v_draws, m.dV, i, j)
 			xβ = @views product_characteristics[i][j, :]' * m.β
-			zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
+			zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + take_or_generate_draw(w_draws, m.dW, i, j)
 			# Update max search value and index
 			if zs[j] > max_zs 
 				max_zs = zs[j]
@@ -333,7 +333,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			
 			# Get utility of searched product 
 			# note: recovering previously stored v_j draw as enters utility and search value 
-			u[ind_s] = rand(m.dE) + v[ind_s] 
+			u[ind_s] = take_or_generate_draw(e_draws, m.dE, i, ind_s) + v[ind_s] 
 
 			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
 				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
@@ -372,10 +372,10 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				end
 
 				# Update reservation value and max 
-				v[j] = rand(m.dV)
+				v[j] = take_or_generate_draw(v_draws, m.dV, i, j)
 				xβ = @views product_characteristics[i][j, :]' * m.β
 
-				zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + rand(m.dW) 
+				zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + take_or_generate_draw(w_draws, m.dW, i, j)
 				if zs[j] > max_zs 
 					max_zs = zs[j]
 					ind_s = j
