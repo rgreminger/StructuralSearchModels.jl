@@ -589,14 +589,15 @@ function calculate_ξ(m::SD)
 	end
 end
 
-
 # Consumer welfare
 """
-	calculate_welfare(m::SDCore, data::DataSD; 
-										method = "effective_values",
-										kwargs...)
-Calculate consumer welfare for the Search and Discovery model `m` using the data `data` and `n_sim` simulation draws. `method` can be either `"simulate_paths"` or `"effective_values"`. Simulate paths will simulate search paths  for each consumer and calculate welfare based on these paths. Effective values will calculate welfare based on effective values. 
+	calculate_welfare(m::SDCore, data::DataSD, n_sim; method = "effective_values", kwargs...)
 
+Calculate consumer welfare for the Search and Discovery model `m` using the data `data` and `n_sim` simulation draws. 
+	
+# Keyword arguments:
+- `method::String`: method to use for welfare calculation. Default is `"effective_values"`, where welfare is calculated using effective values. Alternatively can be `"simulate_paths"`, where welfare is calculated by simulating search paths.
+- `kwargs...`: additional keyword arguments passed to the method used for welfare calculation.
 """
 function calculate_welfare(m::SDCore, data::DataSD, n_sim; 
 										method = "effective_values",
@@ -803,7 +804,8 @@ function preallocate_welfare_vectors(n_ses)
 	vectors_to_fill = (eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased)
 
 	return vectors_to_fill
-end	
+end
+
 function _calculate_welfare_effective_values(m::SDCore, d::DataSD, vectors_to_fill, zdfun, zsfun, draws_shocks)
 
 	n_ses = length(d)
@@ -1156,29 +1158,8 @@ function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
 	return click_stats, purchase_stats, fig 
 end
 
-function add_distribution_parameters(m::M, θ, kwargs) where M <: SD 
 
-	# Default: estimate variance of ε, keep others fixed
-	if !haskey(kwargs, :distribution_options)
-		θ = vcat(θ, params(m.dE)[end]) 
-		return θ
-	end
-	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
-	# Extract distributions
-	if estimation_shock_distributions[1]
-		θ = vcat(θ, params(m.dE)[end])
-	end
-	if estimation_shock_distributions[2]
-		θ = vcat(θ, params(m.dV)[end])
-	end
-	if estimation_shock_distributions[4] 
-		θ = vcat(θ, params(m.dU0)[2:end])
-	end
-
-	return θ
-end	
-
-# Estimation full function 
+# Estimation 
 function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD	
 	
 	# Get functional forms 
@@ -1334,6 +1315,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	end
 end
 
+# Parameter handling 
 function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD, T <: Real}
 
 	n_beta = length(m.β)
@@ -1349,8 +1331,8 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD, T <:
 		Ξ = θ[ind_current] ; ind_current += 1
 		ρ = θ[ind_current:ind_current + n_ρ - 1] ; ind_current += n_ρ
 		ξ = θ[ind_current] ; ind_current += 1
-		ξρ = θ[ind_current:ind_current + n_ξρ - 1 - 1] ; ind_current += n_ξρ
-		return β, ξ, Ξ, ρ, ind_current
+		ξρ = θ[ind_current:ind_current + n_ξρ - 1] ; ind_current += n_ξρ
+		return  β, Ξ, ρ, ξ, ξρ, ind_current
 	end
 
 	# If keyword supplied, don't estimate parameters indicated in fixed_parameters
@@ -1361,6 +1343,13 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SD, T <:
 	ξ = if fixed_parameters[4];  T(m.ξ) ; else ; ind_current += 1 ; θ[ind_current - 1] ; end
 	ξρ = if fixed_parameters[5];  T.(m.ξρ) ; else ; ind_current += n_ξρ ; θ[ind_current:ind_current + n_ξρ - 1 - 1] ; end
 
+	if get(kwargs, :debug_print, false)
+		println("β = $β")
+		println("Ξ = $Ξ")
+		println("ρ = $ρ")
+		println("ξ = $ξ")
+		println("ξρ = $ξρ")
+	end
 	return β, Ξ, ρ, ξ, ξρ, ind_current
 end
 
@@ -1421,3 +1410,25 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SD
 
 	return dE, dV, dU0
 end
+
+function add_distribution_parameters(m::M, θ, kwargs) where M <: SD 
+
+	# Default: estimate variance of ε, keep others fixed
+	if !haskey(kwargs, :distribution_options)
+		θ = vcat(θ, params(m.dE)[end]) 
+		return θ
+	end
+	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
+	# Extract distributions
+	if estimation_shock_distributions[1]
+		θ = vcat(θ, params(m.dE)[end])
+	end
+	if estimation_shock_distributions[2]
+		θ = vcat(θ, params(m.dV)[end])
+	end
+	if estimation_shock_distributions[4] 
+		θ = vcat(θ, params(m.dU0)[2:end])
+	end
+
+	return θ
+end	
