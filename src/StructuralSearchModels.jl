@@ -8,7 +8,7 @@ export generate_data, generate_products, sessions_with_clicks, sessions_with_pur
 export estimate_model                                               # functions for estimation
 export evaluate_fit, calculate_likelihood, calculate_standard_errors, calculate_welfare   # functions for post-estimation
 export calculate_costs!, calculate_discovery_value, calculate_search_cost, calculate_discovery_cost, calculate_ξ
-export plot_across_positions, vectorize_parameters, construct_model_from_pars
+export plot_across_positions, vectorize_parameters, construct_model_from_pars, generate_draws_with_search
 
 # Export concrete model types 
 export SDCore, SD1, WM1

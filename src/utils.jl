@@ -66,12 +66,15 @@ function set_seed(kwargs)
 end
 
 # Take or generate draw
-@inline function take_or_generate_draw(draws, distribution::Distribution, i, j)
-	new_draw = rand(distribution) # by taking draw, keeping seed same as with generating draws
-	if isnothing(draws)
+@inline function take_or_generate_draw!(draws, distribution::Distribution, i, j, store_draw)
+	if isnothing(draws) 
+		return rand(distribution)
+	elseif store_draw 
+		new_draw = rand(distribution)
+		draws[i, j] = new_draw
 		return new_draw
 	else
-		return draws[i][j]
+		return draws[i, j] 
 	end
 end
 
@@ -94,6 +97,14 @@ function get_precomputed_draws_indexed(kwargs, s)
 	draws_w = isnothing(draws_w) ? nothing : @views draws_w[s]
 
 	return (draws_u0, draws_e, draws_v, draws_w)
+end
+
+@inline function replace_typemin_draws!(draws, dist::Distribution)
+	@inbounds for i in eachindex(draws)
+		if isequal(draws[i], typemin(eltype(draws)))
+			draws[i] = rand(dist)
+		end
+	end
 end
 
 	

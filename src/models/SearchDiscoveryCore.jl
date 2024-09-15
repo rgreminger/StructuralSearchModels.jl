@@ -128,8 +128,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	positions = [vcat(zeros(Int64, 1 + n_A0), repeat(collect(Int64, 1:(length(product_ids[i]) - 1 - n_A0) / n_d), inner=n_d)) for i in 1:n_sessions]
 
 	# Generate search paths 
-	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
-		generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
+	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
 
 	# Create consumer indices mapping consumers into sessions 
 	consumer_ids = repeat(1:n_consumers, n_sessions_per_consumer)
@@ -143,6 +142,29 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	# Return together with purchase utilities 
 	return data, utility_purchases
 end
+
+function generate_data(m::SDCore, d::DataSD; kwargs...) 
+	
+	# Set seed (is stable across threads) 
+	set_seed(kwargs)
+
+	# Generate new paths
+	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
+		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs...) 
+
+	# Get indices of minimum discovered product, if requested in kwargs. Otherwise not computed, which saves time during simulation of many paths. 
+	indices_min_discover = if haskey(kwargs, :min_discover_indices) && kwargs[:min_discover_indices] == true 
+								get_indices_min_discover(consideration_sets, positions)
+							else
+								nothing 
+							end
+
+	# Update and return data object
+	data = DataSD(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, consideration_sets, indices_purchase, indices_min_discover, paths, indices_stop)
+
+	return data, utility_purchases
+end
+
 
 function generate_search_paths(m::SDCore, product_ids, product_characteristics, positions; kwargs...)
 
@@ -167,6 +189,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 
 	# Get draws from kwargs
 	draws_shocks = get_precomputed_draws(kwargs)
+	store_draws = get(kwargs, :store_draws, false)
 	
 	# Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
 	# creates the search path.
@@ -191,7 +214,7 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 				fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases,
 								m, i, 
 								product_ids, product_characteristics, positions, 
-								u, zs, v, zdfun, zsfun, draws_shocks) 
+								u, zs, v, zdfun, zsfun, draws_shocks, store_draws) 
 
 				# If conditional on click, iterate until have at least one 
 				if conditional_on_click 
@@ -200,8 +223,11 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
 										m, i, 
 										product_ids, product_characteristics, positions, 
-										u, zs, v, zdfun, zsfun, draws_shocks)
+										u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
 						iter += 1 
+					end
+					if iter > conditional_on_click_iter 
+						@warn "Did not generate a click in conditional_on_click_iter iterations for session $i."
 					end
 				end
 				
@@ -220,9 +246,8 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 						m, i, 
 						product_ids, product_characteristics, positions, 
 						u, zs, v, zdfun, zsfun, 
-						draws_shocks; 
+						draws_shocks, store_draws; 
 						debug_print = false)
-
 	# Define variables tracking state during search 
 	max_u = typemin(eltype(u)) 	# current max utility 
 	max_zs = typemin(eltype(zs))  # current max search value
@@ -248,15 +273,15 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 		# Outside option 
 		if product_ids[i][j] == 0
 			# draw outside option utility 
-			u[j] = take_or_generate_draw(u0_draws, m.dU0, i, 1) + product_characteristics[i][1, end] * m.β[end]
+			u[j] = take_or_generate_draw!(u0_draws, m.dU0, i, 1, store_draws) + product_characteristics[i][1, end] * m.β[end]
 			max_u = u[j]
 			ind_p = 1 
 		else
 			# Fill in reservation value for product j
 			# note: storing v_j draw as also enters utility 
-			v[j] = take_or_generate_draw(v_draws, m.dV, i, j)
+			v[j] = take_or_generate_draw!(v_draws, m.dV, i, j, store_draws)
 			xβ = @views product_characteristics[i][j, :]' * m.β
-			zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + take_or_generate_draw(w_draws, m.dW, i, j)
+			zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + take_or_generate_draw!(w_draws, m.dW, i, j, store_draws)
 			# Update max search value and index
 			if zs[j] > max_zs 
 				max_zs = zs[j]
@@ -311,10 +336,10 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 				end
 
 				# Update reservation value and max 
-				v[j] = take_or_generate_draw(v_draws, m.dV, i, j)
+				v[j] = take_or_generate_draw!(v_draws, m.dV, i, j, store_draws)
 				xβ = @views product_characteristics[i][j, :]' * m.β
 
-				zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + take_or_generate_draw(w_draws, m.dW, i, j)
+				zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] + take_or_generate_draw!(w_draws, m.dW, i, j, store_draws)
 				if zs[j] > max_zs 
 					max_zs = zs[j]
 					ind_s = j
@@ -350,7 +375,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 			
 			# Get utility of searched product 
 			# note: recovering previously stored v_j draw as enters utility and search value 
-			u[ind_s] = take_or_generate_draw(e_draws, m.dE, i, ind_s) + v[ind_s] 
+			u[ind_s] = take_or_generate_draw!(e_draws, m.dE, i, ind_s, store_draws) + v[ind_s] 
 
 			for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
 				u[ind_s] += product_characteristics[i][ind_s, h] * m.β[h] 
@@ -408,26 +433,42 @@ function get_indices_min_discover(consideration_sets, positions)
 	return indices_min_discover
 end
 
-function generate_data(m::SDCore, d::DataSD; kwargs...) 
-	
+function generate_draws_with_search(m::SDCore, d::DataSD, n_sim, conditional_on_click_iter; kwargs...) 
+
 	# Set seed (is stable across threads) 
 	set_seed(kwargs)
+	
+	# Set up storage for draws across simulations 
+	draws_u0_store = Vector{Float64}[]
+	draws_e_store = []
+	draws_v_store = []
+	draws_w_store = []
 
-	# Generate new paths
-	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
-		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs...) 
+	for s in 1:n_sim
+		
+		# Pre-allocate draws for each session
+		draws_u0 = fill(typemin(Float64), length(d))
+		max_n_products = maximum(length.(d.product_ids))
+		draws_e = fill(typemin(Float64), length(d), max_n_products)
+		draws_v = fill(typemin(Float64), length(d), max_n_products)
+		draws_w = fill(typemin(Float64), length(d), max_n_products)
 
-	# Get indices of minimum discovered product, if requested in kwargs. Otherwise not computed, which saves time during simulation of many paths. 
-	indices_min_discover = if haskey(kwargs, :min_discover_indices) && kwargs[:min_discover_indices] == true 
-								get_indices_min_discover(consideration_sets, positions)
-							else
-								nothing 
-							end
+		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs..., conditional_on_click_iter, conditional_on_click = true, store_draws = true, draws_u0, draws_e, draws_v, draws_w)
 
-	# Update and return data object
-	data = DataSD(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions, consideration_sets, indices_purchase, indices_min_discover, paths, indices_stop)
+		# Replace draws that were not filled (because never reached) with draws from respective distributions
+		for pair in [[draws_u0, m.dU0], [draws_e, m.dE], [draws_v, m.dV], [draws_w, m.dW]]
+			replace_typemin_draws!(pair[1], pair[2])
+		end
 
-	return data, utility_purchases
+		# Store draws for this simulation
+		push!(draws_u0_store, draws_u0)
+		push!(draws_e_store, draws_e)
+		push!(draws_v_store, draws_v)
+		push!(draws_w_store, draws_w)
+	end
+
+	return (draws_u0_store, draws_e_store, draws_v_store, draws_w_store)
+	
 end
 
 # Cost computations 
@@ -435,7 +476,6 @@ end
 	caculate_costs!(m::SD, d, n_draws_cd, seed; force_recompute = true)
 
 Calculate search and discovery costs for the Search and Discovery model `m` and data `d`. Uses `n_draws` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true, the costs are recomputed even if they are already present in the model.
-	
 """
 function calculate_costs!(m::SDCore, d, n_draws_cd; 
 							force_recompute = true,
@@ -481,7 +521,6 @@ end
 """
 	calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
 """
-
 function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...) 
 
 	# Set seed (is stable across threads) 
@@ -930,15 +969,15 @@ function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_sho
 	for j in eachindex(product_ids)
 		# Outside option
 		if product_ids[j] == 0 
-			u[j] = take_or_generate_draw(u0_draws, m.dU0, i, j) + chars[j, end] * m.β[end]
+			u[j] = take_or_generate_draw!(u0_draws, m.dU0, i, j, false) + chars[j, end] * m.β[end]
 			ws[j] = u[j]
 			ws_tilde[j] = u[j]
 			# zs not used 
 		else
 			# Take draws 
-			e = take_or_generate_draw(e_draws, m.dE, i, j)
-			v = take_or_generate_draw(v_draws, m.dV, i, j)
-			w = take_or_generate_draw(w_draws, m.dW, i, j)
+			e = take_or_generate_draw!(e_draws, m.dE, i, j, false)
+			v = take_or_generate_draw!(v_draws, m.dV, i, j, false)
+			w = take_or_generate_draw!(w_draws, m.dW, i, j, false)
 
 			# Fill in utility
 			xβ = @views chars[j, :]' * m.β
@@ -1157,7 +1196,6 @@ function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 	return click_stats, purchase_stats, fig 
 end
-
 
 # Estimation 
 function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD	
