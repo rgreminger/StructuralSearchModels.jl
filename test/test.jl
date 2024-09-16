@@ -49,7 +49,7 @@ d0 = deepcopy(d)
 
 ## 
 
-d = data
+d = generate_data(m, data)[1]
 
 evaluate_fit(m, d, 50) 
 
@@ -70,6 +70,7 @@ distribution_options[1] = false
 
 @time calculate_likelihood(m_hat, e, d; distribution_options)
 
+## 
 e = SmoothMLE(
     options_numerical_integration = (n_draws = 25, n_draws_purchases = 25),
     options_solver = (show_trace = false, show_every = 1), 

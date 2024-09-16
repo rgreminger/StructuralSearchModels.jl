@@ -49,6 +49,9 @@ function calculate_costs!(m::WM1, d;
 	return nothing 
 end
 
+generate_data(m::WM1, n_consumers, n_products; kwargs...) = generate_data(SDCore(m), n_consumers, n_products; kwargs...)
+generate_data(m::WM1, data::DataSD; kwargs...) = generate_data(SDCore(m), data; kwargs...)
+
 
 
 

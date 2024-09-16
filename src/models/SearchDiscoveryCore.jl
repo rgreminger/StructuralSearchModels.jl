@@ -149,9 +149,10 @@ function generate_data(m::SDCore, d::DataSD; kwargs...)
 	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = 
 		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs...) 
 
-	# Get indices of minimum discovered product, if requested in kwargs. Otherwise not computed, which saves time during simulation of many paths. 
-	indices_min_discover = if haskey(kwargs, :min_discover_indices) && kwargs[:min_discover_indices] == true 
-								get_indices_min_discover(consideration_sets, positions)
+	# Get indices of minimum discovered product. Can be turned off to save time during simulation of many paths.
+	compute_min_discover_indices = get(kwargs, :compute_min_discover_indices, true) 
+	indices_min_discover = if compute_min_discover_indices
+								get_indices_min_discover(consideration_sets, d.positions)
 							else
 								nothing 
 							end
@@ -1014,7 +1015,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 	# Generate data from new seed 
 	for s in 1:n_sim 
 		new_seed = rand(1:1000000)
-		d_sim = generate_data(m, data; seed = new_seed, kwargs...)[1]
+		d_sim = generate_data(m, data; seed = new_seed, kwargs..., compute_min_discover_indices = false)[1]
 
 		# Compute fit statistics 
 		click_stats_i, purchase_stats_i = calculate_statistics_from_data(d_sim) 
@@ -1208,11 +1209,12 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 end
 
 function prepare_data_arguments_likelihood(d::DataSD)
-	max_n_products = maximum(length.(d.product_ids))
+
+	all_possible_positions = d.positions[argmax(maximum.(d.positions))]
 	has_search = sum.(d.consideration_sets) .> 0 
 	has_purchase = [d.product_ids[i][d.purchase_indices[i]] > 0 for i in eachindex(d)]
 	
-	return max_n_products, has_search, has_purchase
+	return all_possible_positions, has_search, has_purchase
 end
 
 function vectorize_parameters(m::M; kwargs...) where M <: SD 
@@ -1251,7 +1253,7 @@ end
 function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD, T <: Real}
 	
 	# Extract arguments 
-	max_n_products, has_search, has_purchase, zdfun, zsfun = args  
+	all_possible_positions, has_search, has_purchase, zdfun, zsfun = args  
 
 	# Extract parameters implied by θ 
 	β, Ξ, ρ, ξ,	ξρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
@@ -1274,8 +1276,8 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	end
 	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
-	zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, data.positions[1][h]) for h in 1:max_n_products]
-	zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, data.positions[1][h]) for h in 1:max_n_products]
+	zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
+	zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
 
 	if get(kwargs, :debug_print, false)
 		if !isnothing(zdfun)

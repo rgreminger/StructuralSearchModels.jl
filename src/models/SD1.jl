@@ -55,6 +55,9 @@ function calculate_costs!(m::SD1, d, n_draws_cd;
 	return nothing 
 end
 
+generate_data(m::SD1, n_consumers, n_products; kwargs...) = generate_data(SDCore(m), n_consumers, n_products; kwargs...)
+generate_data(m::SD1, data::DataSD; kwargs...) = generate_data(SDCore(m), data; kwargs...)
+
 
 
 # Estimation 
