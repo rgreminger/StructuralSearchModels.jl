@@ -1020,7 +1020,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 	# Generate data from new seed 
 	for s in 1:n_sim 
 		new_seed = rand(1:1000000)
-		d_sim = generate_data(m, data; seed = new_seed, kwargs..., compute_min_discover_indices = false)[1]
+		d_sim = generate_data(m, data; kwargs..., seed = new_seed, compute_min_discover_indices = false)[1]
 
 		# Compute fit statistics 
 		click_stats_i, purchase_stats_i = calculate_statistics_from_data(d_sim) 
