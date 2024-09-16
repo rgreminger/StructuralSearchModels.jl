@@ -149,7 +149,7 @@ end
 
 
 function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0, d::DataSD, i::Int, n_draws, complement) where T <: Real
-	min_position_discover = d.min_discover_indices[i] 
+	min_position_discover = complement ? searchsortedfirst(d.positions[i], 1) - 1 : d.min_discover_indices[i] # if complement 
 	n_products = length(d.product_ids[i])
 	positions = @views d.positions[i]
 	with_outside_option_dummy = d.product_ids[i][1] == 0

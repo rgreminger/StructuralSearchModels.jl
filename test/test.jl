@@ -5,14 +5,14 @@ m = SD1(
     β = [-0.1, 2.5], 
     Ξ = 3.5, 
     ρ = [-0.2], 
-    ξ = 2.0,
+    ξ = 4.5,
     dE = Normal(0.0, 1.0), 
     dV = Normal(0, 1.0), 
     dU0 = Normal(0, 1.0), 
     zdfun = "log"
 )
 n_consumers = 500 
-conditional_on_search = false 
+conditional_on_search = true
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
@@ -20,7 +20,8 @@ conditional_on_search = false
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 
 evaluate_fit(m, data, 1000; conditional_on_click = conditional_on_search) ; 
-## 
+
+
 m_hat = deepcopy(m)
 
 e = SmoothMLE(
@@ -29,7 +30,10 @@ e = SmoothMLE(
     options_solver = (show_trace = true, show_every = 1)
 )
 
-startvals = vectorize_parameters(m_hat; distribution_options) ./ 0.5
+distribution_options = fill(false, 4)
+
+startvals = vectorize_parameters(m_hat; distribution_options) ./ 2 
+
 
 @time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, e, data; 
                                                                         startvals, 
