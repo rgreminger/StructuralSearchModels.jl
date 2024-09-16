@@ -1264,7 +1264,8 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	β, Ξ, ρ, ξ,	ξρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
 	dE, dV, dU0 = extract_distributions(model, θ, ind_last_par; kwargs...)
 
-	if get(kwargs, :debug_print, false)
+	debug_print = get(kwargs, :debug_print, false)
+	if debug_print 
 		println("θ = $θ")
 		println("β = $β")
 		println("Ξ = $Ξ")
@@ -1277,14 +1278,14 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 	end
 
 	if !isnothing(ρ) && ρ[1] > 0 
-		return -T(1e100)
+		return -T(MAX_NUMERICAL)
 	end
 	
 	# Pre-compute search and discovery values across positions -> same for all consumers 
 	zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
 	zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
 
-	if get(kwargs, :debug_print, false)
+	if debug_print
 		if !isnothing(zdfun)
 			println("zd_h = $(zd_h[1:min(5, end)])")
 		end

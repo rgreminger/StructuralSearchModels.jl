@@ -46,12 +46,12 @@ function estimate_model(model::Model, estimator::Estimator, data::Data; kwargs..
 
 # Abstract function to evaluate fit 
 """ 
-    evaluate_fit(model::Model, data::Data; kwargs...)
+    evaluate_fit(model::Model, data::Data, n_sim; kwargs...)
 
 Evaluate the fit of the model `model` using the data `data`.
 
 """
-function evaluate_fit(model::Model, data::Data; kwargs...) end
+function evaluate_fit(model::Model, data::Data, n_sim; kwargs...) end
 
 
 # Abstract function to calculate standard errors 

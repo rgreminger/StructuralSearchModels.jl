@@ -52,6 +52,7 @@ end
 generate_data(m::WM1, n_consumers, n_products; kwargs...) = generate_data(SDCore(m), n_consumers, n_products; kwargs...)
 generate_data(m::WM1, data::DataSD; kwargs...) = generate_data(SDCore(m), data; kwargs...)
 
+evaluate_fit(m::WM1, data::DataSD, n_sim; kwargs...) = evaluate_fit(SDCore(m), data, n_sim; kwargs...)
 
 
 
@@ -62,11 +63,9 @@ function prepare_arguments_likelihood(m::WM1, estimator::Estimator, d::DataSD)
 	zsfun = get_functional_form(m.zsfun)
 
 	# Get maximum number of products
-	max_n_products = maximum(length.(d.product_ids))
-	has_search = sum.(d.consideration_sets) .> 0 
-	has_purchase = [d.product_ids[i][d.purchase_indices[i]] > 0 for i in eachindex(d)]
+	data_arguments = prepare_data_arguments_likelihood(d) 
 
-    return max_n_products, has_search, has_purchase, nothing, zsfun 
+    return data_arguments..., nothing, zsfun 
 end
 
 # Vectorize parameters 

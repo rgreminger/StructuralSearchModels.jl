@@ -58,6 +58,7 @@ end
 generate_data(m::SD1, n_consumers, n_products; kwargs...) = generate_data(SDCore(m), n_consumers, n_products; kwargs...)
 generate_data(m::SD1, data::DataSD; kwargs...) = generate_data(SDCore(m), data; kwargs...)
 
+evaluate_fit(m::SD1, data::DataSD, n_sim; kwargs...) = evaluate_fit(SDCore(m), data, n_sim; kwargs...)
 
 
 # Estimation 
@@ -160,14 +161,14 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0, 
 		end
 
 		# Set lower bound for truncation based on position 
-		lb = if h < n_products # not yet last position 
+		lb::T = if h < n_products # not yet last position 
 				zd_h[h + 1] - (with_outside_option_dummy ? β[end] : zero(T))
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
 
 		# Set upper bound for truncation based on position
-		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+		ub::T = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
 				T(MAX_NUMERICAL)
 			else 
 				zd_h[h]  - (with_outside_option_dummy ? β[end] : zero(T)) # Max accounts for case where nA0 < nd 
@@ -283,14 +284,14 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0,
 		xβ_k = @views d.product_characteristics[i][k, :]' * β 
 
 		# Set lower bound for truncation based on position 
-		lb = if h < n_products # not yet last position 
+		lb::T = if h < n_products # not yet last position 
 				zd_h[h + 1] - xβ_k
 			else # no lower bound if last position 
 				- T(MAX_NUMERICAL)
 			end
 
 		# Set upper bound for truncation based on position
-		ub = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+		ub::T = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
 				T(MAX_NUMERICAL)
 			elseif positions[h] == positions[min_position_discover] == positions[k] # if position last click same as where purchased -> no upper bound 
 				T(MAX_NUMERICAL)
@@ -333,21 +334,21 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0,
 			if consideration_set[j] && positions[j] < positions[k]
 				prob_searches_given_draw *= prob_search_not_buy(m, xβ_j, ξ, w_k, w_k, dE, dV) 
 			# searched, and discovered after the one that was purchased
-			elseif consideration_set[j] && j != k &&	positions[j] >= positions[k]
+			elseif consideration_set[j] && j != k && positions[j] >= positions[k]
 				prob_searches_given_draw *= prob_search_not_buy(m, xβ_j, ξ, wt_k, wt_k, dE, dV) 
 			# unsearched & discovered before 
 			elseif positions[j] < positions[k]
-				prob_searches_given_draw *= cdf(dV, w_k - ξ - xβ_j)
+				prob_searches_given_draw *= prob_not_search(m, w_k, ξ + xβ_j, dV)
 			# unsearched & at same time or after 
 			elseif j != k  && positions[j] >= positions[k]
-				prob_searches_given_draw *= cdf(dV, wt_k - ξ - xβ_j)
+				prob_searches_given_draw *= prob_not_search(m, wt_k, ξ + xβ_j, dV)
 			end
 			if prob_searches_given_draw == 0 
-				prob_searches_given_draw = T(1e-100) 
+				prob_searches_given_draw = T(ALMOST_ZERO_NUMERICAL) 
 				break 
 			end
 		end	
-		LL += prob_searches_given_draw*prob_draws_in_bounds
+		LL += prob_searches_given_draw * prob_draws_in_bounds
 	end
 	return log(max(T(ALMOST_ZERO_NUMERICAL), LL / n_draws))
 end
@@ -363,8 +364,8 @@ Compute probability of searching without buying. This probability is given by P(
 	σe = std(dE) 
 	σv = std(dV)
 					
-	a = σe > 0 ? (ub - xβ)/σe : one(T)*10000000
-	b = σe > 0 ? -σv/σe : -one(T)*10000000
+	a = σe > 0 ? (ub - xβ)/σe : T(MAX_NUMERICAL)
+	b = σe > 0 ? -σv/σe : -T(MAX_NUMERICAL)
 	Y = (lb -ξ -xβ) / σv
 
 	P = cdf_n(a / sqrt(1 + b^2)) - 
