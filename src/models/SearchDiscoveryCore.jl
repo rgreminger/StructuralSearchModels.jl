@@ -73,6 +73,11 @@ end
 	@assert isnothing(min_discover_indices) || length(min_discover_indices) == length(product_ids)
 	@assert isnothing(stop_indices) || length(stop_indices) == length(product_ids)
 end
+# overload == so that can compare two DataSD objects
+import Base.==
+function ==(d1::DataSD, d2::DataSD)
+	return d1.consumer_ids == d2.consumer_ids && d1.product_ids == d2.product_ids && d1.product_characteristics == d2.product_characteristics && d1.positions == d2.positions && d1.consideration_sets == d2.consideration_sets && d1.purchase_indices == d2.purchase_indices && d1.min_discover_indices == d2.min_discover_indices && d1.search_paths == d2.search_paths && d1.stop_indices == d2.stop_indices
+end
 
 # Define base functions for working with the core data
 function length(d::DataSD) 
