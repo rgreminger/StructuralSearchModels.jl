@@ -22,6 +22,7 @@ n_consumers = 1000
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 
 evaluate_fit(m, data, 1000)
+d = data
 ## 
 
 m.ξ = 1.0
