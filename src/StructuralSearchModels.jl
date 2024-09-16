@@ -12,7 +12,7 @@ export plot_across_positions, vectorize_parameters, construct_model_from_pars, g
 export add_indices_min_discover!
 
 # Export concrete model types 
-export SDCore, SD1, WM1
+export SDCore, SD1, WM1, DataSD
 
 # Export concrete estimator types
 export SmoothMLE
