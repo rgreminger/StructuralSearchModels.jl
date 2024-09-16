@@ -1474,3 +1474,10 @@ function add_distribution_parameters(m::M, θ, kwargs) where M <: SD
 
 	return θ
 end	
+
+function add_indices_min_discover!(d::DataSD)
+	min_discover_indices = get_indices_min_discover(d.consideration_sets, d.positions)
+
+	d.min_discover_indices = min_discover_indices	
+	return nothing 
+end
