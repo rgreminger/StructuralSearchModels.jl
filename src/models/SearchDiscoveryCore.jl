@@ -1408,9 +1408,9 @@ Construct shock distributions using variances in vector θ. Starts from index c.
 """
 function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SD,T <: Real}
 
-	# Default: estimate variance of ε, keep others fixed 
+	# Default: don't estimate any variance 
 	if !haskey(kwargs, :distribution_options)
-		dE = eval(nameof(typeof(m.dE)))(params(m.dE)[1:end-1]...,abs(θ[c])) # convoluted way to allow for distributions other than Normal 
+		dE = m.dE # convoluted way to allow for distributions other than Normal 
 		dV = m.dV
 		dU0 = m.dU0
 		return dE, dV, dU0
@@ -1451,9 +1451,8 @@ end
 
 function add_distribution_parameters(m::M, θ, kwargs) where M <: SD 
 
-	# Default: estimate variance of ε, keep others fixed
+	# Default: don't estimate any variance 
 	if !haskey(kwargs, :distribution_options)
-		θ = vcat(θ, params(m.dE)[end]) 
 		return θ
 	end
 	estimation_shock_distributions = get(kwargs, :distribution_options, nothing)
