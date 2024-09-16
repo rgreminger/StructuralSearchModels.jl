@@ -62,15 +62,18 @@ evaluate_fit(m::SD1, data::DataSD, n_sim; kwargs...) = evaluate_fit(SDCore(m), d
 
 
 # Estimation 
-function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD) 
+function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD; kwargs...) 
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
 	
 	# get data arguments 
 	data_arguments = prepare_data_arguments_likelihood(d) 
-	
-    return data_arguments..., zdfun, nothing 
+
+	# Keep fixed seed: either random or provided by kwargs 
+	seed = get(kwargs, :seed, rand(1:10^9))
+
+    return data_arguments..., zdfun, nothing, seed 
 end
 
 

@@ -16,7 +16,7 @@ function estimate_model(model::Model, estimator::MLE, data::Data;
     # Estimate the model using maximum likelihood estimation 
 
     # Prepare additional arguments for objective function 
-	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
+	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data; kwargs...)
 
     # Set starting values based on defaults or user input
     startvals = isnothing(startvals) ? vectorize_parameters(model; kwargs...) : startvals

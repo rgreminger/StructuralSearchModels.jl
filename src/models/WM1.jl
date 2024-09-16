@@ -57,7 +57,7 @@ evaluate_fit(m::WM1, data::DataSD, n_sim; kwargs...) = evaluate_fit(SDCore(m), d
 
 
 # Estimation 
-function prepare_arguments_likelihood(m::WM1, estimator::Estimator, d::DataSD) 
+function prepare_arguments_likelihood(m::WM1, estimator::Estimator, d::DataSD; kwargs...) 
 
 	# Get functional forms 
 	zsfun = get_functional_form(m.zsfun)
@@ -65,7 +65,10 @@ function prepare_arguments_likelihood(m::WM1, estimator::Estimator, d::DataSD)
 	# Get maximum number of products
 	data_arguments = prepare_data_arguments_likelihood(d) 
 
-    return data_arguments..., nothing, zsfun 
+	# Keep fixed seed: either random or provided by kwargs 
+	seed = get(kwargs, :seed, rand(1:10^9))
+
+    return data_arguments..., nothing, zsfun, seed 
 end
 
 # Vectorize parameters 

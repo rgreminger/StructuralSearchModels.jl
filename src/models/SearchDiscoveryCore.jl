@@ -1201,7 +1201,7 @@ function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
 end
 
 # Estimation 
-function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) where M <: SD	
+function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD; kwargs...) where M <: SD	
 	
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
@@ -1210,7 +1210,10 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 	# get data arguments 
 	data_arguments = prepare_data_arguments_likelihood(d) 
 	
-    return data_arguments..., zdfun, zsfun 
+	# Keep fixed seed: either random or provided by kwargs 
+	seed = get(kwargs, :seed, rand(1:10^9))
+	
+    return data_arguments..., zdfun, zsfun, seed 
 end
 
 function prepare_data_arguments_likelihood(d::DataSD)
@@ -1258,7 +1261,7 @@ end
 function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD, T <: Real}
 	
 	# Extract arguments 
-	all_possible_positions, has_search, has_purchase, zdfun, zsfun = args  
+	all_possible_positions, has_search, has_purchase, zdfun, zsfun, seed = args  
 
 	# Extract parameters implied by θ 
 	β, Ξ, ρ, ξ,	ξρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
@@ -1296,7 +1299,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 
 
 	# Set seed for random number generation
-	set_seed(kwargs)
+	Random.seed!(seed) 
 
     # Extract number of draws 
 	n_draws = estimator.options_numerical_integration.n_draws  
