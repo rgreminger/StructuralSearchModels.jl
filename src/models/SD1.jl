@@ -63,11 +63,14 @@ function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD)
 	# Get functional forms 
 	zdfun = get_functional_form(m.zdfun)
 	
-	# Get maximum number of products
-	max_n_products = maximum(length.(d.product_ids))
+	# get data arguments 
+	data_arguments = prepare_data_arguments_likelihood(d) 
 	
-    return max_n_products, zdfun, nothing 
+    return data_arguments..., zdfun, nothing 
 end
+
+
+
 
 # Vectorize parameters 
 function vectorize_parameters(m::SD1; kwargs...)

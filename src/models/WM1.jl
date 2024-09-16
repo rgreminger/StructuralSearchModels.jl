@@ -60,8 +60,10 @@ function prepare_arguments_likelihood(m::WM1, estimator::Estimator, d::DataSD)
 
 	# Get maximum number of products
 	max_n_products = maximum(length.(d.product_ids))
+	has_search = sum.(d.consideration_sets) .> 0 
+	has_purchase = [d.product_ids[i][d.purchase_indices[i]] > 0 for i in eachindex(d)]
 
-    return max_n_products, nothing, zsfun 
+    return max_n_products, has_search, has_purchase, nothing, zsfun 
 end
 
 # Vectorize parameters 

@@ -40,8 +40,6 @@ abstract type SD <: Model end
 	@assert ρ[1] <= 0 "ρ[1] must be less or equal to zero for weakly decreasing discovery value across positions."
 end 
 
-
-
 """ 
 *Data* type for the core Search and Discovery model. Indexing is based on sessions. 
 
@@ -107,7 +105,6 @@ function sessions_with_purchase(d::DataSD)
 
 	return sp 
 
-	
 end
 
 # Data generation 
@@ -1204,10 +1201,18 @@ function prepare_arguments_likelihood(m::M, estimator::Estimator, d::DataSD) whe
 	zdfun = get_functional_form(m.zdfun)
 	zsfun = get_functional_form(m.zsfun)
 
-	# Get maximum number of products
-	max_n_products = maximum(length.(d.product_ids))
+	# get data arguments 
+	data_arguments = prepare_data_arguments_likelihood(d) 
 	
-    return max_n_products, zdfun, zsfun 
+    return data_arguments..., zdfun, zsfun 
+end
+
+function prepare_data_arguments_likelihood(d::DataSD)
+	max_n_products = maximum(length.(d.product_ids))
+	has_search = sum.(d.consideration_sets) .> 0 
+	has_purchase = [d.product_ids[i][d.purchase_indices[i]] > 0 for i in eachindex(d)]
+	
+	return max_n_products, has_search, has_purchase
 end
 
 function vectorize_parameters(m::M; kwargs...) where M <: SD 
@@ -1246,7 +1251,7 @@ end
 function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD, args...; kwargs...) where {M <: SD, T <: Real}
 	
 	# Extract arguments 
-	max_n_products, zdfun, zsfun = args  
+	max_n_products, has_search, has_purchase, zdfun, zsfun = args  
 
 	# Extract parameters implied by θ 
 	β, Ξ, ρ, ξ,	ξρ, ind_last_par  = extract_parameters(model, θ; kwargs...)
@@ -1302,9 +1307,9 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 
 			for i in chunk  # Iterate over consumers in chunk 
 				# Do inner likelihood calculations based on pre-allocated arrays
-				if data.search_paths[i][1] == 0 	# Case 1: no clicks (implies also no purchase)
+				if has_search[i] == 0 	# Case 1: no clicks (implies also no purchase)
 					L += ll_no_searches(model, zd_h, zs_h, β, dV, dU0, data, i, n_draws, false) 
-				elseif data.purchase_indices[i] == 1 # Case 2: Some clicks but no purchase 
+				elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase 
 					L += ll_search_no_purchase(model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws) 
 				else 	# Case 3: Purchase a product 
 					L += ll_purchase(model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws_purchase) 
