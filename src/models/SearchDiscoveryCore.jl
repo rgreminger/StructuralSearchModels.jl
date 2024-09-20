@@ -1082,14 +1082,13 @@ function calculate_statistics_from_data(d::DataSD)
 		# Click statistics
 		clicked = false 
 		n_clicks_i = 0
-		for j in d.search_paths[i] 
-			if j == 0 
-				break # no further clicks 
+		for j in eachindex(d.product_ids[i])
+			if d.consideration_sets[i][j]
+				clicked = true 
+				clicks_per_pos[j] += 1 
+				characteristics_clicked .+= d.product_characteristics[i][j, :]
+				n_clicks_i += 1 
 			end
-			clicked = true 
-			clicks_per_pos[j] += 1 
-			characteristics_clicked .+= d.product_characteristics[i][j, :]
-			n_clicks_i += 1 
 		end
 
 		if clicked 
