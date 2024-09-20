@@ -1071,11 +1071,15 @@ function calculate_statistics_from_data(d::DataSD)
 	clicks_per_pos = zeros(Int, maximum(length.(d.product_ids)))
 	n_click_conditional_on_click = 0 
 	n_at_least_one_click = 0
-	characteristics_clicked = zeros(Float64, size(d.product_characteristics[1], 2))
+	with_outside_option = d.product_ids[1][1] == 0	
+	characteristics_clicked = zeros(Float64, size(d.product_characteristics[1], 2) - with_outside_option)
+	position_click = 0
 
 	# Purchase statistics
 	purchases_per_pos = zeros(Int, maximum(length.(d.product_ids)))
-	characteristics_purchased = zeros(Float64, size(d.product_characteristics[1], 2))
+	characteristics_purchased = zeros(Float64, size(d.product_characteristics[1], 2) - with_outside_option)
+	position_purchase = 0
+
 
 	# Loop over sessions and fill in statistics
 	for i in eachindex(d) 
@@ -1086,8 +1090,9 @@ function calculate_statistics_from_data(d::DataSD)
 			if d.consideration_sets[i][j]
 				clicked = true 
 				clicks_per_pos[j] += 1 
-				characteristics_clicked .+= d.product_characteristics[i][j, :]
+				characteristics_clicked .+= d.product_characteristics[i][j, 1:end - with_outside_option] # if outside option, last characteristic is dummy 
 				n_clicks_i += 1 
+				position_click += d.positions[i][j]	
 			end
 		end
 
@@ -1098,8 +1103,10 @@ function calculate_statistics_from_data(d::DataSD)
 
 		# Purchase statistics
 		if d.purchase_indices[i] > 1
-			purchases_per_pos[d.purchase_indices[i]] += 1
-			characteristics_purchased .+= d.product_characteristics[i][d.purchase_indices[i], :]
+			j = d.purchase_indices[i]
+			purchases_per_pos[j] += 1
+			characteristics_purchased .+= d.product_characteristics[i][j, 1:end - with_outside_option] # if outside option, last characteristic is dummy
+			position_purchase += d.positions[i][j]
 		end
 	end
 	
@@ -1115,13 +1122,15 @@ function calculate_statistics_from_data(d::DataSD)
 	probability_at_least_one_click_in_session = n_at_least_one_click / n_ses
 	no_clicks_per_session_conditional_on_click = n_click_conditional_on_click / n_at_least_one_click
 	mean_characteristics_clicked = characteristics_clicked / n_clicks
-	click_stats = [no_clicks_per_session, click_probability_per_position, probability_at_least_one_click_in_session, no_clicks_per_session_conditional_on_click, mean_characteristics_clicked]
+	mean_position_clicked = position_click / n_clicks 
+	click_stats = [no_clicks_per_session, click_probability_per_position, probability_at_least_one_click_in_session, no_clicks_per_session_conditional_on_click, mean_characteristics_clicked, mean_position_clicked]
 
 	# Gather purchase statistics
 	purchase_probability = n_purchases / n_ses
 	purchase_probability_per_pos = purchases_per_pos ./ n_ses
 	characteristics_purchased = characteristics_purchased / n_purchases
-	purchase_stats = [purchase_probability, purchase_probability_per_pos, characteristics_purchased]
+	mean_position_purchased = position_purchase / n_purchases
+	purchase_stats = [purchase_probability, purchase_probability_per_pos, characteristics_purchased, mean_position_purchased]
 
 	return click_stats, purchase_stats 
 end
