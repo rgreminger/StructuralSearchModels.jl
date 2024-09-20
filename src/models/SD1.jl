@@ -40,7 +40,7 @@ end
 SDCore(m::SD1) = SDCore(; β = m.β, Ξ = m.Ξ, ρ = m.ρ, ξ = m.ξ, ξρ = [0.0], cs = m.cs, cd = m.cd, 
 							dE = m.dE, dV = m.dV, dU0 = m.dU0, dW = Normal(0, 0), zdfun = m.zdfun, zsfun = "linear", unobserved_heterogeneity = m.unobserved_heterogeneity)
 
-calculate_welfare(model::SD1, data::DataSD, n_sim; method = "effective_values", kwargs...) = calculate_welfare(SDCore(model), data, n_sim; method = method, kwargs...)
+calculate_welfare(model::SD1, data::DataSD, n_sim 	; method = "effective_values", kwargs...) = calculate_welfare(SDCore(model), data, n_sim; method = method, kwargs...)
 
 function calculate_costs!(m::SD1, d, n_draws_cd; 
 							force_recompute = true,
@@ -195,7 +195,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0, 
 			end
 		end
 		if complement 
-			LL += (1-prob_no_search_given_draw) * prob_u0_in_bounds
+			LL += (1 - prob_no_search_given_draw) * prob_u0_in_bounds
 		else
 			LL += prob_no_search_given_draw * prob_u0_in_bounds
 		end
@@ -357,7 +357,7 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0,
 end
 
 """
-	function prob_search_not_buy(m::SD1, xβ::T, ξ::T, lb::T, ub::T, dE::Normal, dV::Normal)  where T 
+	function prob_search_not_buy(m::Union{SD1, WM1}, xβ::T, ξ::T, lb::T, ub::T, dE::Normal, dV::Normal)  where T 
 
 Compute probability of searching without buying. This probability is given by P(xβ + ξ + ν_j >= lb ∩ xβ + ξ + ν_j + ε_j < ub). 
 """
@@ -378,14 +378,117 @@ Compute probability of searching without buying. This probability is given by P(
 end
 
 """
-	function prob_not_search(u, z_j, dV)
-Compute probaility of not searching alternaitve, given chosen option has utility u. 
+	function prob_not_search(m::Union{SD1, WM1}, u, z_j, dV)
+
+Compute probaility of not searching alternaitve, given chosen option has utility `u`. 
 """
 @inline function prob_not_search(m::Union{SD1, WM1}, u::T, z_j::T, dV) where T 
 	return cdf(dV, u - z_j)
 end
 
 
+## Demand functions
+function calculate_demand(m::SD1, d::DataSD, j, n_draws; kwargs...) 
+
+	set_seed(kwargs) 
+
+	if length(d) > 1
+		throw(ArgumentError("Trying to predict product demand for multiple sessions. Use loop over sessions."))
+	end
+
+	# Different functions depending on whether product is outside option or not
+	demand_j = if d.product_ids[1][j] == 0 
+					return calculate_demand_outside_option(m, d, n_draws; kwargs...)
+				else
+					return calculate_demand_product(m, d, j, n_draws; kwargs...)
+				end
+
+	return demand_j
+end
+
+function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...) 
+	T = eltype(m.β)
+
+	# Extract zdfun. If already applied as keyword, can save compilation time.
+	zd_h = get(kwargs, :zd_h, nothing)
+	if isnothing(zd_h)
+		zdfun = get(kwargs, :zdfun, get_functional_form(m.zdfun))
+		zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[1]]
+	end 
+
+	positions = @views d.positions[1]
+	n_products = length(positions)
+
+	demand = zero(T)
+
+	for dd in 1:n, h in 2:n_products
+		# If not last product in same position or last product, skip 
+		if h < n_products && positions[h] == positions[h+1]
+			continue
+		end
+
+		# Set lower bound for truncation based on position
+		lb::T = if h < n_products # not yet last position 
+				zd_h[h + 1] - m.β[end]
+			else # no lower bound if last position 
+				- T(MAX_NUMERICAL)
+			end
+
+		# Set upper bound for truncation based on position
+		ub::T = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+				T(MAX_NUMERICAL)
+			else 
+				zd_h[h] - m.β[end]  # Max accounts for case where nA0 < nd 
+			end
+
+		# Get probability of u0 in bounds and draw for u0
+		prob_u0_in_bounds = trunc_cdf(m.dU0, lb, ub)
+		u0_draw = rand_trunc(m.dU0, lb, ub) + m.β[end]
+
+		# Initialize for probability
+		prob_buy_u0 = one(T)
+		for j in 2:h
+			xβ = @views d.product_characteristics[1][j, :]' * m.β
+			prob_buy_u0 *= prob_not_buy(m, xβ, m.ξ, u0_draw, m.dE, m.dV)
+			if prob_buy_u0 == 0
+				break
+			end
+		end
+
+		demand += prob_buy_u0 * prob_u0_in_bounds
+	end
+
+	conditional_on_search = get(kwargs, :conditional_on_search, false)
+	# if conditional_on_search
+	# 	demand = demand / (1 - exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true)))
+	# end
+
+	## CONTINUE HERE 
+	
+	return demand / n 
+end
+
+
+
+	
+"""
+	function prob_no_buy(m::Union{SD1, WM1}, xβ::T, ξ::T, u::T, dE::Normal, dV::Normal)  where T 
+
+Compute probability of not buying given chosen utility has utility `u`. This probability is given by P(xβ + v_j + min(ξ, ε_j) <= u)
+"""
+
+@inline function prob_not_buy(m::Union{SD1, WM1}, xβ::T, ξ::T, u::T,
+								dE::Normal, dV::Normal) where T 
+	σe = std(dE) 
+	σv = std(dV)
+
+	a = (u - xβ) / σe
+	b = - σv / σe
+	Y = (u - ξ - xβ) / σv
+
+	P = cdf(dV, u - ξ - xβ) + cdf(Normal(), a / sqrt(1 + b^2)) - bvncdf(a / sqrt(1 + b^2), Y, -b / sqrt(1 + b^2))
+	return P 
+end
 
 # ######################################################################
 # ## P(click but not buy )
