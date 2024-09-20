@@ -324,8 +324,6 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0,
 		# Get probability outside option P(u0 < min{wj,zd(j-1)})
 		if with_outside_option_dummy
 			prob_searches_given_draw *= cdf(dU0, w_k - β[end])
-		else
-			prob_searches_given_draw *= cdf(dU0, w_k)
 		end
 		
 		# Probabilities for other products
@@ -447,26 +445,119 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...)
 
 		# Initialize for probability
 		prob_buy_u0 = one(T)
+
 		for j in 2:h
 			xβ = @views d.product_characteristics[1][j, :]' * m.β
 			prob_buy_u0 *= prob_not_buy(m, xβ, m.ξ, u0_draw, m.dE, m.dV)
-			if prob_buy_u0 == 0
-				break
-			end
 		end
 
 		demand += prob_buy_u0 * prob_u0_in_bounds
 	end
 
 	conditional_on_search = get(kwargs, :conditional_on_search, false)
-	# if conditional_on_search
-	# 	demand = demand / (1 - exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true)))
-	# end
-
-	## CONTINUE HERE 
+	if conditional_on_search
+		demand = demand / (1 - exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true) ))
+	end
 	
 	return demand / n 
 end
+
+function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...) 
+	T = eltype(m.β)
+
+	i = 1 
+	n_products = length(d.product_ids[i])
+	positions = @views d.positions[i]
+	with_outside_option_dummy = d.product_ids[i][1] == 0
+
+	# Extract zdfun. If already applied as keyword, can save compilation time.
+	zd_h = get(kwargs, :zd_h, nothing)
+	if isnothing(zd_h)
+		zdfun = get(kwargs, :zdfun, get_functional_form(m.zdfun))
+		zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[1]]
+	end 
+	
+
+
+	β, ξ, dE, dV, dU0 = m.β, m.ξ, m.dE, m.dV, m.dU0
+
+	demand = zero(T) 
+
+	for dd in 1:n, h in 1:n_products, ddd in 1:2
+ 		# If not last product in same position or last product, skip 
+		 if h < n_products && positions[h] == positions[h+1]
+			continue
+		end
+
+		# Reset for each draw
+		prob_purchase_k = one(T) 
+
+		# xb of purchased 
+		xβ_k = @views d.product_characteristics[i][k, :]' * β 
+
+		# Set lower bound for truncation based on position 
+		lb::T = if h < n_products # not yet last position 
+			zd_h[h + 1] - xβ_k
+		else # no lower bound if last position 
+			- T(MAX_NUMERICAL)
+		end
+
+		# Set upper bound for truncation based on position
+		ub::T = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+				T(MAX_NUMERICAL)
+			else 
+				zd_h[h] - xβ_k  # Max accounts for case where nA0 < nd 
+			end
+
+		# Fill 
+		if ddd == 1 # e < ξ
+				e =  rand_trunc(dE, -one(T)*MAX_NUMERICAL, ξ)
+				u_k = xβ_k + e + rand_trunc(dV, lb - e, ub - e)
+				z_k = u_k - e + ξ # this way v draw still stored in z_k
+				prob_draws_in_bounds = trunc_cdf(dE, -one(T)*MAX_NUMERICAL, ξ) * 
+								trunc_cdf(dV, lb - e, ub - e)
+		else # e >= ξ
+				e = rand_trunc(dE, ξ, one(T)*MAX_NUMERICAL)
+				z_k = xβ_k + ξ + rand_trunc(dV, lb - ξ, ub - ξ)
+				u_k = z_k - ξ + e # this way v draw still stored in z_k 
+				prob_draws_in_bounds = trunc_cdf(dE, ξ, one(T)*MAX_NUMERICAL) * 
+								trunc_cdf(dV, lb - ξ, ub - ξ)
+		end		
+
+		if h < k # no need to calculate, but still loop over to have fixed seed independent of which position product is shown 
+			continue
+		end
+
+		# Get values only if last click not in initial awareness set 
+		wt_k = min(u_k, z_k) 
+		w_k = positions[h] == 0 ? wt_k : min(wt_k, zd_h[h])
+		
+		if with_outside_option_dummy
+			prob_purchase_k *= cdf(dU0, min(u_k, zd_h[h]) - β[end])
+		end
+	
+		# P(not buy j) for other products
+		for j in with_outside_option_dummy + 1:h
+			if j == k
+				continue
+			end
+			xβ_j = @views d.product_characteristics[i][j, :]' * β
+			prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, w_k, dE, dV)
+		end
+
+		demand += prob_purchase_k * prob_draws_in_bounds
+
+	end
+
+	conditional_on_search = get(kwargs, :conditional_on_search, false)
+	if conditional_on_search
+		demand = demand / (1 - exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true) ))
+	end
+	
+
+	return demand / n
+end
+			
 
 
 

@@ -2,7 +2,7 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
 seed = 1236
 m = SD1( 
-    β = [-0.1, 2.5], 
+    β = [-0.1, 2.7], 
     Ξ = 3.5, 
     ρ = [-0.2], 
     ξ = 1.5,
@@ -12,7 +12,7 @@ m = SD1(
     zdfun = "log"
 )
 n_consumers = 1000 
-conditional_on_search = false
+conditional_on_search = true
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
@@ -26,14 +26,15 @@ percentile = 0.95,
 
 ## 
 
-j = 1
-
-calculate_demand(m, data[1], j, 10; seed )
+j = 2
+n_draws = 100
+calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search)
 ## 
-@time d0 = [calculate_demand(m, data[i], j, 30) for i in 1:1000]
-
+j = 30
+@time d0 = [calculate_demand(m, data[i], j, 30; conditional_on_search) for i in 1:100]
+    
 println("Mean demand: ", mean(d0))
-println("Demand data: ", count(data.purchase_indices .== 1) / n_consumers)
+println("Demand data: ", count(data.purchase_indices .== j) / n_consumers)
 
 
 ## 
