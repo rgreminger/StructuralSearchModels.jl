@@ -11,6 +11,7 @@ end
 
 function estimate_model(model::Model, estimator::MLE, data::Data;
                             startvals = nothing,
+                            compute_std_errors = true, 
                             print_solver_solution = false,
                             kwargs...) 
     # Estimate the model using maximum likelihood estimation 
@@ -48,9 +49,12 @@ function estimate_model(model::Model, estimator::MLE, data::Data;
 
 	estimates = result_solver.minimizer
 	likelihood_at_estimates =  - result_solver.minimum
-				
+
+    # Standard errors
+    seed = args_likelihood_function[end] 
+    std_errors = compute_std_errors ? calculate_standard_errors(model, estimator, data; kwargs..., seed) : nothing				
     GC.gc()  
-	return estimates, likelihood_at_estimates, result_solver
+	return estimates, likelihood_at_estimates, result_solver, std_errors
 end
 
 function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
