@@ -456,7 +456,7 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...)
 
 	conditional_on_search = get(kwargs, :conditional_on_search, false)
 	if conditional_on_search
-		demand = demand / exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true))
+		throw(ArgumentError("Conditional on search not implemented for demand calculation of outside option."))
 	end
 	
 	return demand / n 
