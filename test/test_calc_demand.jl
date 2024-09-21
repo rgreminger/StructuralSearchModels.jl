@@ -2,39 +2,49 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
 seed = 1236
 m = SD1( 
-    β = [-0.1, 2.7], 
+    β = [-0.0, 2.7], 
     Ξ = 3.5, 
-    ρ = [-0.2], 
+    ρ = [-0.1], 
     ξ = 1.5,
     dE = Normal(0.0, 1.0), 
     dV = Normal(0, 1.0), 
     dU0 = Uniform(0, 1), 
     zdfun = "log"
 )
-n_consumers = 1000 
+n_consumers = 10000
 conditional_on_search = true
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
                 conditional_on_click = conditional_on_search, conditional_on_click_iter = 100,
-                products = generate_products(n_consumers; distribution = Normal(0,3)))
+                products = generate_products(n_consumers; distribution = Normal(0,0.1)))
 
-@time evaluate_fit(m, data, 1000; conditional_on_click = conditional_on_search, 
+@time evaluate_fit(m, data, 200; conditional_on_click = conditional_on_search, 
 percentile = 0.95, 
 ) ; 
 
 
 ## 
 
-j = 2
+j = 1
 n_draws = 100
 calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search)
 ## 
-j = 30
-@time d0 = [calculate_demand(m, data[i], j, 30; conditional_on_search) for i in 1:100]
+j = 3
+@time d0 = [calculate_demand(m, data[i], j, 20; conditional_on_search) for i in 1:500]
     
 println("Mean demand: ", mean(d0))
 println("Demand data: ", count(data.purchase_indices .== j) / n_consumers)
+
+## 
+Random.seed!(1236)
+n_draws = 10
+i = 1
+@time evaluate_fit(m, data[i], 1000; seed = 27, conditional_on_click = conditional_on_search, 
+percentile = 0.95) 
+
+dem = [calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search) for j in 2:31]
+lines(dem)
 
 
 ## 

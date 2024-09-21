@@ -456,7 +456,7 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...)
 
 	conditional_on_search = get(kwargs, :conditional_on_search, false)
 	if conditional_on_search
-		demand = demand / (1 - exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true) ))
+		demand = demand / exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true))
 	end
 	
 	return demand / n 
@@ -533,7 +533,7 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 		w_k = positions[h] == 0 ? wt_k : min(wt_k, zd_h[h])
 		
 		if with_outside_option_dummy
-			prob_purchase_k *= cdf(dU0, min(u_k, zd_h[h]) - β[end])
+			prob_purchase_k *= cdf(dU0, w_k - β[end])
 		end
 	
 		# P(not buy j) for other products
@@ -542,7 +542,7 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 				continue
 			end
 			xβ_j = @views d.product_characteristics[i][j, :]' * β
-			prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, w_k, dE, dV)
+			prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, wt_k, dE, dV)
 		end
 
 		demand += prob_purchase_k * prob_draws_in_bounds
@@ -551,7 +551,7 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 
 	conditional_on_search = get(kwargs, :conditional_on_search, false)
 	if conditional_on_search
-		demand = demand / (1 - exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true) ))
+		demand = demand / exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true))
 	end
 	
 
