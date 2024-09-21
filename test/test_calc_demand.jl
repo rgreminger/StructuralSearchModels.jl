@@ -2,8 +2,8 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
 seed = 1236
 m = SD1( 
-    β = [-0.0, 2.7], 
-    Ξ = 3.5, 
+    β = [-0.0, 0.7], 
+    Ξ = 2.5, 
     ρ = [-0.1], 
     ξ = 1.5,
     dE = Normal(0.0, 1.0), 
@@ -12,7 +12,7 @@ m = SD1(
     zdfun = "log"
 )
 n_consumers = 10000
-conditional_on_search = true
+conditional_on_search = false
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
@@ -30,22 +30,21 @@ j = 1
 n_draws = 100
 calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search)
 ## 
-j = 3
-@time d0 = [calculate_demand(m, data[i], j, 20; conditional_on_search) for i in 1:500]
+j = 5
+d0 = [calculate_demand(m, data[i], j, 20; conditional_on_search) for i in 1:500]
     
 println("Mean demand: ", mean(d0))
 println("Demand data: ", count(data.purchase_indices .== j) / n_consumers)
 
 ## 
 Random.seed!(1236)
-n_draws = 10
+n_draws = 100
 i = 1
-@time evaluate_fit(m, data[i], 1000; seed = 27, conditional_on_click = conditional_on_search, 
-percentile = 0.95) 
+# @time evaluate_fit(m, data[i], 1000; seed = 27, conditional_on_click = conditional_on_search, 
+# percentile = 0.95) 
 
-dem = [calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search) for j in 2:31]
-lines(dem)
-
+dem = [calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search) for j in 1:31]
+sum(dem)
 
 ## 
 m_hat = deepcopy(m)

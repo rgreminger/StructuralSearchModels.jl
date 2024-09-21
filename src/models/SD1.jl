@@ -327,7 +327,7 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV, dU0,
 		end
 		
 		# Probabilities for other products
-		for j in 2:h
+		for j in 1 + with_outside_option_dummy:h
 
 			xβ_j = @views d.product_characteristics[i][j, :]' * β
 
@@ -477,8 +477,6 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 		zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[1]]
 	end 
 	
-
-
 	β, ξ, dE, dV, dU0 = m.β, m.ξ, m.dE, m.dV, m.dU0
 
 	demand = zero(T) 
@@ -503,7 +501,7 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 		end
 
 		# Set upper bound for truncation based on position
-		ub::T = if positions[h] == 0 # first no upper bound if last click in initial awareness set (position 0)
+		ub::T = if positions[h] == positions[k] # first no upper bound if last click in initial awareness set (position 0)
 				T(MAX_NUMERICAL)
 			else 
 				zd_h[h] - xβ_k  # Max accounts for case where nA0 < nd 
@@ -511,11 +509,11 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 
 		# Fill 
 		if ddd == 1 # e < ξ
-				e =  rand_trunc(dE, -one(T)*MAX_NUMERICAL, ξ)
-				u_k = xβ_k + e + rand_trunc(dV, lb - e, ub - e)
-				z_k = u_k - e + ξ # this way v draw still stored in z_k
-				prob_draws_in_bounds = trunc_cdf(dE, -one(T)*MAX_NUMERICAL, ξ) * 
-								trunc_cdf(dV, lb - e, ub - e)
+			e =  rand_trunc(dE, -one(T)*MAX_NUMERICAL, ξ)
+			u_k = xβ_k + e + rand_trunc(dV, lb - e, ub - e)
+			z_k = u_k - e + ξ # this way v draw still stored in z_k
+			prob_draws_in_bounds = trunc_cdf(dE, -one(T)*MAX_NUMERICAL, ξ) * 
+							trunc_cdf(dV, lb - e, ub - e)
 		else # e >= ξ
 				e = rand_trunc(dE, ξ, one(T)*MAX_NUMERICAL)
 				z_k = xβ_k + ξ + rand_trunc(dV, lb - ξ, ub - ξ)
@@ -523,7 +521,6 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 				prob_draws_in_bounds = trunc_cdf(dE, ξ, one(T)*MAX_NUMERICAL) * 
 								trunc_cdf(dV, lb - ξ, ub - ξ)
 		end		
-
 		if h < k # no need to calculate, but still loop over to have fixed seed independent of which position product is shown 
 			continue
 		end
@@ -541,8 +538,12 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 			if j == k
 				continue
 			end
-			xβ_j = @views d.product_characteristics[i][j, :]' * β
-			prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, wt_k, dE, dV)
+			xβ_j = @views d.product_characteristics[i][j, :]' * β 
+			if positions[j] < positions[k]
+				prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, w_k, dE, dV)
+			else
+				prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, wt_k, dE, dV)
+			end
 		end
 
 		demand += prob_purchase_k * prob_draws_in_bounds
