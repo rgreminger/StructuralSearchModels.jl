@@ -1017,10 +1017,15 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 	click_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
 	purchase_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
 
+	conditional_on_click = get(kwargs, :conditional_on_click, false)
+
 	# Generate data from new seed 
 	sim_seeds = rand(1:1000000, n_sim)
 	for s in 1:n_sim 
-		d_sim = generate_data(m, data; kwargs..., seed = sim_seeds[s], compute_min_discover_indices = false)[1]
+
+		# note: generating unconditional data is much faster than conditional data. So we generate unconditional data and 
+		# update the statistics to condition on clicks, using that, e.g., P(click pos 1 | click) = P(click pos 0) / P(click)
+		d_sim = generate_data(m, data; kwargs..., seed = sim_seeds[s], compute_min_discover_indices = false, conditional_on_click = false)[1]
 
 		# Compute fit statistics 
 		click_stats_i, purchase_stats_i = calculate_statistics_from_data(d_sim) 
@@ -1044,6 +1049,14 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 	click_stats_sim = click_stats ./ n_sim
 	purchase_stats_sim = purchase_stats ./ n_sim
 
+	if conditional_on_click 
+		prob_at_least_one_click = click_stats_sim[3]
+		click_stats_sim[1:3] ./= prob_at_least_one_click
+		purchase_stats_sim[1:2] ./= prob_at_least_one_click
+		click_probability_per_pos ./= prob_at_least_one_click
+		purchase_probability_per_pos ./= prob_at_least_one_click
+	end
+
 	# Get stats for data 
 	click_stats_data, purchase_stats_data = calculate_statistics_from_data(data) 
 
@@ -1058,11 +1071,11 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 		lb_purchase = purchase_probability_per_pos[:, ceil(Int, (1-percentile_across_sims) * n_sim)]
 		ub_purchase = purchase_probability_per_pos[:, floor(Int, percentile_across_sims * n_sim)]
 
-		return (click_stats_sim, click_stats_data), (purchase_stats_sim, purchase_stats_data), (lb_click, ub_click), (lb_purchase, ub_purchase)
+		return (click_stats_data, click_stats_sim), (purchase_stats_data, purchase_stats_sim), (lb_click, ub_click), (lb_purchase, ub_purchase)
 	end 
 
 	# Return averages across simulations
-	return (click_stats_sim, click_stats_data), (purchase_stats_sim, purchase_stats_data) 
+	return (click_stats_data, click_stats_sim), (purchase_stats_data, purchase_stats_sim) 
 end
 
 function calculate_statistics_from_data(d::DataSD)
@@ -1138,8 +1151,8 @@ end
 function plot_across_positions(stats, bounds; kwargs...) 
 
 	# Extract statistics 
-	click_stats_sim, click_stats_data = stats[1]
-	purchase_stats_sim, purchase_stats_data = stats[2]
+	click_stats_data, click_stats_sim  = stats[1]
+	purchase_stats_data, purchase_stats_sim = stats[2]
 
 	clicks_per_pos_sim = click_stats_sim[2]
 	clicks_per_pos_data = click_stats_data[2]

@@ -3,9 +3,9 @@ using StructuralSearchModels, Revise, Distributions, StatsBase, Random, Benchmar
 seed = 122 
 m = SD1( 
     β = [-0.1, 2.5], 
-    Ξ = 3.5, 
+    Ξ = 2.5, 
     ρ = [-0.2], 
-    ξ = 4.5,
+    ξ = 0.5,
     dE = Normal(0.0, 1.0), 
     dV = Normal(0, 1.0), 
     dU0 = Normal(0, 1.0), 
@@ -19,9 +19,14 @@ conditional_on_search = true
                 conditional_on_click = conditional_on_search, conditional_on_click_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 
-evaluate_fit(m, data, 1000; conditional_on_click = conditional_on_search) ; 
+evaluate_fit(m, data, 10000; conditional_on_click = conditional_on_search, seed) ; 
+
+## 
+
+i = 1
 
 
+## 
 m_hat = deepcopy(m)
 
 e = SmoothMLE(
