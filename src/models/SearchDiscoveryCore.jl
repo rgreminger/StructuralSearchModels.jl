@@ -145,6 +145,19 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	return data, utility_purchases
 end
 
+function update_positions!(data::DataSD, nA0, nd)
+	# Update positions
+	for i in eachindex(data)
+		n_prod = length(data.positions[i]) 
+		new_positions = vcat(fill(0, 1 + nA0), repeat(collect(Int64, 1:(n_prod - 1 - nA0) / nd), inner = nd))
+		if length(new_positions) < n_prod # last discovery reveals fewer than nd products 
+			new_positions = vcat(new_positions, fill(new_positions[end] + 1, n_prod - length(new_positions)))
+		end
+		data.positions[i] .= new_positions 
+	end
+end
+
+
 function generate_data(m::SDCore, d::DataSD; kwargs...) 
 	
 	# Set seed (is stable across threads) 

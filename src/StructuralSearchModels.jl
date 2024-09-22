@@ -9,7 +9,7 @@ export estimate_model                                               # functions 
 export evaluate_fit, calculate_likelihood, calculate_standard_errors, calculate_welfare   # functions for post-estimation
 export calculate_costs!, calculate_discovery_value, calculate_search_cost, calculate_discovery_cost, calculate_ξ
 export plot_across_positions, vectorize_parameters, construct_model_from_pars, generate_draws_with_search
-export add_indices_min_discover!, calculate_demand
+export add_indices_min_discover!, calculate_demand, update_positions!
 
 # Export concrete model types 
 export SDCore, SD1, WM1, DataSD
