@@ -77,8 +77,6 @@ function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD; k
 end
 
 
-
-
 # Vectorize parameters 
 function vectorize_parameters(m::SD1; kwargs...)
 	# Default estimate all parameters 
@@ -386,35 +384,34 @@ end
 
 
 ## Demand functions
-function calculate_demand(m::SD1, d::DataSD, j, n_draws; kwargs...) 
+function calculate_demand(m::SD1, d::DataSD, i, j, n_draws; kwargs...) 
 
 	set_seed(kwargs) 
 
-	if length(d) > 1
-		throw(ArgumentError("Trying to predict product demand for multiple sessions. Use loop over sessions."))
-	end
-
 	# Different functions depending on whether product is outside option or not
-	demand_j = if d.product_ids[1][j] == 0 
-					return calculate_demand_outside_option(m, d, n_draws; kwargs...)
+	demand_j = if d.product_ids[i][j] == 0 
+					return calculate_demand_outside_option(m, d, i, n_draws; kwargs...)
 				else
-					return calculate_demand_product(m, d, j, n_draws; kwargs...)
+					return calculate_demand_product(m, d, i, j, n_draws; kwargs...)
 				end
 
 	return demand_j
 end
 
-function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...) 
+function calculate_demand_outside_option(m::SD1, d::DataSD, i, n; kwargs...) 
 	T = eltype(m.β)
+
+	positions = @views d.positions[i]
+	product_characteristics = @views d.product_characteristics[i]
 
 	# Extract zdfun. If already applied as keyword, can save compilation time.
 	zd_h = get(kwargs, :zd_h, nothing)
 	if isnothing(zd_h)
 		zdfun = get(kwargs, :zdfun, get_functional_form(m.zdfun))
-		zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[1]]
+		zd_h = [zdfun(m.Ξ, m.ρ, h) for h in positions]
 	end 
 
-	positions = @views d.positions[1]
+	positions = @views d.positions[i] 
 	n_products = length(positions)
 
 	demand = zero(T)
@@ -447,7 +444,7 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...)
 		prob_buy_u0 = one(T)
 
 		for j in 2:h
-			xβ = @views d.product_characteristics[1][j, :]' * m.β
+			xβ = @views product_characteristics[j, :]' * m.β
 			prob_buy_u0 *= prob_not_buy(m, xβ, m.ξ, u0_draw, m.dE, m.dV)
 		end
 
@@ -462,24 +459,36 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, n; kwargs...)
 	return demand / n 
 end
 
-function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...) 
-	T = eltype(m.β)
 
-	i = 1 
-	n_products = length(d.product_ids[i])
-	positions = @views d.positions[i]
-	with_outside_option_dummy = d.product_ids[i][1] == 0
+function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n; kwargs...) where T 	
 
-	# Extract zdfun. If already applied as keyword, can save compilation time.
-	zd_h = get(kwargs, :zd_h, nothing)
-	if isnothing(zd_h)
-		zdfun = get(kwargs, :zdfun, get_functional_form(m.zdfun))
-		zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[1]]
-	end 
-	
+	# note: unpacking things here and passing into function saves a lot of allocations
 	β, ξ, dE, dV, dU0 = m.β, m.ξ, m.dE, m.dV, m.dU0
 
+	# Extract zdfun. If already applied as keyword, can save compilation time.
+	zd_h = get(kwargs, :zd_h, zeros(T, length(d.positions[i])))
+	if zd_h[1] == 0
+		zdfun = get(kwargs, :zdfun, get_functional_form(m.zdfun))
+		for h in eachindex(zd_h)
+			zd_h[h] = zdfun(m.Ξ, m.ρ, d.positions[i][h])
+		end 
+	end 
+	
+	return calculate_demand_product(m, d, i, k, n, β, ξ, zd_h, dE, dV, dU0; kwargs...)
+end
+
+function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n,
+	β::Vector{T}, ξ::T, zd_h::Vector{T}, dE::Distribution, dV::Distribution, dU0::Distribution; kwargs...) where T 
+
+	n_products = length(d.product_ids[i])
+	positions = @views d.positions[i]
+	product_characteristics = @views d.product_characteristics[i]
+	with_outside_option_dummy = d.product_ids[i][1] == 0
+
 	demand = zero(T) 
+
+	# xb of purchased (same across draws)
+	xβ_k = @views product_characteristics[k, :]' * β 
 
 	for dd in 1:n, h in 1:n_products, ddd in 1:2
  		# If not last product in same position or last product, skip 
@@ -489,9 +498,6 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 
 		# Reset for each draw
 		prob_purchase_k = one(T) 
-
-		# xb of purchased 
-		xβ_k = @views d.product_characteristics[i][k, :]' * β 
 
 		# Set lower bound for truncation based on position 
 		lb::T = if h < n_products # not yet last position 
@@ -538,7 +544,7 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 			if j == k
 				continue
 			end
-			xβ_j = @views d.product_characteristics[i][j, :]' * β 
+			xβ_j = @views product_characteristics[j, :]' * β 
 			if positions[j] < positions[k]
 				prob_purchase_k *= prob_not_buy(m, xβ_j, ξ, w_k, dE, dV)
 			else
@@ -558,8 +564,45 @@ function calculate_demand_product(m::SD1, d::DataSD, k, n; kwargs...)
 
 	return demand / n
 end
-			
 
+function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...) 
+
+    R = zeros(length(d)) 
+
+    Random.seed!(seed)  
+
+	# Create and define tasks for each chunk
+	_, data_chunks = get_chunks(length(d))
+
+	i_max_n_products = argmax(length.(d.product_ids)) 
+
+
+	zdfun = get_functional_form(m.zdfun)
+	zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[i_max_n_products]]
+	tasks = map(data_chunks) do chunk 
+		Threads.@spawn begin 
+			for i in chunk
+				R[i] = calculate_revenues_i(m, d, i, kprice, n_draws; zd_h, kwargs...)
+			end
+		end
+    end
+
+	fetch.(tasks) 
+      
+    return sum(R), R 
+end
+
+function calculate_revenues_i(m, d, i, kprice, n_draws; kwargs... )
+
+    revenues = 0.0 
+    for j in eachindex(d.product_ids[i])
+		if d.product_ids[i][j] == 0
+			continue
+		end
+        revenues += calculate_demand(m, d, i, j, n_draws; kwargs...) * d.product_characteristics[i][j, kprice]
+    end
+    return revenues 
+end
 
 
 	

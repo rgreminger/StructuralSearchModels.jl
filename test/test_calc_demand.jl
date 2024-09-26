@@ -2,8 +2,8 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
 seed = 1236
 m = SD1( 
-    β = [-0.0, 2.5], 
-    Ξ = 3.5, 
+    β = [-0.3, 2.5], 
+    Ξ = 3.0, 
     ρ = [-0.1], 
     ξ = 0.5,
     dE = Normal(0.0, 1.0), 
@@ -11,7 +11,7 @@ m = SD1(
     dU0 = Uniform(0, 1), 
     zdfun = "log"
 )
-n_consumers = 10000
+n_consumers = 1000
 conditional_on_search = true
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
@@ -25,6 +25,9 @@ percentile = 0.95,
 
 sum(data.search_paths[i][1] > 0 for i in 1:n_consumers) / n_consumers
 
+## 
+n_draws = 10
+@time r = calculate_revenues(m, data, 1, n_draws, 283)
 ## 
 
 j = 1
