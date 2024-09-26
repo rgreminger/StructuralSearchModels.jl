@@ -68,9 +68,9 @@ end
 # Take or generate draw
 @inline function take_or_generate_draw!(draws, distribution::Distribution, i, j, store_draw)
 	if isnothing(draws) 
-		return rand(distribution)
+		return rand(distribution)::Float64
 	elseif store_draw 
-		new_draw = rand(distribution)
+		new_draw = rand(distribution)::Float64
 		draws[i, j] = new_draw
 		return new_draw
 	else

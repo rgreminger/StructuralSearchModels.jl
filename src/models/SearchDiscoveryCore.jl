@@ -880,8 +880,11 @@ function _calculate_welfare_effective_values(m::SDCore, d::DataSD, vectors_to_fi
 			local zs 	= zeros(Float64, max_products_per_session)
 			local ws 	= zeros(Float64, max_products_per_session)
 			local ws_tilde = zeros(Float64, max_products_per_session)
+			local e  = zeros(Float64, 1)
+			local v  = zeros(Float64, 1)
+			local w  = zeros(Float64, 1)
 
-			vectors_preallocated = (u, zs, ws, ws_tilde )
+			vectors_preallocated = (u, zs, ws, ws_tilde, e, v, w )
 
 			for i in chunk
 				u .= typemin(Float64)
@@ -919,7 +922,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks) 
 
 	# Extract pre-allocated vectors   
-	u, zs, ws, ws_tilde = vectors_preallocated
+	u, zs, ws, ws_tilde, _ = vectors_preallocated
 
 	# extract vectors to track welfare measures
 	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
@@ -975,11 +978,11 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 end
 
 function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks)
-	chars = d.product_characteristics[i]
-	positions = d.positions[i]
-	product_ids = d.product_ids[i]
+	@views chars = d.product_characteristics[i]
+	@views positions = d.positions[i]
+	@views product_ids = d.product_ids[i]
 
-	u, zs, ws, ws_tilde = vectors_preallocated
+	u, zs, ws, ws_tilde, e, v, w = vectors_preallocated
 	u0_draws, e_draws, v_draws, w_draws = draws_shocks 
 
 	for j in eachindex(product_ids)
@@ -991,20 +994,20 @@ function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_sho
 			# zs not used 
 		else
 			# Take draws 
-			e = take_or_generate_draw!(e_draws, m.dE, i, j, false)
-			v = take_or_generate_draw!(v_draws, m.dV, i, j, false)
-			w = take_or_generate_draw!(w_draws, m.dW, i, j, false)
+			e[1] = take_or_generate_draw!(e_draws, m.dE, i, j, false)
+			v[1] = take_or_generate_draw!(v_draws, m.dV, i, j, false)
+			w[1] = take_or_generate_draw!(w_draws, m.dW, i, j, false)
 
 			# Fill in utility
 			xβ = @views chars[j, :]' * m.β
-			u[j] = xβ + e + v
+			u[j] = xβ + e[1] + v[1]
 
 			# Fill in search value 
 			ξ_j = zsfun(m.ξ, m.ξρ, positions[j])
-			zs[j] = xβ + ξ_j + v + w
+			zs[j] = xβ + ξ_j + v[1] + w[1]
 
 			# Fill in effective value 
-			ws[j] = xβ + v + min(ξ_j + w, e) 
+			ws[j] = xβ + v[1] + min(ξ_j + w[1], e[1]) 
 			ws_tilde[j] = ws[j]
 
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
