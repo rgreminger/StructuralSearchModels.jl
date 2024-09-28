@@ -11,7 +11,7 @@ m = SD1(
     dU0 = Normal(0, 1.0), 
     zdfun = "log"
 )
-n_consumers = 500 
+n_consumers = 5000
 conditional_on_search = true
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
@@ -19,11 +19,7 @@ conditional_on_search = true
                 conditional_on_click = conditional_on_search, conditional_on_click_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 
-evaluate_fit(m, data, 10000; conditional_on_click = conditional_on_search, seed) ; 
-
-## 
-
-i = 1
+evaluate_fit(m, data, 1000; conditional_on_click = conditional_on_search, seed) ; 
 
 
 ## 
@@ -49,15 +45,17 @@ startvals = vectorize_parameters(m_hat; distribution_options) ./ 2
 
 s = calculate_standard_errors(m_hat, e, data; distribution_options)
 hcat(estimates, vectorize_parameters(m_hat; distribution_options), s)
-## Standard errors 
-m_hat = construct_model_from_pars(estimates, m_hat; distribution_options) 
 
-@time calculate_likelihood(m_hat, e, data; debug_print = true ) 
 
-## 
-calculate_costs!(m_hat, d, 10000)
-calculate_welfare(m_hat, d, 100) 
+## Welfare 
+calculate_costs!(m, data, 1000)
+m.cd = 0.5
+w1 = calculate_welfare(m, data, 500; method = "effective_values", seed = 13) 
+w2 = calculate_welfare(m, data, 500; method = "simulate_paths", seed = 14)
 
+w1[1], w2[1]
+w1[2], w2[2]
+w1[3], w2[3]
 ## 
 
 a  = zeros(2) 

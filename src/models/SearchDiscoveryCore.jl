@@ -902,8 +902,8 @@ function _calculate_welfare_effective_values(m::SDCore, d::DataSD, vectors_to_fi
 
 	@views	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
 
-	n_click = sum(vectors_to_fill[5])
-	n_purch = sum(vectors_to_fill[end])
+	n_click = sum(clicked)
+	n_purch = sum(purchased)
 
 	# Return averages across simulations
 	return (sum(eff_value_choice_avg), sum(discovery_costs_avg)) ./ n_ses, 
@@ -927,19 +927,23 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	# extract vectors to track welfare measures
 	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
 
-	wm, im = findmax(ws)
+	wm, im = findmax(ws) # find max value and index of effective values
 
 	position_chosen = d.positions[i][im]
 	wm_tilde = ws_tilde[im] # get w_tilde for chosen alternative
 
 	# Find number of discoveries 
-	zd = [zdfun(m.Ξ, m.ρ, pos) for pos in d.positions[i]]
-	last_position_discovered = d.positions[i][max(searchsortedfirst(zd, wm; rev = true) - 1, 1)]
-	ndiscoveries =  last_position_discovered
-
-	# note: discovery must stop at position where the effective value of chosen alternative exceeds the discovery value.
-	# searchsorted first finds position of first discovery value where this is the case, using eps() gives the value before the one found 
-	# ndiscoveries then is one less that position, where the max accounts for the case where multiple products have the same position=0. 
+	pos = position_chosen + 1
+	zd = zdfun(m.Ξ, m.ρ, pos)
+	continue_discovery = zd > wm_tilde 
+	while continue_discovery
+		pos += 1
+		zd = zdfun(m.Ξ, m.ρ, pos)
+		if wm >= zd || pos >= d.positions[i][end]
+			continue_discovery = false 
+		end
+	end
+	last_position_discovered = ndiscoveries = pos - 1
 	
 	# Fill in welfare measures
 	eff_value_choice_avg[i] = wm_tilde 
@@ -956,16 +960,24 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	# Conditional on click
 	has_click = false 
 
-	for j in eachindex(d.product_ids[i])
-		if d.product_ids[i][j] == 0  # skip outside option 
-			continue 
-		end
-		if d.positions[i][j] < position_chosen && zs[j] >= wm # discovered before chosen alternative
-			has_click = true 
-			break 
-		elseif d.positions[i][j] <= last_position_discovered && zs[j] >= wm_tilde # discovered at the same time or after chosen alternative. 
-			has_click = true 
-			break
+	if has_purchase
+		has_click = true 
+	else
+		for j in eachindex(d.product_ids[i])
+			if d.product_ids[i][j] == 0  # skip outside option 
+				if im > 1 
+					has_click 
+					break
+				end
+				continue 
+			end
+			if d.positions[i][j] < position_chosen && zs[j] >= wm  # discovered before chosen alternative
+				has_click = true 
+				break 
+			elseif d.positions[i][j] <= last_position_discovered && zs[j] >= wm_tilde # discovered at the same time or after chosen alternative. 
+				has_click = true 
+				break
+			end
 		end
 	end
 
@@ -1011,8 +1023,8 @@ function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_sho
 			ws_tilde[j] = ws[j]
 
 			if positions[j] > 0 # only account for discovery value when not in initial awareness set
-				zd_j = zdfun(m.Ξ, m.ρ, positions[j])
-				ws[j] = min(ws[j], zd_j)
+				zd_j = zdfun(m.Ξ, m.ρ, positions[j]) 
+				ws[j] = min(ws[j], zd_j) # + eps(eltype(ws)) * ws[j]
 			end
 		end
 

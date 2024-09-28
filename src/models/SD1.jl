@@ -575,10 +575,9 @@ function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
 	_, data_chunks = get_chunks(length(d))
 
 	i_max_n_products = argmax(length.(d.product_ids)) 
-
-
 	zdfun = get_functional_form(m.zdfun)
 	zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[i_max_n_products]]
+	
 	tasks = map(data_chunks) do chunk 
 		Threads.@spawn begin 
 			for i in chunk
@@ -593,7 +592,6 @@ function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
 end
 
 function calculate_revenues_i(m, d, i, kprice, n_draws; kwargs... )
-
     revenues = 0.0 
     for j in eachindex(d.product_ids[i])
 		if d.product_ids[i][j] == 0
