@@ -2,10 +2,10 @@ using Revise
 using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools, CairoMakie, Optimization
 seed = 1236
 m = SD1( 
-    β = [-0.3, 2.5], 
+    β = [-0.0, 0.1], 
     Ξ = 3.0, 
-    ρ = [-0.1], 
-    ξ = 0.5,
+    ρ = [-0.8], 
+    ξ = 0.1,
     dE = Normal(0.0, 1.0), 
     dV = Normal(0, 1.0), 
     dU0 = Uniform(0, 1), 
@@ -29,14 +29,14 @@ sum(data.search_paths[i][1] > 0 for i in 1:n_consumers) / n_consumers
 n_draws = 10
 @time r = calculate_revenues(m, data, 1, n_draws, 283)
 ## 
-
+i = 1 
 j = 1
 n_draws = 100
-calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search)
+calculate_demand(m, data, i, j, n_draws; seed, conditional_on_search)
 ## 
-j = 15
+j = 3
 n_draws = 20
-d0 = [calculate_demand(m, data[i], j, n_draws; conditional_on_search) for i in 1:500]
+d0 = [calculate_demand(m, data, i, j, n_draws; conditional_on_search, seed = 123) for i in 1:1000]
     
 println("Mean demand: ", mean(d0))
 println("Demand data: ", count(data.purchase_indices .== j) / n_consumers)

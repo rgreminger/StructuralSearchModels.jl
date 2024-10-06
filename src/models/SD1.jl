@@ -578,10 +578,13 @@ function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
 	zdfun = get_functional_form(m.zdfun)
 	zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[i_max_n_products]]
 	
+	# Note on seed: we have different seed per consumer, 
+	# but same seed for demand within consumer. This ensures that rearranging products 
+	# keeps consistent revenues within consumer  
 	tasks = map(data_chunks) do chunk 
 		Threads.@spawn begin 
 			for i in chunk
-				R[i] = calculate_revenues_i(m, d, i, kprice, n_draws; zd_h, kwargs...)
+				R[i] = calculate_revenues_i(m, d, i, kprice, n_draws, seed + i; zd_h, kwargs...)
 			end
 		end
     end
@@ -591,13 +594,13 @@ function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
     return sum(R), R 
 end
 
-function calculate_revenues_i(m, d, i, kprice, n_draws; kwargs... )
+function calculate_revenues_i(m, d, i, kprice, n_draws, seed; kwargs... )
     revenues = 0.0 
     for j in eachindex(d.product_ids[i])
 		if d.product_ids[i][j] == 0
 			continue
 		end
-        revenues += calculate_demand(m, d, i, j, n_draws; kwargs...) * d.product_characteristics[i][j, kprice]
+        revenues += calculate_demand(m, d, i, j, n_draws; kwargs..., seed = seed) * d.product_characteristics[i][j, kprice]
     end
     return revenues 
 end
