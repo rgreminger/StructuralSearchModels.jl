@@ -18,7 +18,7 @@ n_consumers = 1000
 @time d, _ = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
-                conditional_on_click = false, conditional_on_click_iter = 100,
+                conditional_on_search = false, conditional_on_search_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 evaluate_fit(m, d, 1000) 
 

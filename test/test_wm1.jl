@@ -15,7 +15,7 @@ n_consumers = 1000
 conditional_on_search = true 
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
-                conditional_on_click = conditional_on_search, conditional_on_click_iter = 100,
+                conditional_on_search = conditional_on_search, conditional_on_search_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)));
  
 
@@ -54,7 +54,7 @@ hcat(estimates, vectorize_parameters(m_hat))
 function estimates_given_seed(seed, n_consumers) 
     data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
-                conditional_on_click = false, conditional_on_click_iter = 100,
+                conditional_on_search = false, conditional_on_search_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)));
 
     estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, SmoothMLE(), data; startvals, distribution_options)  

@@ -16,10 +16,10 @@ conditional_on_search = true
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
-                conditional_on_click = conditional_on_search, conditional_on_click_iter = 100,
+                conditional_on_search = conditional_on_search, conditional_on_search_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 
-evaluate_fit(m, data, 1000; conditional_on_click = conditional_on_search, seed) ; 
+evaluate_fit(m, data, 1000; conditional_on_search = conditional_on_search, seed) ; 
 
 
 ## 

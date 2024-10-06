@@ -17,7 +17,7 @@ function f()
     n_consumers = 100
     data, utility_purchases = 
                     generate_data(m, n_consumers, 1; seed = seed,   
-                    conditional_on_click = false) 
+                    conditional_on_search = false) 
 
     ll = calculate_likelihood(m, SmoothMLE(), data; seed = seed)
 

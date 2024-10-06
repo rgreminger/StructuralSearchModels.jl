@@ -185,8 +185,8 @@ end
 function generate_search_paths(m::SDCore, product_ids, product_characteristics, positions; kwargs...)
 
 	# Extract keyword arguments 
-	conditional_on_click = get(kwargs, :conditional_on_click, false)
-	conditional_on_click_iter = get(kwargs, :conditional_on_click_iter, 100)
+	conditional_on_search = get(kwargs, :conditional_on_search, false)
+	conditional_on_search_iter = get(kwargs, :conditional_on_search_iter, 100)
 
 	# Number of consumers and sessions
 	max_products_per_session = maximum(length.(product_ids))
@@ -233,17 +233,17 @@ function generate_search_paths(m::SDCore, product_ids, product_characteristics, 
 								u, zs, v, zdfun, zsfun, draws_shocks, store_draws) 
 
 				# If conditional on click, iterate until have at least one 
-				if conditional_on_click 
+				if conditional_on_search 
 					iter = 1 
-					while paths[i][1] == 0 && iter <= conditional_on_click_iter
+					while paths[i][1] == 0 && iter <= conditional_on_search_iter
 						fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop, utility_purchases, 
 										m, i, 
 										product_ids, product_characteristics, positions, 
 										u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
 						iter += 1 
 					end
-					if iter > conditional_on_click_iter 
-						@warn "Did not generate a click in conditional_on_click_iter iterations for session $i."
+					if iter > conditional_on_search_iter 
+						@warn "Did not generate a click in conditional_on_search_iter iterations for session $i."
 					end
 				end
 				
@@ -449,7 +449,7 @@ function get_indices_min_discover(consideration_sets, positions)
 	return indices_min_discover
 end
 
-function generate_draws_with_search(m::SDCore, d::DataSD, n_sim, conditional_on_click_iter; kwargs...) 
+function generate_draws_with_search(m::SDCore, d::DataSD, n_sim, conditional_on_search_iter; kwargs...) 
 
 	# Set seed (is stable across threads) 
 	set_seed(kwargs)
@@ -469,7 +469,7 @@ function generate_draws_with_search(m::SDCore, d::DataSD, n_sim, conditional_on_
 		draws_v = fill(typemin(Float64), length(d), max_n_products)
 		draws_w = fill(typemin(Float64), length(d), max_n_products)
 
-		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs..., conditional_on_click_iter, conditional_on_click = true, store_draws = true, draws_u0, draws_e, draws_v, draws_w)
+		generate_search_paths(m, d.product_ids, d.product_characteristics, d.positions; kwargs..., conditional_on_search_iter, conditional_on_search = true, store_draws = true, draws_u0, draws_e, draws_v, draws_w)
 
 		# Replace draws that were not filled (because never reached) with draws from respective distributions
 		for pair in [[draws_u0, m.dU0], [draws_e, m.dE], [draws_v, m.dV], [draws_w, m.dW]]
@@ -690,9 +690,9 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
 	n_ses = length(data)
 
 	# Average conditional on click 
-	utility_choice_conditional_on_click = zeros(Float64, n_sim)
-	search_costs_conditional_on_click = zeros(Float64, n_sim)
-	discovery_costs_conditional_on_click = zeros(Float64, n_sim)
+	utility_choice_conditional_on_search = zeros(Float64, n_sim)
+	search_costs_conditional_on_search = zeros(Float64, n_sim)
+	discovery_costs_conditional_on_search = zeros(Float64, n_sim)
 
 	# Average conditional on purchase
 	utility_choice_conditional_on_purchase = zeros(Float64, n_sim)
@@ -723,9 +723,9 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
 		n_sessions_with_clicks = length(i_ses_with_clicks)
 
 		search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim[i_ses_with_clicks])
-		utility_choice_conditional_on_click[sim] = sum(utility_purchases[i_ses_with_clicks]) / n_sessions_with_clicks
-		search_costs_conditional_on_click[sim] = sum(search_costs) / n_sessions_with_clicks
-		discovery_costs_conditional_on_click[sim] = sum(discovery_costs) / n_sessions_with_clicks
+		utility_choice_conditional_on_search[sim] = sum(utility_purchases[i_ses_with_clicks]) / n_sessions_with_clicks
+		search_costs_conditional_on_search[sim] = sum(search_costs) / n_sessions_with_clicks
+		discovery_costs_conditional_on_search[sim] = sum(discovery_costs) / n_sessions_with_clicks
 		
 		# Conditional on purchase
 		i_ses_with_purchase = sessions_with_purchase(d_sim)
@@ -740,7 +740,7 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 
 	welfare_avg = utility_choice_avg - search_costs_avg - discovery_costs_avg
-	welfare_conditional_on_click = utility_choice_conditional_on_click - search_costs_conditional_on_click - discovery_costs_conditional_on_click
+	welfare_conditional_on_search = utility_choice_conditional_on_search - search_costs_conditional_on_search - discovery_costs_conditional_on_search
 	welfare_conditional_on_purchase = utility_choice_conditional_on_purchase - search_costs_conditional_on_purchase - discovery_costs_conditional_on_purchase
 
 	# Show warning if no session with at least one click 
@@ -759,7 +759,7 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
 	# 3. Average conditional on purchase
 
 	return mean.((welfare_avg, utility_choice_avg, search_costs_avg, discovery_costs_avg)), 
-			mean.((welfare_conditional_on_click, utility_choice_conditional_on_click, search_costs_conditional_on_click, discovery_costs_conditional_on_click)), 
+			mean.((welfare_conditional_on_search, utility_choice_conditional_on_search, search_costs_conditional_on_search, discovery_costs_conditional_on_search)), 
 			mean.((welfare_conditional_on_purchase, utility_choice_conditional_on_purchase, search_costs_conditional_on_purchase, discovery_costs_conditional_on_purchase))
 end
 
@@ -791,8 +791,8 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 	discovery_costs_avg = zeros(Float64, n_sim)
 
 	# Average conditional on click 
-	eff_value_choice_conditional_on_click = zeros(Float64, n_sim)
-	discovery_costs_conditional_on_click = zeros(Float64, n_sim)
+	eff_value_choice_conditional_on_search = zeros(Float64, n_sim)
+	discovery_costs_conditional_on_search = zeros(Float64, n_sim)
 
 	# Average conditional on purchase
 	eff_value_choice_conditional_on_purchase = zeros(Float64, n_sim)
@@ -821,12 +821,12 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 
 		# Unpack and fill in welfare measures
 		eff_value_choice_avg[s], discovery_costs_avg[s] = welfare_measures[1]
-		eff_value_choice_conditional_on_click[s], discovery_costs_conditional_on_click[s] = welfare_measures[2]
+		eff_value_choice_conditional_on_search[s], discovery_costs_conditional_on_search[s] = welfare_measures[2]
 		eff_value_choice_conditional_on_purchase[s], discovery_costs_conditional_on_purchase[s] = welfare_measures[3]
 	end
 
 	welfare_avg = eff_value_choice_avg - discovery_costs_avg
-	welfare_conditional_on_click = eff_value_choice_conditional_on_click - discovery_costs_conditional_on_click
+	welfare_conditional_on_search = eff_value_choice_conditional_on_search - discovery_costs_conditional_on_search
 	welfare_conditional_on_purchase = eff_value_choice_conditional_on_purchase - discovery_costs_conditional_on_purchase
 
 	# Return averages across simulations 
@@ -835,7 +835,7 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 	# 3. Average conditional on purchase
 
 	return mean.((welfare_avg, eff_value_choice_avg, discovery_costs_avg)), 
-			mean.((welfare_conditional_on_click, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click)), 
+			mean.((welfare_conditional_on_search, eff_value_choice_conditional_on_search, discovery_costs_conditional_on_search)), 
 			mean.((welfare_conditional_on_purchase, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase))
 end
 
@@ -846,8 +846,8 @@ function preallocate_welfare_vectors(n_ses)
 	discovery_costs_avg = zeros(Float64, n_ses)
 
 	# Average conditional on click 
-	eff_value_choice_conditional_on_click = zeros(Float64, n_ses)
-	discovery_costs_conditional_on_click = zeros(Float64, n_ses)
+	eff_value_choice_conditional_on_search = zeros(Float64, n_ses)
+	discovery_costs_conditional_on_search = zeros(Float64, n_ses)
 	clicked = fill(false, n_ses) # track number of clicks to calculate conditional 
 
 	# Average conditional on purchase
@@ -856,7 +856,7 @@ function preallocate_welfare_vectors(n_ses)
 
 	purchased = fill(false, n_ses) # track number of purchases to calculate conditional
 
-	vectors_to_fill = (eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased)
+	vectors_to_fill = (eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_search, discovery_costs_conditional_on_search, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased)
 
 	return vectors_to_fill
 end
@@ -900,15 +900,15 @@ function _calculate_welfare_effective_values(m::SDCore, d::DataSD, vectors_to_fi
 
 	fetch.(tasks)
 
-	@views	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
+	@views	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_search, discovery_costs_conditional_on_search, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
 
 	n_click = sum(clicked)
 	n_purch = sum(purchased)
 
 	# Return averages across simulations
 	return (sum(eff_value_choice_avg), sum(discovery_costs_avg)) ./ n_ses, 
-		   (sum(eff_value_choice_conditional_on_click),
-		sum(discovery_costs_conditional_on_click)) ./ n_click,
+		   (sum(eff_value_choice_conditional_on_search),
+		sum(discovery_costs_conditional_on_search)) ./ n_click,
 		   (sum(eff_value_choice_conditional_on_purchase), 
 		sum(discovery_costs_conditional_on_purchase)) ./ n_purch
 end
@@ -925,7 +925,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	u, zs, ws, ws_tilde, _ = vectors_preallocated
 
 	# extract vectors to track welfare measures
-	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_click, discovery_costs_conditional_on_click, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
+	eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_search, discovery_costs_conditional_on_search, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill 
 
 	wm, im = findmax(ws) # find max value and index of effective values
 
@@ -982,8 +982,8 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 	end
 
 	if has_click 
-		eff_value_choice_conditional_on_click[i] = wm_tilde 
-		discovery_costs_conditional_on_click[i] = m.cd * ndiscoveries
+		eff_value_choice_conditional_on_search[i] = wm_tilde 
+		discovery_costs_conditional_on_search[i] = m.cd * ndiscoveries
 		clicked[i] = true 
 	end
 
@@ -1045,7 +1045,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 	click_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
 	purchase_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
 
-	conditional_on_click = get(kwargs, :conditional_on_click, false)
+	conditional_on_search = get(kwargs, :conditional_on_search, false)
 
 	# Generate data from new seed 
 	sim_seeds = rand(1:1000000, n_sim)
@@ -1053,7 +1053,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
 		# note: generating unconditional data is much faster than conditional data. So we generate unconditional data and 
 		# update the statistics to condition on clicks, using that, e.g., P(click pos 1 | click) = P(click pos 0) / P(click)
-		d_sim = generate_data(m, data; kwargs..., seed = sim_seeds[s], compute_min_discover_indices = false, conditional_on_click = false)[1]
+		d_sim = generate_data(m, data; kwargs..., seed = sim_seeds[s], compute_min_discover_indices = false, conditional_on_search = false)[1]
 
 		# Compute fit statistics 
 		click_stats_i, purchase_stats_i = calculate_statistics_from_data(d_sim) 
@@ -1077,7 +1077,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 	click_stats_sim = click_stats ./ n_sim
 	purchase_stats_sim = purchase_stats ./ n_sim
 
-	if conditional_on_click 
+	if conditional_on_search 
 		prob_at_least_one_click = click_stats_sim[3]
 		click_stats_sim[1:3] ./= prob_at_least_one_click
 		purchase_stats_sim[1:2] ./= prob_at_least_one_click
@@ -1110,7 +1110,7 @@ function calculate_statistics_from_data(d::DataSD)
 
 	# Set up click statistics that will be filled in by looping over sessions 
 	clicks_per_pos = zeros(Int, maximum(length.(d.product_ids)))
-	n_click_conditional_on_click = 0 
+	n_click_conditional_on_search = 0 
 	n_at_least_one_click = 0
 	with_outside_option = d.product_ids[1][1] == 0	
 	characteristics_clicked = zeros(Float64, size(d.product_characteristics[1], 2) - with_outside_option)
@@ -1138,7 +1138,7 @@ function calculate_statistics_from_data(d::DataSD)
 		end
 
 		if clicked 
-			n_click_conditional_on_click += n_clicks_i
+			n_click_conditional_on_search += n_clicks_i
 			n_at_least_one_click += 1
 		end
 
@@ -1161,10 +1161,10 @@ function calculate_statistics_from_data(d::DataSD)
 	no_clicks_per_session = n_clicks / n_ses
 	click_probability_per_position = clicks_per_pos ./ n_ses
 	probability_at_least_one_click_in_session = n_at_least_one_click / n_ses
-	no_clicks_per_session_conditional_on_click = n_click_conditional_on_click / n_at_least_one_click
+	no_clicks_per_session_conditional_on_search = n_click_conditional_on_search / n_at_least_one_click
 	mean_characteristics_clicked = characteristics_clicked / n_clicks
 	mean_position_clicked = position_click / n_clicks 
-	click_stats = [no_clicks_per_session, click_probability_per_position, probability_at_least_one_click_in_session, no_clicks_per_session_conditional_on_click, mean_characteristics_clicked, mean_position_clicked]
+	click_stats = [no_clicks_per_session, click_probability_per_position, probability_at_least_one_click_in_session, no_clicks_per_session_conditional_on_search, mean_characteristics_clicked, mean_position_clicked]
 
 	# Gather purchase statistics
 	purchase_probability = n_purchases / n_ses

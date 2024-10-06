@@ -22,7 +22,7 @@ function test_discovery_cost_correct()
     n_consumers = 20000
     data, utility_purchases = 
                     generate_data(m, n_consumers, 2; seed = 123, 
-                    conditional_on_click = false, conditional_on_click_iter = 100); 
+                    conditional_on_search = false, conditional_on_search_iter = 100); 
 
     # Get cd cost   
     calculate_costs!(m, data, 10090000; seed = 127, position_at_which_correct_beliefs = 0)
@@ -63,7 +63,7 @@ function test_search_cost_correct()
     n_consumers = 20000
     data, utility_purchases = 
                     generate_data(m, n_consumers, 2; seed = 123, 
-                    conditional_on_click = false, conditional_on_click_iter = 100); 
+                    conditional_on_search = false, conditional_on_search_iter = 100); 
 
     calculate_costs!(m, data, 1) # cd irrelevant here, so few draws only 
     
@@ -96,7 +96,7 @@ function test_welfare_calculations_same()
     seed = 92458 # seed only matters for products, rest shocks are zero 
     @time data, utility_purchases = 
                     generate_data(m, n_consumers, 1; seed , 
-                    conditional_on_click = false, conditional_on_click_iter = 100); 
+                    conditional_on_search = false, conditional_on_search_iter = 100); 
 
     calculate_costs!(m, data, 100000) 
 
@@ -144,7 +144,7 @@ seed = 928 # seed only matters for products, rest shocks are zero
 data, utility_purchases = 
                 generate_data(m, n_consumers, 1; 
                 seed = 1, 
-                conditional_on_click = false, conditional_on_click_iter = 100); 
+                conditional_on_search = false, conditional_on_search_iter = 100); 
 
 calculate_costs!(m, data, 100000) 
 
