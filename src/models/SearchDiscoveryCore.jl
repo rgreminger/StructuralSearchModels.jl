@@ -133,7 +133,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
 	paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = generate_search_paths(m, product_ids, product_characteristics, positions; kwargs...) 
 
 	# Create consumer indices mapping consumers into sessions 
-	consumer_ids = repeat(1:n_consumers, n_sessions_per_consumer)
+	consumer_ids = repeat(1:n_consumers, inner= n_sessions_per_consumer)
 
 	# Get last product that consumer MUST have discovered, i.e., all products on same position as the lowest one that was clicked on
 	indices_min_discover =	get_indices_min_discover(consideration_sets, positions)
