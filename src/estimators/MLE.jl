@@ -9,7 +9,7 @@ abstract type MLE <: Estimator end
     conditional_on_search = false
 end 
 
-function estimate_model(model::Model, estimator::MLE, data::Data;
+function estimate_model(model::Model, estimator::SmoothMLE, data::Data;
                             startvals = nothing,
                             compute_std_errors = true, 
                             print_solver_solution = false,
