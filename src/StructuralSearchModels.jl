@@ -7,11 +7,12 @@ export Estimator, Model, Data  # abstract types
 export generate_data, generate_products, sessions_with_clicks, sessions_with_purchase        # functions for data generation
 export estimate_model                                               # functions for estimation
 export evaluate_fit, calculate_likelihood, calculate_standard_errors, calculate_welfare   # functions for post-estimation
-export calculate_costs!, calculate_discovery_value, calculate_search_cost, calculate_discovery_cost, calculate_ξ
-export plot_across_positions, vectorize_parameters, construct_model_from_pars, generate_draws_with_search
+export calculate_costs!, calculate_discovery_value, calculate_search_cost,
+       calculate_discovery_cost, calculate_ξ
+export plot_across_positions, vectorize_parameters, construct_model_from_pars,
+       generate_draws_with_search
 export add_indices_min_discover!, calculate_demand, update_positions!
-export calculate_revenues 
-
+export calculate_revenues
 
 # Export concrete model types 
 export SDCore, SD1, WM1, DataSD
@@ -44,6 +45,5 @@ include("estimators/MLE.jl")                 # Maximum likelihood estimation
 include("models/SearchDiscoveryCore.jl")     # Search and Discovery core model
 include("models/WM1.jl")
 include("models/SD1.jl")
-
 
 end # module StructuralSearchModels
