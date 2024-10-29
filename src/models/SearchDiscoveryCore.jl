@@ -203,7 +203,8 @@ function generate_search_paths(
     conditional_on_search_iter = get(kwargs, :conditional_on_search_iter, 100)
 
     # Number of consumers and sessions
-    max_products_per_session = maximum(length.(product_ids))
+    n_products = length.(product_ids)
+    max_products_per_session = maximum(n_products)
     n_sessions = length(product_ids)
 
     # Extract other values 
@@ -211,10 +212,10 @@ function generate_search_paths(
     zsfun = get_functional_form(m.zsfun)
 
     # Create empty vectors to store outputs
-    paths = [zeros(Int, max_products_per_session - 1) for i in 1:n_sessions]
-    consideration_sets = [fill(false, max_products_per_session) for i in 1:n_sessions]
+    paths = [zeros(Int, n - 1) for n in n_products]
+    consideration_sets = [fill(false, n) for n in n_products]
     indices_purchase = zeros(Int, n_sessions)
-    indices_stop = fill(max_products_per_session, n_sessions)
+    indices_stop = [n for n in n_products]
     utility_purchases = zeros(Float64, n_sessions)
 
     # Get draws from kwargs
