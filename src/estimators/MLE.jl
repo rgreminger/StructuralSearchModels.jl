@@ -94,7 +94,12 @@ function calculate_standard_errors(model::Model, estimator::MLE, data::Data;
             throw(ArgumentError("Only AutoForwardDiff and AutoFiniteDiff are supported for Hessian calculation.")) 
         end
 
-    # Return standard errors
-	return sqrt.(diag(inv(H)))
+    # Return standard errors if possible to invert Hessian
+    try 
+        return sqrt.(diag(inv(H)))
+    catch
+        @warn "No standard errors could be computed. Hessian is not invertible."
+        return nothing
+    end
 end
 
