@@ -785,16 +785,24 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
         @warn "No sessions with at least one purchase. Conditional welfare is NaN."
     end
 
-    # Return averages across simulations 
-    # 1. Average welfare, utility, search costs, discovery costs
-    # 2. Average conditional on click
-    # 3. Average conditional on purchase
+    # Return averages across simulations as Dict 
+    result = Dict()
+    result[:average] = Dict(
+        :welfare => mean(welfare_avg),
+        :utility => mean(utility_choice_avg),
+        :search_costs => mean(search_costs_avg),
+        :discovery_costs => mean(discovery_costs_avg))
+    result[:conditional_on_search] = Dict(:welfare => mean(welfare_conditional_on_search),
+        :utility => mean(utility_choice_conditional_on_search),
+        :search_costs => mean(search_costs_conditional_on_search),
+        :discovery_costs => mean(discovery_costs_conditional_on_search))
+    result[:conditional_on_purchase] = Dict(
+        :welfare => mean(welfare_conditional_on_purchase),
+        :utility => mean(utility_choice_conditional_on_purchase),
+        :search_costs => mean(search_costs_conditional_on_purchase),
+        :discovery_costs => mean(discovery_costs_conditional_on_purchase))
 
-    return mean.((welfare_avg, utility_choice_avg, search_costs_avg, discovery_costs_avg)),
-    mean.((welfare_conditional_on_search, utility_choice_conditional_on_search,
-        search_costs_conditional_on_search, discovery_costs_conditional_on_search)),
-    mean.((welfare_conditional_on_purchase, utility_choice_conditional_on_purchase,
-        search_costs_conditional_on_purchase, discovery_costs_conditional_on_purchase))
+    return result 
 end
 
 function calculate_costs_in_sessions(m::SDCore, d)
@@ -840,9 +848,6 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
     zdfun = get_functional_form(m.zdfun)
     zsfun = get_functional_form(m.zsfun)
 
-    # Get draws shocks if provided 
-    draws_u0_store, draws_e_store, draws_v_store, draws_w_store = get_precomputed_draws(kwargs)
-
     # Loop over sims and calculate welfare measures for each
     for s in 1:n_sim
 
@@ -866,16 +871,20 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
     welfare_conditional_on_purchase = eff_value_choice_conditional_on_purchase -
                                       discovery_costs_conditional_on_purchase
 
-    # Return averages across simulations 
-    # 1. Average welfare, utility, search costs, discovery costs
-    # 2. Average conditional on click
-    # 3. Average conditional on purchase
-
-    return mean.((welfare_avg, eff_value_choice_avg, discovery_costs_avg)),
-    mean.((welfare_conditional_on_search, eff_value_choice_conditional_on_search,
-        discovery_costs_conditional_on_search)),
-    mean.((welfare_conditional_on_purchase, eff_value_choice_conditional_on_purchase,
-        discovery_costs_conditional_on_purchase))
+    # Return averages across simulations as Dict 
+    result = Dict()
+    result[:average] = Dict(
+        :welfare => mean(welfare_avg),
+        :eff_value_choice => mean(eff_value_choice_avg),
+        :discovery_costs => mean(discovery_costs_avg))
+    result[:conditional_on_search] = Dict(:welfare => mean(welfare_conditional_on_search),
+        :eff_value_choice => mean(eff_value_choice_conditional_on_search),
+        :discovery_costs => mean(discovery_costs_conditional_on_search))
+    result[:conditional_on_purchase] = Dict(
+        :welfare => mean(welfare_conditional_on_purchase),
+        :eff_value_choice => mean(eff_value_choice_conditional_on_purchase),
+        :discovery_costs => mean(discovery_costs_conditional_on_purchase))
+    return result
 end
 
 function preallocate_welfare_vectors(n_ses)
