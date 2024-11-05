@@ -1088,8 +1088,10 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
     # Set seed 
     set_seed(kwargs)
 
+    # Initialize empty arrays (otherwise error of not found)
     click_stats = []
     purchase_stats = []
+    stop_probabilities = [] 
 
     # Track statistics across simulations to get percentiles 
     click_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
@@ -1107,15 +1109,17 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
             compute_min_discover_indices = false, conditional_on_search = false)[1]
 
         # Compute fit statistics 
-        click_stats_i, purchase_stats_i = calculate_statistics_from_data(d_sim)
+        click_stats_i, purchase_stats_i, stop_probability_i = calculate_statistics_from_data(d_sim)
 
         # Fill in statistics
         if s == 1
             click_stats = click_stats_i
             purchase_stats = purchase_stats_i
+            stop_probabilities = stop_probability_i
         else
             click_stats += click_stats_i
             purchase_stats += purchase_stats_i
+            stop_probabilities += stop_probability_i
         end
 
         # Fill in statistics for percentiles
@@ -1126,6 +1130,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
     # Compute average 
     click_stats_sim = click_stats ./ n_sim
     purchase_stats_sim = purchase_stats ./ n_sim
+    stop_probablities_sim = stop_probabilities ./ n_sim
 
     if conditional_on_search
         prob_at_least_one_click = click_stats_sim[3]
@@ -1133,38 +1138,65 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
         purchase_stats_sim[1:2] ./= prob_at_least_one_click
         click_probability_per_pos ./= prob_at_least_one_click
         purchase_probability_per_pos ./= prob_at_least_one_click
+        # note: cannot use same rescaling for stop probabilities as P(stop in h | no click ) != 0 
     end
 
     # Get stats for data 
-    click_stats_data, purchase_stats_data = calculate_statistics_from_data(data)
+    click_stats_data, purchase_stats_data, stop_probabilities_data = calculate_statistics_from_data(data)
 
+    # Create dictionaries with different stats 
+    click_stats_sim = Dict(:no_clicks_per_session => click_stats_sim[1],
+        :click_probability_per_position => click_stats_sim[2],
+        :probability_at_least_one_click_in_session => click_stats_sim[3],
+        :no_clicks_per_session_conditional_on_search => click_stats_sim[4],
+        :mean_characteristics_clicked => click_stats_sim[5],
+        :mean_position_clicked => click_stats_sim[6])
+    click_stats_data = Dict(:no_clicks_per_session => click_stats_data[1],
+        :click_probability_per_position => click_stats_data[2],
+        :probability_at_least_one_click_in_session => click_stats_data[3],
+        :no_clicks_per_session_conditional_on_search => click_stats_data[4],
+        :mean_characteristics_clicked => click_stats_data[5],
+        :mean_position_clicked => click_stats_data[6])
+
+    purchase_stats_sim = Dict(:purchase_probability => purchase_stats_sim[1],
+        :purchase_probability_per_position => purchase_stats_sim[2],
+        :characteristics_purchased => purchase_stats_sim[3],
+        :mean_position_purchased => purchase_stats_sim[4])
+
+    purchase_stats_data = Dict(:purchase_probability => purchase_stats_data[1],
+        :purchase_probability_per_position => purchase_stats_data[2],
+        :characteristics_purchased => purchase_stats_data[3],
+        :mean_position_purchased => purchase_stats_data[4])
+
+    
     # Compute lower/upper bound based on given percentile 
     percentile_across_sims = get(kwargs, :percentile, 0.95)
-    return_bounds = get(kwargs, :return_bounds, false)
-    if return_bounds
-        sort!(click_probability_per_pos, dims = 2)
-        sort!(purchase_probability_per_pos, dims = 2)
-        lb_click = click_probability_per_pos[
-            :, ceil(Int, (1 - percentile_across_sims) * n_sim)]
-        ub_click = click_probability_per_pos[:, floor(Int, percentile_across_sims * n_sim)]
-        lb_purchase = purchase_probability_per_pos[
-            :, ceil(Int, (1 - percentile_across_sims) * n_sim)]
-        ub_purchase = purchase_probability_per_pos[
-            :, floor(Int, percentile_across_sims * n_sim)]
+    sort!(click_probability_per_pos, dims = 2)
+    sort!(purchase_probability_per_pos, dims = 2)
+    lb_click = click_probability_per_pos[
+        :, ceil(Int, (1 - percentile_across_sims) * n_sim)]
+    ub_click = click_probability_per_pos[:, floor(Int, percentile_across_sims * n_sim)]
+    lb_purchase = purchase_probability_per_pos[
+        :, ceil(Int, (1 - percentile_across_sims) * n_sim)]
+    ub_purchase = purchase_probability_per_pos[
+        :, floor(Int, percentile_across_sims * n_sim)]
+    
 
-        return (click_stats_data, click_stats_sim),
-        (purchase_stats_data, purchase_stats_sim),
-        (lb_click, ub_click), (lb_purchase, ub_purchase)
-    end
-
-    # Return averages across simulations
-    return (click_stats_data, click_stats_sim), (purchase_stats_data, purchase_stats_sim)
+    # Return dictionary with all statistics
+    return Dict(:click_stats_data => click_stats_data,
+        :click_stats_sim => click_stats_sim,
+        :purchase_stats_data => purchase_stats_data,
+        :purchase_stats_sim => purchase_stats_sim,
+        :stop_probabilities_data => stop_probabilities_data,
+        :stop_probabilities_sim => stop_probablities_sim,
+        :bounds => [(lb_click, ub_click), (lb_purchase, ub_purchase)])
 end
 
 function calculate_statistics_from_data(d::DataSD)
 
     # Set up click statistics that will be filled in by looping over sessions 
-    clicks_per_pos = zeros(Int, maximum(length.(d.product_ids)))
+    maximum_n_prod = maximum(length.(d.product_ids))
+    clicks_per_pos = zeros(Int, maximum_n_prod)
     n_click_conditional_on_search = 0
     n_at_least_one_click = 0
     with_outside_option = d.product_ids[1][1] == 0
@@ -1173,10 +1205,13 @@ function calculate_statistics_from_data(d::DataSD)
     position_click = 0
 
     # Purchase statistics
-    purchases_per_pos = zeros(Int, maximum(length.(d.product_ids)))
+    purchases_per_pos = zeros(Int, maximum_n_prod)
     characteristics_purchased = zeros(
         Float64, size(d.product_characteristics[1], 2) - with_outside_option)
     position_purchase = 0
+
+    # Stopping probability
+    stop_probabilities = zeros(Float64, maximum_n_prod)
 
     # Loop over sessions and fill in statistics
     for i in eachindex(d)
@@ -1207,6 +1242,11 @@ function calculate_statistics_from_data(d::DataSD)
                 j, 1:(end - with_outside_option)] # if outside option, last characteristic is dummy
             position_purchase += d.positions[i][j]
         end
+
+        # Stopping probability
+        if !isnothing(d.stop_indices) 
+            stop_probabilities[d.stop_indices[i]] += 1
+        end
     end
 
     n_clicks = sum(clicks_per_pos)
@@ -1235,25 +1275,30 @@ function calculate_statistics_from_data(d::DataSD)
     purchase_stats = [purchase_probability, purchase_probability_per_pos,
         characteristics_purchased, mean_position_purchased]
 
-    return click_stats, purchase_stats
+    # Get stopping probabilities mean 
+    stop_probabilities /= n_ses
+
+    return click_stats, purchase_stats, stop_probabilities
 end
 
-function plot_across_positions(stats, bounds; kwargs...)
+function plot_across_positions(stats; kwargs...)
 
     # Extract statistics 
-    click_stats_data, click_stats_sim = stats[1]
-    purchase_stats_data, purchase_stats_sim = stats[2]
 
-    clicks_per_pos_sim = click_stats_sim[2]
-    clicks_per_pos_data = click_stats_data[2]
 
-    purchases_per_pos_sim = purchase_stats_sim[2]
-    purchases_per_pos_data = purchase_stats_data[2]
+    clicks_per_pos_sim = stats[:click_stats_sim][:click_probability_per_position]
+    clicks_per_pos_data = stats[:click_stats_data][:click_probability_per_position]
+
+    purchases_per_pos_sim = stats[:purchase_stats_sim][:purchase_probability_per_position]
+    purchases_per_pos_data = stats[:purchase_stats_data][:purchase_probability_per_position]
 
     # Extract bounds
-    lb_click, ub_click = bounds[1]
-    lb_purchase, ub_purchase = bounds[2]
-
+    bounds = stats[:bounds]
+    lb_click = bounds[1][1]
+    ub_click = bounds[1][2]
+    lb_purchase = bounds[2][1]
+    ub_purchase = bounds[2][2]
+    
     # x-axis 
     sel = if ub_click[1] == 0 # outside option -> no clicks on first element -> don't plot 
         2:length(lb_click)
@@ -1300,19 +1345,18 @@ end
 function evaluate_fit(m::SDCore, data::DataSD, n_sim; kwargs...)
 
     # Calculate fit measures 
-    click_stats, purchase_stats, b_click, b_purch = calculate_fit_measures(
+    fit_measures = calculate_fit_measures(
         m, data, n_sim; return_bounds = true, kwargs...)
 
     # Put together plot 
-    fig = plot_across_positions(
-        (click_stats, purchase_stats), (b_click, b_purch); kwargs...)
+    fig = plot_across_positions(fit_measures; kwargs...)
     # Plot fit measures 
     show_plot = get(kwargs, :show_plot, true)
     if show_plot
         display(fig)
     end
 
-    return click_stats, purchase_stats, fig
+    return fit_measures, fig
 end
 
 # Estimation 
