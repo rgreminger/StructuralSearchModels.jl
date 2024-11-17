@@ -1284,8 +1284,6 @@ end
 function plot_across_positions(stats; kwargs...)
 
     # Extract statistics 
-
-
     clicks_per_pos_sim = stats[:click_stats_sim][:click_probability_per_position]
     clicks_per_pos_data = stats[:click_stats_data][:click_probability_per_position]
 
@@ -1311,13 +1309,17 @@ function plot_across_positions(stats; kwargs...)
     base_color = RGB(62 / 255, 100 / 255, 125 / 255)
 
     # Extract y-axis labels from keywords
-    ylabel1 = get(kwargs, :ylabel1, "Purchase probability")
-    ylabel2 = get(kwargs, :ylabel2, "Click probability")
+    ylabel1 = get(kwargs, :ylabel_purch, "Purchase prob.")
+    ylabel2 = get(kwargs, :ylabel_click, "Click prob.")
+
+    # Extract y-axis tick format from keywords
+    ytickformat = get(kwargs, :ytickformat, "{:.3f}")
 
     fig = Figure()
     ax_purch = Axis(fig[1, 1],
         xlabel = "Position",
-        ylabel = ylabel1)
+        ylabel = ylabel1,
+        ytickformat = ytickformat)
 
     # Plot purchase probabiltiy 
     band!(ax_purch, x, lb_purchase[sel], ub_purchase[sel], color = (base_color, 0.2))
@@ -1331,7 +1333,8 @@ function plot_across_positions(stats; kwargs...)
     # Plot click probability
     ax_clicks = Axis(fig[2, 1],
         xlabel = "Position",
-        ylabel = ylabel2)
+        ylabel = ylabel2,
+        ytickformat = ytickformat)
     band!(ax_clicks, x, lb_click[sel], ub_click[sel], color = (base_color, 0.2))
     lines!(ax_clicks, clicks_per_pos_sim[sel],
         label = "Predicted", color = base_color, linewidth = 3)
