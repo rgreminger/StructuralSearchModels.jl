@@ -1148,15 +1148,13 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
     click_stats_sim = Dict(:no_clicks_per_session => click_stats_sim[1],
         :click_probability_per_position => click_stats_sim[2],
         :probability_at_least_one_click_in_session => click_stats_sim[3],
-        :no_clicks_per_session_conditional_on_search => click_stats_sim[4],
-        :mean_characteristics_clicked => click_stats_sim[5],
-        :mean_position_clicked => click_stats_sim[6])
+        :mean_characteristics_clicked => click_stats_sim[4],
+        :mean_position_clicked => click_stats_sim[5])
     click_stats_data = Dict(:no_clicks_per_session => click_stats_data[1],
         :click_probability_per_position => click_stats_data[2],
         :probability_at_least_one_click_in_session => click_stats_data[3],
-        :no_clicks_per_session_conditional_on_search => click_stats_data[4],
-        :mean_characteristics_clicked => click_stats_data[5],
-        :mean_position_clicked => click_stats_data[6])
+        :mean_characteristics_clicked => click_stats_data[4],
+        :mean_position_clicked => click_stats_data[5])
 
     purchase_stats_sim = Dict(:purchase_probability => purchase_stats_sim[1],
         :purchase_probability_per_position => purchase_stats_sim[2],
@@ -1258,13 +1256,10 @@ function calculate_statistics_from_data(d::DataSD)
     no_clicks_per_session = n_clicks / n_ses
     click_probability_per_position = clicks_per_pos ./ n_ses
     probability_at_least_one_click_in_session = n_at_least_one_click / n_ses
-    no_clicks_per_session_conditional_on_search = n_click_conditional_on_search /
-                                                  n_at_least_one_click
     mean_characteristics_clicked = characteristics_clicked / n_clicks
     mean_position_clicked = position_click / n_clicks
     click_stats = [no_clicks_per_session, click_probability_per_position,
         probability_at_least_one_click_in_session,
-        no_clicks_per_session_conditional_on_search,
         mean_characteristics_clicked, mean_position_clicked]
 
     # Gather purchase statistics
