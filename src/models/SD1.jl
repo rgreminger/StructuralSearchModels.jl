@@ -415,7 +415,7 @@ Compute probaility of not searching alternaitve, given chosen option has utility
 end
 
 ## Demand functions
-function calculate_demand(m::SD1, d::DataSD, i, j, n_draws; kwargs...)
+function calculate_demand(m::Union{SD1, WM1}, d::DataSD, i, j, n_draws; kwargs...)
     set_seed(kwargs)
 
     # Different functions depending on whether product is outside option or not
@@ -592,7 +592,7 @@ function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n,
     return demand / n
 end
 
-function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
+function calculate_revenues(m::Union{SD1, WM1}, d::DataSD, kprice, n_draws, seed; kwargs...)
     R = zeros(length(d))
 
     Random.seed!(seed)
@@ -601,8 +601,19 @@ function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
     _, data_chunks = get_chunks(length(d))
 
     i_max_n_products = argmax(length.(d.product_ids))
-    zdfun = get_functional_form(m.zdfun)
-    zd_h = [zdfun(m.Ξ, m.ρ, h) for h in d.positions[i_max_n_products]]
+    zd_h = if typeof(m) <: WM1
+                nothing
+    else
+        zdfun = get_functional_form(m.zdfun)
+        [zdfun(m.Ξ, m.ρ, h) for h in d.positions[i_max_n_products]]
+    end
+
+    ξj = if typeof(m) <: WM1
+        zsfun = get_functional_form(m.zsfun)
+        [zsfun(m.ξ, m.ρ, h) for h in d.positions[i_max_n_products]]
+    else
+        nothing
+    end
 
     # Note on seed: we have different seed per consumer, 
     # but same seed for demand within consumer. This ensures that rearranging products 
@@ -611,7 +622,7 @@ function calculate_revenues(m::SD1, d::DataSD, kprice, n_draws, seed; kwargs...)
         Threads.@spawn begin
             for i in chunk
                 R[i] = calculate_revenues_i(
-                    m, d, i, kprice, n_draws, seed + i; zd_h, kwargs...)
+                    m, d, i, kprice, n_draws, seed + i; zd_h, ξj, kwargs...)
             end
         end
     end

@@ -56,6 +56,13 @@ function calculate_costs!(m::WM1, d;
     return nothing
 end
 
+function calculate_costs!(m::WM1, d::DataSD, h::Int;
+        force_recompute = true,
+        cd_kwargs...)
+    calculate_costs!(m, d; force_recompute, cd_kwargs...)
+    return nothing
+end
+
 function generate_data(m::WM1, n_consumers, n_products; kwargs...)
     generate_data(SDCore(m), n_consumers, n_products; kwargs...)
 end
@@ -295,54 +302,121 @@ function ll_purchase(m::WM1, zd, ξj::Vector{T}, β::Vector{T}, dE, dV,
     return log(max(T(ALMOST_ZERO_NUMERICAL), LL / n_draws))
 end
 
-# ######################################################################
-# ## P(click but not buy )
-# ######################################################################
+function calculate_demand_outside_option(m::WM1, d::DataSD, i, n; kwargs...)
+    T = eltype(m.β)
 
-# @inline function cdf_ZWU(m::Union{SD3,WM1},xb::T,xi::T,K::T,
-# 							dE::Normal,dV::Normal)  where T 
+    positions = @views d.positions[i]
+    product_characteristics = @views d.product_characteristics[i]
 
-# 	σe = std(dE) 
-# 	σv = std(dV)
+    # Extract zs. If already applied as keyword, can save compilation time.
+    ξj = get(kwargs, :ξj, zeros(T, length(d.positions[i])))
+    if ξj[1] == 0
+        zsfun = get_functional_form(m.zsfun)
+        for h in eachindex(zd_h)
+            ξj[h] = zsfun(m.ξ, m.ρ, positions[i][h])
+        end
+    end
 
-# 	a = σe > 0 ? (K-xb)/σe : one(T)*10000000
-# 	b = σe > 0 ? -σv/σe : -one(T)*10000000
-# 	Y = (K - xi - xb) / σv
+    demand = zero(T)
 
-# 	P = cdf_n(a/sqrt(1+b^2)) - 
-# 				bvncdf(a/sqrt(1+b^2), Y, -b/sqrt(1+b^2)) 
-# 	# Note: Second part is bivariate normal cdf from bivariate.jl
-# 	return P::T
-# end
+    for dd in 1:n
 
-# @inline function cdf_ZWU(m::Union{SD3,WM1},xb::T,xi::T,lb::T,ub::T,
-# 							dE::Normal,dV::Normal) where T 
+        # Get probability of u0 in bounds and draw for u0
+        u0_draw = rand(m.dU0) + m.β[end]
 
-# 	σe = std(dE) 
-# 	σv = std(dV)
+        # Initialize for probability
+        prob_buy_u0 = one(T)
 
-# 	a = σe > 0 ? (ub-xb)/σe : one(T)*10000000
-# 	b = σe > 0 ? -σv/σe : -one(T)*10000000
-# 	Y = (lb -xi -xb) / σv
+        for j in 2:h
+            xβ = @views product_characteristics[j, :]' * m.β
+            prob_buy_u0 *= prob_not_buy(m, xβ, ξj[j], u0_draw, m.dE, m.dV)
+        end
 
-# 	P = cdf_n(a/sqrt(1+b^2)) - 
-# 			bvncdf(a/sqrt(1+b^2), Y, -b/sqrt(1+b^2))
+        demand += prob_buy_u0 
+    end
 
-# 	return P::T
-# end
+    conditional_on_search = get(kwargs, :conditional_on_search, false)
+    if conditional_on_search
+        throw(ArgumentError("Conditional on search not implemented for demand calculation of outside option."))
+    end
 
-# ######################################################################
-# ## P( not buy ) (with or without click)
-# ######################################################################
-# @inline function cdf_ZWnb(m::Union{SD3,WM1},xb::T,xi::T,z::T,
-# 								dE::Normal,dV::Normal) where T 
-# 	σe = std(dE) 
-# 	σv = std(dV)
+    return demand / n
+end
 
-# 	a = (z-xb)/σe
-# 	b = -σv/σe
-# 	Y = (z - xi - xb) / σv
+function calculate_demand_product(m::WM1{T}, d::DataSD, i, k, n; kwargs...) where {T}
 
-# 	P = cdf(dV,z-xi-xb) + cdf(Normal(),a/sqrt(1+b^2)) - StructSearch.bvncdf(a/sqrt(1+b^2),Y,-b/sqrt(1+b^2)) 
-# 	return P 
-# end
+    # note: unpacking things here and passing into function saves a lot of allocations
+    β, ξ, dE, dV, dU0 = m.β, m.ξ, m.dE, m.dV, m.dU0
+
+    # Extract zs. If already applied as keyword, can save compilation time.
+    ξj = get(kwargs, :ξj, zeros(T, length(d.positions[i])))
+    if ξj[1] == 0
+        zsfun = get_functional_form(m.zsfun)
+        for h in eachindex(zd_h)
+            ξj[h] = zsfun(ξ, m.ρ, d.positions[i][h])
+        end
+    end
+
+    return calculate_demand_product(m, d, i, k, n, β, ξj, dE, dV, dU0; kwargs...)
+end
+
+
+function calculate_demand_product(m::WM1{T}, d::DataSD, i, k, n,
+        β::Vector{T}, ξj::Vector{T}, dE::Distribution,
+        dV::Distribution, dU0::Distribution; kwargs...) where {T}
+    n_products = length(d.product_ids[i])
+    product_characteristics = @views d.product_characteristics[i]
+    with_outside_option_dummy = d.product_ids[i][1] == 0
+
+    demand = zero(T)
+
+    # xb of purchased (same across draws)
+    xβ_k = @views product_characteristics[k, :]' * β
+
+    ξk = ξj[k]
+
+    for dd in 1:n, ddd in 1:2
+
+        # Reset for each draw
+        prob_purchase_k = one(T)
+
+        # Fill 
+        if ddd == 1 # e < ξ
+            e = rand_trunc(dE, -one(T) * MAX_NUMERICAL, ξk)
+            u_k = xβ_k + e + rand(dV)
+            z_k = u_k - e + ξk  # this way v draw still stored in z_k
+            prob_draws_in_bounds = trunc_cdf(dE, -one(T) * MAX_NUMERICAL, ξk) 
+        else # e >= ξ
+            e = rand_trunc(dE, ξk, one(T) * MAX_NUMERICAL)
+            z_k = xβ_k + ξk + rand(dV)
+            u_k = z_k - ξk + e # this way v draw still stored in z_k 
+            prob_draws_in_bounds = trunc_cdf(dE, ξk, one(T) * MAX_NUMERICAL) 
+        end
+
+        # Get values only if last click not in initial awareness set 
+        w_k = min(u_k, z_k)
+
+        if with_outside_option_dummy
+            prob_purchase_k *= cdf(dU0, w_k - β[end])
+        end
+
+        # P(not buy j) for other products
+        for j in (with_outside_option_dummy + 1):n_products
+            if j == k
+                continue
+            end
+            xβ_j = @views product_characteristics[j, :]' * β
+            prob_purchase_k *= prob_not_buy(m, xβ_j, ξj[j], w_k, dE, dV)
+        end
+
+        demand += prob_purchase_k * prob_draws_in_bounds
+    end
+
+    conditional_on_search = get(kwargs, :conditional_on_search, false)
+    if conditional_on_search
+        demand = demand / exp(ll_no_searches(m, nothing, ξj, m.β, m.dV, m.dU0, d, 1, n, true))
+    end
+
+    return demand / n
+end
+
