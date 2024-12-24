@@ -63,8 +63,8 @@ function calculate_costs!(m::WM1, d::DataSD, h::Int;
     return nothing
 end
 
-function generate_data(m::WM1, n_consumers, n_products; kwargs...)
-    generate_data(SDCore(m), n_consumers, n_products; kwargs...)
+function generate_data(m::WM1, n_consumers, n_sessions_per_consumer; kwargs...)
+    generate_data(SDCore(m), n_consumers, n_sessions_per_consumer; kwargs...)
 end
 generate_data(m::WM1, data::DataSD; kwargs...) = generate_data(SDCore(m), data; kwargs...)
 
@@ -307,13 +307,14 @@ function calculate_demand_outside_option(m::WM1, d::DataSD, i, n; kwargs...)
 
     positions = @views d.positions[i]
     product_characteristics = @views d.product_characteristics[i]
+    n_products = length(d.product_ids[i])
 
     # Extract zs. If already applied as keyword, can save compilation time.
-    ξj = get(kwargs, :ξj, zeros(T, length(d.positions[i])))
+    ξj = get(kwargs, :ξj, zeros(T, length(positions)))
     if ξj[1] == 0
         zsfun = get_functional_form(m.zsfun)
-        for h in eachindex(zd_h)
-            ξj[h] = zsfun(m.ξ, m.ρ, positions[i][h])
+        for h in eachindex(ξj)
+            ξj[h] = zsfun(m.ξ, m.ρ, positions[h])
         end
     end
 
@@ -327,7 +328,7 @@ function calculate_demand_outside_option(m::WM1, d::DataSD, i, n; kwargs...)
         # Initialize for probability
         prob_buy_u0 = one(T)
 
-        for j in 2:h
+        for j in 2:n_products
             xβ = @views product_characteristics[j, :]' * m.β
             prob_buy_u0 *= prob_not_buy(m, xβ, ξj[j], u0_draw, m.dE, m.dV)
         end
@@ -352,7 +353,7 @@ function calculate_demand_product(m::WM1{T}, d::DataSD, i, k, n; kwargs...) wher
     ξj = get(kwargs, :ξj, zeros(T, length(d.positions[i])))
     if ξj[1] == 0
         zsfun = get_functional_form(m.zsfun)
-        for h in eachindex(zd_h)
+        for h in eachindex(ξj)
             ξj[h] = zsfun(ξ, m.ρ, d.positions[i][h])
         end
     end

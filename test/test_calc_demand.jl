@@ -12,7 +12,7 @@ m = SD1(
     zdfun = "log"
 )
 n_consumers = 1000
-conditional_on_search = true
+conditional_on_search = false
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
                 # draws_e = fill(fill(2., 31), n_consumers),
@@ -34,7 +34,7 @@ j = 1
 n_draws = 100
 calculate_demand(m, data, i, j, n_draws; seed, conditional_on_search)
 ## 
-j = 3
+j = 4
 n_draws = 20
 d0 = [calculate_demand(m, data, i, j, n_draws; conditional_on_search, seed = 123) for i in 1:1000]
     
@@ -42,7 +42,7 @@ println("Mean demand: ", mean(d0))
 println("Demand data: ", count(data.purchase_indices .== j) / n_consumers)
 
 ## 
-dem = [calculate_demand(m, data[1], j, n_draws; seed, conditional_on_search) for j in 1:31]
+dem = [calculate_demand(m, data, 4, j, n_draws; seed, conditional_on_search) for j in 1:31]
 println(sum(dem))
 
 

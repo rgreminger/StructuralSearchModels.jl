@@ -664,7 +664,6 @@ Compute probability of not buying given chosen utility has utility `u`. This pro
     return P
 end
 
-
 function generate_draws_with_search(m::Union{SD1, WM1}, d::DataSD, 
 	n_sim, conditional_on_search_iter; kwargs...)
 	generate_draws_with_search(SDCore(m), d, n_sim, conditional_on_search_iter; kwargs...)
