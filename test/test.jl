@@ -48,14 +48,13 @@ hcat(estimates, vectorize_parameters(m_hat; distribution_options), s)
 
 
 ## Welfare 
-calculate_costs!(m, data, 1000)
-m.cd = 0.5
-w1 = calculate_welfare(m, data, 500; method = "effective_values", seed = 13) 
-w2 = calculate_welfare(m, data, 500; method = "simulate_paths", seed = 14)
+calculate_costs!(m, data, 10000)
+@time w1 = calculate_welfare(m, data, 10000; method = "effective_values", seed = 13) 
+@time w2 = calculate_welfare(m, data, 10000; method = "simulate_paths", seed = 14)
 
-w1[1], w2[1]
-w1[2], w2[2]
-w1[3], w2[3]
+w1[:average][:welfare], w2[:average][:welfare]
+
+
 ## 
 
 a  = zeros(2) 

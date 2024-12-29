@@ -226,6 +226,9 @@ function generate_search_paths(
     # creates the search path.
     _, data_chunks = get_chunks(n_sessions)
 
+    # note: unpacking distributions here and passing into function saves a lot of allocations
+    @unpack dU0, dE, dV, dW = m 
+
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
         Threads.@spawn begin
@@ -244,7 +247,7 @@ function generate_search_paths(
 
                 fill_path_i!(paths, consideration_sets, indices_purchase,
                     indices_stop, utility_purchases,
-                    m, i,
+                    m, i, dU0, dE, dV, dW, 
                     product_ids, product_characteristics, positions,
                     u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
 
@@ -254,7 +257,7 @@ function generate_search_paths(
                     while paths[i][1] == 0 && iter <= conditional_on_search_iter
                         fill_path_i!(paths, consideration_sets, indices_purchase,
                             indices_stop, utility_purchases,
-                            m, i,
+                            m, i, dU0, dE, dV, dW, 
                             product_ids, product_characteristics, positions,
                             u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
                         iter += 1
@@ -275,7 +278,7 @@ end
 
 function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
         utility_purchases,
-        m, i,
+        m, i, dU0, dE, dV, dW, 
         product_ids, product_characteristics, positions,
         u, zs, v, zdfun, zsfun,
         draws_shocks, store_draws;
@@ -304,17 +307,17 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
         # Outside option 
         if product_ids[i][j] == 0
             # draw outside option utility 
-            u[j] = take_or_generate_draw!(u0_draws, m.dU0, i, 1, store_draws) +
+            u[j] = take_or_generate_draw!(u0_draws, dU0, i, 1, store_draws) +
                    product_characteristics[i][1, end] * m.β[end]
             max_u = u[j]
             ind_p = 1
         else
             # Fill in reservation value for product j
             # note: storing v_j draw as also enters utility 
-            v[j] = take_or_generate_draw!(v_draws, m.dV, i, j, store_draws)
+            v[j] = take_or_generate_draw!(v_draws, dV, i, j, store_draws)
             xβ = @views product_characteristics[i][j, :]' * m.β
             zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] +
-                    take_or_generate_draw!(w_draws, m.dW, i, j, store_draws)
+                    take_or_generate_draw!(w_draws, dW, i, j, store_draws)
             # Update max search value and index
             if zs[j] > max_zs
                 max_zs = zs[j]
@@ -365,11 +368,11 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
                 end
 
                 # Update reservation value and max 
-                v[j] = take_or_generate_draw!(v_draws, m.dV, i, j, store_draws)
+                v[j] = take_or_generate_draw!(v_draws, dV, i, j, store_draws)
                 xβ = @views product_characteristics[i][j, :]' * m.β
 
                 zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] +
-                        take_or_generate_draw!(w_draws, m.dW, i, j, store_draws)
+                        take_or_generate_draw!(w_draws, dW, i, j, store_draws)
                 if zs[j] > max_zs
                     max_zs = zs[j]
                     ind_s = j
@@ -405,7 +408,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
             # Get utility of searched product 
             # note: recovering previously stored v_j draw as enters utility and search value 
-            u[ind_s] = take_or_generate_draw!(e_draws, m.dE, i, ind_s, store_draws) +
+            u[ind_s] = take_or_generate_draw!(e_draws, dE, i, ind_s, store_draws) +
                        v[ind_s]
 
             for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
@@ -922,6 +925,9 @@ function _calculate_welfare_effective_values(
 
     max_products_per_session = maximum(length.(d.product_ids))
 
+    # note: unpacking distributions here and passing into function saves a lot of allocations
+    @unpack dU0, dE, dV, dW = m 
+
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
         Threads.@spawn begin
@@ -944,7 +950,8 @@ function _calculate_welfare_effective_values(
                 fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
                     m, zdfun, zsfun,
                     d, i,
-                    draws_shocks)
+                    draws_shocks,
+                    dU0, dE, dV, dW)
             end
         end
     end
@@ -967,10 +974,12 @@ end
 function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
         m, zdfun, zsfun,
         d, i,
-        draws_shocks)
+        draws_shocks,
+        dU0, dE, dV, dW)
 
     # fill in search and effective values for session i
-    fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks)
+    fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks,
+                    dU0, dE, dV, dW)
 
     # Extract pre-allocated vectors   
     u, zs, ws, ws_tilde, _ = vectors_preallocated
@@ -1039,7 +1048,8 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
     end
 end
 
-function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks)
+function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks,
+    dU0, dE, dV, dW)
     @views chars = d.product_characteristics[i]
     @views positions = d.positions[i]
     @views product_ids = d.product_ids[i]
@@ -1050,16 +1060,16 @@ function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_sho
     for j in eachindex(product_ids)
         # Outside option
         if product_ids[j] == 0
-            u[j] = take_or_generate_draw!(u0_draws, m.dU0, i, j, false) +
+            u[j] = take_or_generate_draw!(u0_draws, dU0, i, j, false) +
                    chars[j, end] * m.β[end]
             ws[j] = u[j]
             ws_tilde[j] = u[j]
             # zs not used 
         else
             # Take draws 
-            e[1] = take_or_generate_draw!(e_draws, m.dE, i, j, false)
-            v[1] = take_or_generate_draw!(v_draws, m.dV, i, j, false)
-            w[1] = take_or_generate_draw!(w_draws, m.dW, i, j, false)
+            e[1] = take_or_generate_draw!(e_draws, dE, i, j, false)
+            v[1] = take_or_generate_draw!(v_draws, dV, i, j, false)
+            w[1] = take_or_generate_draw!(w_draws, dW, i, j, false)
 
             # Fill in utility
             xβ = @views chars[j, :]' * m.β

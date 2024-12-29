@@ -22,6 +22,8 @@ n_consumers = 1000
                 products = generate_products(n_consumers; distribution = Normal(0,3)))
 evaluate_fit(m, d, 1000) 
 
+
+
 ##
 
 
@@ -55,5 +57,5 @@ se = calculate_standard_errors(m_hat, e, d)
 
 
 ## 
-calculate_costs!(m_hat, d, 10000)
-calculate_welfare(m_hat, d, 100) 
+calculate_costs!(m, d, 10000)
+@time w = calculate_welfare(m, d, 1000) 

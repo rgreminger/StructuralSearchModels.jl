@@ -492,7 +492,7 @@ end
 function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n; kwargs...) where {T}
 
     # note: unpacking things here and passing into function saves a lot of allocations
-    β, ξ, dE, dV, dU0 = m.β, m.ξ, m.dE, m.dV, m.dU0
+    @unpack β, ξ, dE, dV, dU0 = m
 
     # Extract zdfun. If already applied as keyword, can save compilation time.
     zd_h = get(kwargs, :zd_h, zeros(T, length(d.positions[i])))
