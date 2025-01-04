@@ -219,7 +219,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0,
             prob_no_search_given_draw *= prob_not_search(m, u0_draw, zs_j, dV)
 
             if prob_no_search_given_draw == 0
-                prob_no_search_given_draw = T(1e-100)  # adding this helps AD 
+                prob_no_search_given_draw = T(ALMOST_ZERO_NUMERICAL)  # adding this helps AD 
                 break
             end
         end
