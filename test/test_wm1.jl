@@ -3,7 +3,7 @@ using StructuralSearchModels, Revise, Distributions, StatsBase, Random, Benchmar
 
 seed = 50234
 m = WM1( 
-    β = [-0.1, 2.5], 
+    β = [-0.1, 4.5], 
     ξ = 1.5,
     ρ = [-0.2], 
     dE = Normal(0, 1.0), 
@@ -13,9 +13,11 @@ m = WM1(
 )
 n_consumers = 2000
 conditional_on_search = true 
+
+
 @time data, utility_purchases = 
                 generate_data(m, n_consumers, 1; seed, 
-                conditional_on_search = conditional_on_search, conditional_on_search_iter = 100,
+                conditional_on_search, conditional_on_search_iter = 100,
                 products = generate_products(n_consumers; distribution = Normal(0,3)));
  
 
@@ -27,19 +29,22 @@ m_hat = deepcopy(m)
 e = SmoothMLE(;
     conditional_on_search,  
     options_numerical_integration = (n_draws = 100, n_draws_purchases = 100),
-    options_solver = (show_trace = false, show_every = 1) 
+    options_solver = (show_trace = true, show_every = 1) 
     # options_optimization = (algorithm = StructuralSearchModels.NelderMead(), differentiation = Optimization.AutoForwardDiff())
     )
 
 
-startvals = vectorize_parameters(m_hat) .* 0.5
-
+distribution_options = [true, false, true, false]
+startvals = vectorize_parameters(m_hat; distribution_options) .* 0.5
 @time estimates, likelihood_at_estimates, result_solver = estimate_model(m_hat, e, data;
+                                                                        distribution_options, 
                                                                         seed, 
                                                                         startvals) 
+m_hat = construct_model_from_pars(estimates, m_hat; distribution_options)
 
-s = calculate_standard_errors(m_hat, e, data; seed)
-hcat(estimates, vectorize_parameters(m_hat), s)
+s = calculate_standard_errors(m_hat, e, data; seed, distribution_options)
+
+hcat(estimates, vectorize_parameters(m; distribution_options), s)
 
 
 ## 

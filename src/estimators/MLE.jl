@@ -81,7 +81,7 @@ function calculate_standard_errors(model::Model, estimator::MLE, data::Data;
 	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
 
 	# Compute Hessian for negative likelihood function 
-    f(θ) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...)
+    f(θ) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
 
     options_optimization = estimator.options_optimization
 
