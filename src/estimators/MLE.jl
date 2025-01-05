@@ -63,7 +63,7 @@ function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs..
     θ = vectorize_parameters(model; kwargs...)
 
     # Prepare additional arguments for objective function 
-	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
+	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data; kwargs...)
 
 	# return likelihood
     return loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
@@ -78,7 +78,7 @@ function calculate_standard_errors(model::Model, estimator::MLE, data::Data;
     θ = vectorize_parameters(model; kwargs...)
 
     # Prepare additional arguments for objective function 
-	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data)
+	args_likelihood_function = prepare_arguments_likelihood(model, estimator, data; kwargs...)
 
 	# Compute Hessian for negative likelihood function 
     f(θ) = - loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
