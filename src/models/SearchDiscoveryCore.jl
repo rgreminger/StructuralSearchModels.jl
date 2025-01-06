@@ -227,7 +227,7 @@ function generate_search_paths(
     _, data_chunks = get_chunks(n_sessions)
 
     # note: unpacking distributions here and passing into function saves a lot of allocations
-    @unpack dU0, dE, dV, dW = m 
+    @unpack dU0, dE, dV, dW = m
 
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
@@ -247,7 +247,7 @@ function generate_search_paths(
 
                 fill_path_i!(paths, consideration_sets, indices_purchase,
                     indices_stop, utility_purchases,
-                    m, i, dU0, dE, dV, dW, 
+                    m, i, dU0, dE, dV, dW,
                     product_ids, product_characteristics, positions,
                     u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
 
@@ -257,7 +257,7 @@ function generate_search_paths(
                     while paths[i][1] == 0 && iter <= conditional_on_search_iter
                         fill_path_i!(paths, consideration_sets, indices_purchase,
                             indices_stop, utility_purchases,
-                            m, i, dU0, dE, dV, dW, 
+                            m, i, dU0, dE, dV, dW,
                             product_ids, product_characteristics, positions,
                             u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
                         iter += 1
@@ -278,7 +278,7 @@ end
 
 function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
         utility_purchases,
-        m, i, dU0, dE, dV, dW, 
+        m, i, dU0, dE, dV, dW,
         product_ids, product_characteristics, positions,
         u, zs, v, zdfun, zsfun,
         draws_shocks, store_draws;
@@ -805,7 +805,7 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
         :search_costs => mean(search_costs_conditional_on_purchase),
         :discovery_costs => mean(discovery_costs_conditional_on_purchase))
 
-    return result 
+    return result
 end
 
 function calculate_costs_in_sessions(m::SDCore, d)
@@ -926,7 +926,7 @@ function _calculate_welfare_effective_values(
     max_products_per_session = maximum(length.(d.product_ids))
 
     # note: unpacking distributions here and passing into function saves a lot of allocations
-    @unpack dU0, dE, dV, dW = m 
+    @unpack dU0, dE, dV, dW = m
 
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
@@ -979,7 +979,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 
     # fill in search and effective values for session i
     fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks,
-                    dU0, dE, dV, dW)
+        dU0, dE, dV, dW)
 
     # Extract pre-allocated vectors   
     u, zs, ws, ws_tilde, _ = vectors_preallocated
@@ -1049,7 +1049,7 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
 end
 
 function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks,
-    dU0, dE, dV, dW)
+        dU0, dE, dV, dW)
     @views chars = d.product_characteristics[i]
     @views positions = d.positions[i]
     @views product_ids = d.product_ids[i]
@@ -1101,7 +1101,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
     # Initialize empty arrays (otherwise error of not found)
     click_stats = []
     purchase_stats = []
-    stop_probabilities = [] 
+    stop_probabilities = []
 
     # Track statistics across simulations to get percentiles 
     click_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
@@ -1111,6 +1111,8 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
     # Generate data from new seed 
     sim_seeds = rand(1:1000000, n_sim)
+
+    n_sim_without_nan_purchase = 0
     for s in 1:n_sim
 
         # note: generating unconditional data is much faster than conditional data. So we generate unconditional data and 
@@ -1128,8 +1130,22 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
             stop_probabilities = stop_probability_i
         else
             click_stats += click_stats_i
-            purchase_stats += purchase_stats_i
             stop_probabilities += stop_probability_i
+
+            # Special case for purchases: if no purchases in entire dataset, we get NaN for characteristics purchased and position (divided by n_purchases)
+            # In this case, we do not use statistic for where purchases are made and characteristics purchased 
+
+            if isnan(purchase_stats[4]) == false && isnan(purchase_stats_i[4]) == false
+                purchase_stats += purchase_stats_i
+                n_sim_without_nan_purchase += 1
+            else
+                purchase_stats[1:2] += purchase_stats_i[1:2]
+
+                if isnan(purchase_stats[4]) && isnan(purchase_stats_i[4]) == false
+                    purchase_stats[3:4] = purchase_stats_i[3:4]
+                    n_sim_without_nan_purchase += 1
+                end
+            end
         end
 
         # Fill in statistics for percentiles
@@ -1139,7 +1155,9 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
     # Compute average 
     click_stats_sim = click_stats ./ n_sim
-    purchase_stats_sim = purchase_stats ./ n_sim
+
+    purchase_stats_sim = vcat(
+        purchase_stats[1:2] ./ n_sim, purchase_stats[3:4] ./ n_sim_without_nan_purchase)
     stop_probablities_sim = stop_probabilities ./ n_sim
 
     if conditional_on_search
@@ -1176,7 +1194,6 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
         :characteristics_purchased => purchase_stats_data[3],
         :mean_position_purchased => purchase_stats_data[4])
 
-    
     # Compute lower/upper bound based on given percentile 
     percentile_across_sims = get(kwargs, :percentile, 0.95)
     sort!(click_probability_per_pos, dims = 2)
@@ -1188,7 +1205,6 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
         :, ceil(Int, (1 - percentile_across_sims) * n_sim)]
     ub_purchase = purchase_probability_per_pos[
         :, floor(Int, percentile_across_sims * n_sim)]
-    
 
     # Return dictionary with all statistics
     return Dict(:click_stats_data => click_stats_data,
@@ -1252,13 +1268,13 @@ function calculate_statistics_from_data(d::DataSD)
         end
 
         # Stopping probability
-        if !isnothing(d.stop_indices) 
+        if !isnothing(d.stop_indices)
             stop_probabilities[d.stop_indices[i]] += 1
         end
     end
 
-    n_clicks = sum(clicks_per_pos)
-    n_purchases = sum(purchases_per_pos)
+    n_clicks = sum(@views clicks_per_pos)
+    n_purchases = sum(@views purchases_per_pos)
 
     n_ses = length(d)
 
@@ -1301,7 +1317,7 @@ function plot_across_positions(stats; kwargs...)
     ub_click = bounds[1][2]
     lb_purchase = bounds[2][1]
     ub_purchase = bounds[2][2]
-    
+
     # x-axis 
     sel = if ub_click[1] == 0 # outside option -> no clicks on first element -> don't plot 
         2:length(lb_click)
