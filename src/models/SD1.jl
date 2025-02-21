@@ -1,5 +1,5 @@
 """
-*Search and Discovery* SD1 model with the following parameterization: 
+*Search and Discovery* model with the following parameterization: 
 - uᵢⱼ = xⱼ'β + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ = xⱼ'β + ξ + νᵢⱼ 
 - uᵢ₀ = x₀'β + η , η_i ~ dU0
@@ -19,7 +19,6 @@
 - `zdfun::String`: select functional form f(Ξ, ρ, h) that determines the discovery value in position h. 
 - `unobserved_heterogeneity::Dict`: dictionary of unobserved heterogeneity parameters and options. Currently not used. 
 """
-
 @with_kw mutable struct SD1{T} <: SD where {T <: Real}
     β::Vector{T}
     cs::Union{T, Nothing} = nothing

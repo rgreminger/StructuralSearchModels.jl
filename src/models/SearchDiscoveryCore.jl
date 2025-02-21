@@ -124,7 +124,7 @@ end
 # Data generation 
 function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
         n_A0 = 1, n_d = 1,
-        products = generate_products(n_consumers * n_sessions_per_consumer;),
+        products = generate_products(n_consumers * n_sessions_per_consumer),
         kwargs...)
     n_sessions = n_consumers * n_sessions_per_consumer
 
@@ -514,7 +514,7 @@ end
 """
 	caculate_costs!(m::SD, d, n_draws_cd, seed; force_recompute = true)
 
-Calculate search and discovery costs for the Search and Discovery model `m` and data `d`. Uses `n_draws` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true, the costs are recomputed even if they are already present in the model.
+Calculate search and discovery costs for the Search and Discovery model `m` and data `d` and add/update them in`m`. Uses `n_draws_cd` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true (default), the costs are recomputed even if they are already present in the model.
 """
 function calculate_costs!(m::SDCore, d, n_draws_cd;
         force_recompute = true,
@@ -558,11 +558,16 @@ function calculate_position_specific_search_costs(m::SD, d::DataSD)
 end
 
 """
-	calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
+	calculate_discovery_cost(m::SD, d::DataSD, n_draws; 
+        position_at_which_correct_beliefs = calculate_mean_position(d),
+        kwargs...)
+Calculate discovery cost `cd` for model `m` using data `d` and `n_draws` draws of effective values. The discovery value is calculated at the position where beliefs are correct, which is by default the mean position in the data. 
 """
-function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
+function calculate_discovery_cost(m::SD, d::DataSD, n_draws; 
+    position_at_which_correct_beliefs = calculate_mean_position(d),
+    kwargs...)
 
-    # Set seed (is stable across threads) 
+    # Set seed from kwargs
     set_seed(kwargs)
 
     # characteristics matrix without outside option 
@@ -575,11 +580,10 @@ function calculate_discovery_cost(m::SD, d::DataSD, n_draws; kwargs...)
     # Get discovery value at position where beliefs are correct
     # NEEDS TO BE UPDATED
     zdfun = get_functional_form(m.zdfun)
-    position_at_which_correct_beliefs = get(
-        kwargs, :position_at_which_correct_beliefs, calculate_mean_position(d))
     zd = zdfun(m.Ξ, m.ρ, position_at_which_correct_beliefs)
 
-    # Calculate discovery costs by sampling effective values using the empirical xβ distribution and taste shock assumptions 
+    # Calculate discovery costs by sampling effective values using the empirical xβ distribution 
+    # and taste shock assumptions 
     W = zeros(Float64, n_draws)
     fill_values_cd_compute!(W, m, xβ, zd)
 
@@ -617,11 +621,8 @@ end
 # Reservation values / inverse calculations for costs 
 """
 	calculate_discovery_value(G::Normal, m::SD)
-
-Calculate the discovery value zd given cs, cd, and ξ from SD model `m`. Assumes that pre-search values xβ + v + w follow normal distribution `G`.
-
+Calculate the discovery value `zd` given `cs`, `cd` and `ξ` from SD model `m`. Assumes that pre-search values xβ + v + w follow normal distribution `G`.
 """
-
 function calculate_discovery_value(G::Normal, m::SD)
     ξ, cs, cd = m.ξ, m.cs, m.cd
 

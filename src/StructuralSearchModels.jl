@@ -3,16 +3,18 @@ module StructuralSearchModels
 # Types to be exported
 export Estimator, Model, Data  # abstract types
 
-# Functions to be exported
-export generate_data, generate_products, sessions_with_clicks, sessions_with_purchase        # functions for data generation
-export estimate_model                                               # functions for estimation
-export evaluate_fit, calculate_likelihood, calculate_standard_errors, calculate_welfare   # functions for post-estimation
-export calculate_costs!, calculate_discovery_value, calculate_search_cost,
+# Main functions exported 
+export generate_data, generate_products # data generation
+export estimate_model # functions for estimation
+export evaluate_fit, calculate_likelihood, calculate_standard_errors # post-estimation 
+export calculate_welfare, calculate_costs!, calculate_revenues # welfare and costs 
+export calculate_revenues, calculate_demand # revenue and demand functions
+
+# Additional helper functions 
+export calculate_discovery_value, calculate_search_cost,
        calculate_discovery_cost, calculate_ξ
-export plot_across_positions, vectorize_parameters, construct_model_from_pars,
-       generate_draws_with_search
-export add_indices_min_discover!, calculate_demand, update_positions!
-export calculate_revenues
+export vectorize_parameters, construct_model_from_pars, generate_draws_with_search
+export add_indices_min_discover!, update_positions!
 
 # Export concrete model types 
 export SDCore, SD1, WM1, DataSD
@@ -20,17 +22,22 @@ export SDCore, SD1, WM1, DataSD
 # Export concrete estimator types
 export SmoothMLE
 
-# Load packages 
-using Revise                                                        # for package development 
-using Random, Distributions, StatsBase, QuadGK, Roots, ForwardDiff, LinearAlgebra  # math and other 
-using Optimization, OptimizationOptimJL                             # optimization
-using Parameters                                                    # utils 
-using Colors, CairoMakie                                            # plotting
-
-using StatsFuns: sqrt2, invsqrt2
+# Dependencies 
+using CairoMakie
+using Colors
+using Distributions
+using ForwardDiff
+using LinearAlgebra
+using Optimization
+using OptimizationOptimJL
+using Parameters
+using QuadGK
+using Random
+using Revise
+using Roots
 using SpecialFunctions: erf, erfinv
-
-# Import functions to add own definitions 
+using StatsBase
+using StatsFuns: sqrt2, invsqrt2
 import Base: length, getindex, eachindex
 
 # Load general code 
@@ -46,4 +53,4 @@ include("models/SearchDiscoveryCore.jl")     # Search and Discovery core model
 include("models/WM1.jl")
 include("models/SD1.jl")
 
-end # module StructuralSearchModels
+end

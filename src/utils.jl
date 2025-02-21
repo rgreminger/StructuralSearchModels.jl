@@ -1,4 +1,12 @@
 # Generate products 
+
+"""
+    generate_products(n_sessions; n_products=1_000_000, n_products_per_session=30, distribution=Normal(), outside_option=true, kwargs...)
+
+Generate product IDs and their characteristics for `n_sessions` sessions. Each session has `n_products_per_session` products randomly sampled from `n_products` available in total. Product characteristics for each product are sampled from a `distribution`, which can be multivariate (e.g., `MvNormal`). If `outside_option=true`, then an outside option is included as the first product for each session with product ID 0. 
+    
+Returns product IDs and product characteristics as two separate vectors. Each element is a session, with a vector of product IDs or matrix of characteristics for all products available to the session. 
+"""
 function generate_products(n_sessions;
         n_products = 1_000_000,
         n_products_per_session = 30,
@@ -53,7 +61,7 @@ function get_functional_form(s::String)
     elseif s == "exp"
         (Ξ, ρ, pos) -> Ξ + ρ[1] * _EP[pos + 1]
     else
-        error("zdfun not correctly specified")
+        error("zdfun not correctly specified. Currently only 'linear', 'log', 'exp' or '' are supported.")
     end
 end
 
