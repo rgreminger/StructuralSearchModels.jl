@@ -1,10 +1,9 @@
 """
-*Search and Discovery* model with the following parameterization: 
+*Search and Discovery* model `SD1{T} <: SD`  with the following parameterization: 
 - uᵢⱼ = xⱼ'β + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ = xⱼ'β + ξ + νᵢⱼ 
-- uᵢ₀ = x₀'β + η , η_i ~ dU0
+- uᵢ₀ = x₀'β + ηᵢ , ηᵢ ~ dU0
 - Ξ(h) = zdfun(Ξ, ρ, pos) with ρ ≤ 0
-
 
 # Fields:  
 - `β::Vector{T}`: vector of preference weights. 
@@ -13,9 +12,9 @@
 - `Ξ::T`: baseline Ξ.
 - `ρ::Vector{T}`: parameters governing decrease of Ξ across positions.
 - `ξ::T`: baseline ξ.
-- `dE::Distribution`: distribution of ε_{ij}.
-- `dV::Distribution`: distribution of ν_{ij}.
-- `dU0::Distribution`: distribution of u_{i0}. 
+- `dE::Distribution`: distribution of εᵢⱼ.
+- `dV::Distribution`: distribution of νᵢⱼ.
+- `dU0::Distribution`: distribution of ηᵢ. 
 - `zdfun::String`: select functional form f(Ξ, ρ, h) that determines the discovery value in position h. 
 - `unobserved_heterogeneity::Dict`: dictionary of unobserved heterogeneity parameters and options. Currently not used. 
 """

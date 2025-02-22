@@ -1,1 +1,2 @@
-# StructuralSearchModels
+# StructuralSearchModels.jl 
+

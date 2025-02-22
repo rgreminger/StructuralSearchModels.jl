@@ -1,8 +1,13 @@
 """
-*Weitzman* WM1 model with the following parameterization: 
+Abstract type for the *Weitzman* (WM) model. This type is a base type for all models that are subtypes of the WM model. 
+"""
+abstract type WM <: SD end
+
+"""
+*Weitzman model* `WM1{T} <: WM` with the following parameterization: 
 - uᵢⱼ = xⱼ'β + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ = xⱼ'β + ξ(h) + νᵢⱼ 
-- uᵢ₀ = x₀'β + η , η_i ~ dU0
+- uᵢ₀ = x₀'β + ηᵢ , ηᵢ ~ dU0
 - ξ(h) = zsfun(ξ, ρ, pos)
 
 
@@ -11,14 +16,13 @@
 - `cs`: search costs. Initialized as nothing by to avoid computational cost. Can be updated through `calculate_costs!(m, data; kwargs...)`. 
 - `ξ::T`: baseline ξ.
 - `ρ::Vector{T}`: parameters governing decrease of ξ across positions.
-- `dE::Distribution`: distribution of ε_{ij}.
-- `dV::Distribution`: distribution of ν_{ij}.
-- `dU0::Distribution`: distribution of u_{i0}. 
+- `dE::Distribution`: distribution of εᵢⱼ.
+- `dV::Distribution`: distribution of νᵢⱼ.
+- `dU0::Distribution`: distribution of ηᵢ. 
 - `zsfun::String`: select functional form f(ξ, ρ, h) that determines the search value in position h. 
 - `unobserved_heterogeneity::Dict`: dictionary of unobserved heterogeneity parameters and options. Currently not used. 
 """
-
-@with_kw mutable struct WM1{T} <: SD where {T <: Real}
+@with_kw mutable struct WM1{T} <: WM where {T <: Real}
     β::Vector{T}
     ξ::T
     ρ::Vector{T}

@@ -7,3 +7,6 @@ tmp*
 
 # manifest
 Manifest.toml
+
+# documenter
+docs/build/*

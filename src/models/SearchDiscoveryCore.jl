@@ -1,7 +1,17 @@
+"""
+Abstract type for the *Search and Discovery* (SD) model. This type is a base type for all models that are subtypes of the Search and Discovery model. 
+"""
 abstract type SD <: Model end
 
 """
-*Search and Discovery* (SD) core model. This model is a base model for all models that are subtypes of the Search and Discovery model. 
+*Search and Discovery* (SD) core model. This model is a base model for all models that are subtypes of the Search and Discovery model. It implements the most general specification using 
+three shocks and functional forms for ξ and Ξ: 
+
+- uᵢⱼ = xⱼ'β + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
+- zsᵢⱼ = xⱼ'β + ξ + νᵢⱼ + ωᵢⱼ, ωᵢⱼ ~ dW
+- uᵢ₀ = x₀'β + ηᵢ , ηᵢ ~ dU0
+- Ξ(h) = zdfun(Ξ, ρ, pos) with ρ ≤ 0
+- ξ(h) = zsfun(ξ, ξρ, pos) 
 
 # Fields:  
 - `β::Vector{T}`: vector of preference weights. 
@@ -12,10 +22,10 @@ abstract type SD <: Model end
 - `cd::Union{T, Nothing}`: discovery costs. Initialized as nothing by to avoid computational cost. Can be updated through `calculate_costs!(m, data; kwargs...)`. 
 - `cs::Union{T, Nothing}`: baseline search costs. Initialized in the same way as `cd`, and is also added in `calculate_costs!(m, data; kwargs...)`.
 - `cs_h::Union{Vector{T}, T}`: position-specific search costs. Initialized in the same way as `cd`, and is also added in `calculate_costs!(m, data; kwargs...)`.
-- `dE::Distribution`: distribution of ε_{ij}.
-- `dV::Distribution`: distribution of ν_{ij}.
-- `dU0::Distribution`: distribution of u_{i0}. 
-- `dW::Distribution`: distribution of ω_{ij}.
+- `dE::Distribution`: distribution of εᵢⱼ.
+- `dV::Distribution`: distribution of νᵢⱼ.
+- `dU0::Distribution`: distribution of ηᵢ. 
+- `dW::Distribution`: distribution of ωᵢⱼ.
 - `zdfun::String`: select functional form f(h, Ξ, ρ) that determines the discovery value in position h. 
 - `zsfun::String`: select functional form f(h, ξ, ξρ) that determines the search value in position h.
 - `unobserved_heterogeneity::Dict`: dictionary of unobserved heterogeneity parameters and options. 
