@@ -697,15 +697,15 @@ function calculate_welfare(m::SDCore, data::DataSD, n_sim;
 
     # Assert costs are part of model
     if isnothing(m.cs) || isnothing(m.cd)
-        throw(ArgumentError("Search and discovery costs not calculated. Run calculate_costs! first."))
+        throw(ArgumentError("Search and discovery costs not calculated. Run `calculate_costs!` first."))
     end
 
     if method == "simulate_paths"
         if var(m.dW) > 0
-            throw(ArgumentError("Computing welfare using path simulations is not implemented for non-constant search cost shocks. Use effective values instead."))
+            throw(ArgumentError("Computing welfare using path simulations is not yet implemented for search cost shocks. Use effective values instead."))
         end
         if m.ξρ[1] != 0
-            throw(ArgumentError("Computing welfare using path simulations is not implemented for position-specific search costs. Use effective values instead."))
+            throw(ArgumentError("Computing welfare using path simulations is not yet implemented for position-specific search costs. Use effective values instead."))
         end
         return calculate_welfare_simpaths(m, data, n_sim; kwargs...)
     elseif method == "effective_values"
@@ -742,7 +742,8 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
         # Get draws shocks if provided 
         draws_u0, draws_e, draws_v, draws_w = get_precomputed_draws_indexed(kwargs, sim)
 
-        # Generate data from new seed 
+        # Generate data from new seed
+        # note: every simulation sets a seed, so that this random draw also gets a new number for the seed).
         new_seed = rand(1:(10^9))
         d_sim, utility_purchases = generate_data(m, data; kwargs...,
             seed = new_seed, draws_u0, draws_e, draws_v, draws_w)

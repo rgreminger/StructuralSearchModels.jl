@@ -1,5 +1,8 @@
-using StructuralSearchModels, Revise, Distributions, StatsBase, Random, BenchmarkTools,
-      CairoMakie
+using StructuralSearchModels, Revise, Distributions, StatsBase, Random
+
+
+## 
+
 
 function test_discovery_cost_correct()
     # Verify costs correct: need that Ξ again same as m.Ξ after getting cd and recomputing Ξ

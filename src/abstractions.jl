@@ -38,7 +38,8 @@ function generate_data(model::Model, data::Data; kwargs...) end
 
 """
     estimate_model(model::Model, estimator::Estimator, data::Data; kwargs...)
-Estimate the `model` using `data` and `estimator`. Returns the estimated model. 
+Estimate the `model` using `data` and `estimator`. Returns the estimated model, 
+the parameter estimates, the objective function at the estimates, the solver results, and the standard errors as tuple. 
 """
 function estimate_model(model::Model, estimator::Estimator, data::Data; kwargs...) end
 
@@ -55,7 +56,7 @@ function evaluate_fit(model::Model, data::Data, n_sim; kwargs...) end
 # Abstract function to calculate standard errors 
 """ 
     calculate_standard_errors(model::Model, estimator::Estimator, data::Data; kwargs...)
-Calculate standard errors for the model `model` using the data `data` and estimator `estimator`. 
+Calculate standard errors for the model `model` using the specified `data` and `estimator`. 
 """
 function calculate_standard_errors(
         model::Model, estimator::Estimator, data::Data; kwargs...) end
