@@ -1,16 +1,20 @@
-using Distributions
+using Distributions 
+using StableRNGs
 using StructuralSearchModels
 using Test 
 
+if Threads.nthreads() != 1 
+    error("Tests are only reproducible if run on single thread.")
+end
 
 @testset "SearchDiscoveryCore" verbose = true begin
-    include("test/search_discovery_core.j.l")
+    include("tests_sdcore.jl")
 end
 
 @testset "SD1" begin
-    include("test/SD1.jl")
+    include("tests_sd1.jl")
 end
 
-@testset "SD2" begin
-    include("test/SD2.jl")
+@testset "WM1" begin
+    include("tests_wm1.jl")
 end
