@@ -77,9 +77,10 @@ function prepare_arguments_likelihood(m::SD1, estimator::Estimator, d::DataSD; k
     data_arguments = prepare_data_arguments_likelihood(d)
 
     # Keep fixed seed: either random or provided by kwargs 
-    seed = get(kwargs, :seed, rand(1:(10^9)))
+    rng = get_rng(kwargs)
+    seed = get(kwargs, :seed, rand(rng, 1:(10^9)))
 
-    return data_arguments..., zdfun, nothing, seed
+    return data_arguments..., zdfun, nothing, rng, seed
 end
 
 # Vectorize parameters 
@@ -174,7 +175,7 @@ function extract_parameters(m::SD1, θ::Vector{T}; kwargs...) where {T <: Real}
 end
 
 function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0,
-        d::DataSD, i::Int, n_draws, complement) where {T <: Real}
+        d::DataSD, i::Int, n_draws, complement, rng) where {T <: Real}
     min_position_discover = complement ? searchsortedfirst(d.positions[i], 1) - 1 :
                             d.min_discover_indices[i] # if complement 
     n_products = length(d.product_ids[i])
@@ -206,7 +207,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0,
 
         # Get probability of u0 in bounds and draw for u0 
         prob_u0_in_bounds = trunc_cdf(dU0, lb, ub)
-        u0_draw = rand_trunc(dU0, lb, ub) + (with_outside_option_dummy ? β[end] : zero(T))
+        u0_draw = rand_trunc(rng, dU0, lb, ub) + (with_outside_option_dummy ? β[end] : zero(T))
 
         # Initialize for probability
         prob_no_search_given_draw = one(T)
@@ -233,7 +234,7 @@ function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0,
 end
 
 function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV,
-        dU0, d::DataSD, i::Int, n_draws) where {T <: Real}
+        dU0, d::DataSD, i::Int, n_draws, rng) where {T <: Real}
     min_position_discover = d.min_discover_indices[i]
     n_products = length(d.product_ids[i])
     positions = @views d.positions[i]
@@ -264,7 +265,7 @@ function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE
 
         # Get probability of u0 in bounds and draw for u0 
         prob_u0_in_bounds = trunc_cdf(dU0, lb, ub)
-        u0_draw = rand_trunc(dU0, lb, ub) + (with_outside_option_dummy ? β[end] : zero(T))
+        u0_draw = rand_trunc(rng, dU0, lb, ub) + (with_outside_option_dummy ? β[end] : zero(T))
 
         prob_searches_given_draw = one(T)
 
@@ -290,7 +291,7 @@ function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE
 end
 
 function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV,
-        dU0, d::DataSD, i::Int, n_draws) where {T <: Real}
+        dU0, d::DataSD, i::Int, n_draws, rng) where {T <: Real}
     min_position_discover = d.min_discover_indices[i]
     n_products = length(d.product_ids[i])
     positions = @views d.positions[i]
@@ -332,14 +333,14 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV,
 
         # Fill 
         if ddd == 1 # e < ξ
-            e = rand_trunc(dE, -one(T) * MAX_NUMERICAL, ξ)
-            u_k = xβ_k + e + rand_trunc(dV, lb - e, ub - e)
+            e = rand_trunc(rng, dE, -one(T) * MAX_NUMERICAL, ξ)
+            u_k = xβ_k + e + rand_trunc(rng, dV, lb - e, ub - e)
             z_k = u_k - e + ξ # this way v draw still stored in z_k
             prob_draws_in_bounds = trunc_cdf(dE, -one(T) * MAX_NUMERICAL, ξ) *
                                    trunc_cdf(dV, lb - e, ub - e)
         else # e >= ξ
-            e = rand_trunc(dE, ξ, one(T) * MAX_NUMERICAL)
-            z_k = xβ_k + ξ + rand_trunc(dV, lb - ξ, ub - ξ)
+            e = rand_trunc(rng, dE, ξ, one(T) * MAX_NUMERICAL)
+            z_k = xβ_k + ξ + rand_trunc(rng, dV, lb - ξ, ub - ξ)
             u_k = z_k - ξ + e # this way v draw still stored in z_k 
             prob_draws_in_bounds = trunc_cdf(dE, ξ, one(T) * MAX_NUMERICAL) *
                                    trunc_cdf(dV, lb - ξ, ub - ξ)
@@ -414,7 +415,6 @@ end
 
 ## Demand functions
 function calculate_demand(m::Union{SD1, WM1}, d::DataSD, i, j, n_draws; kwargs...)
-    set_seed(kwargs)
 
     # Different functions depending on whether product is outside option or not
     demand_j = if d.product_ids[i][j] == 0
@@ -444,6 +444,8 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, i, n; kwargs...)
 
     demand = zero(T)
 
+    rng = get_rng(kwargs)
+
     for dd in 1:n, h in 2:n_products
         # If not last product in same position or last product, skip 
         if h < n_products && positions[h] == positions[h + 1]
@@ -466,7 +468,7 @@ function calculate_demand_outside_option(m::SD1, d::DataSD, i, n; kwargs...)
 
         # Get probability of u0 in bounds and draw for u0
         prob_u0_in_bounds = trunc_cdf(m.dU0, lb, ub)
-        u0_draw = rand_trunc(m.dU0, lb, ub) + m.β[end]
+        u0_draw = rand_trunc(rng, m.dU0, lb, ub) + m.β[end]
 
         # Initialize for probability
         prob_buy_u0 = one(T)
@@ -517,6 +519,8 @@ function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n,
     # xb of purchased (same across draws)
     xβ_k = @views product_characteristics[k, :]' * β
 
+    rng = get_rng(kwargs)
+
     for dd in 1:n, h in 1:n_products, ddd in 1:2
         # If not last product in same position or last product, skip 
         if h < n_products && positions[h] == positions[h + 1]
@@ -542,14 +546,14 @@ function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n,
 
         # Fill 
         if ddd == 1 # e < ξ
-            e = rand_trunc(dE, -one(T) * MAX_NUMERICAL, ξ)
-            u_k = xβ_k + e + rand_trunc(dV, lb - e, ub - e)
+            e = rand_trunc(rng, dE, -one(T) * MAX_NUMERICAL, ξ)
+            u_k = xβ_k + e + rand_trunc(rng, dV, lb - e, ub - e)
             z_k = u_k - e + ξ # this way v draw still stored in z_k
             prob_draws_in_bounds = trunc_cdf(dE, -one(T) * MAX_NUMERICAL, ξ) *
                                    trunc_cdf(dV, lb - e, ub - e)
         else # e >= ξ
-            e = rand_trunc(dE, ξ, one(T) * MAX_NUMERICAL)
-            z_k = xβ_k + ξ + rand_trunc(dV, lb - ξ, ub - ξ)
+            e = rand_trunc(rng, dE, ξ, one(T) * MAX_NUMERICAL)
+            z_k = xβ_k + ξ + rand_trunc(rng, dV, lb - ξ, ub - ξ)
             u_k = z_k - ξ + e # this way v draw still stored in z_k 
             prob_draws_in_bounds = trunc_cdf(dE, ξ, one(T) * MAX_NUMERICAL) *
                                    trunc_cdf(dV, lb - ξ, ub - ξ)
@@ -590,10 +594,10 @@ function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n,
     return demand / n
 end
 
-function calculate_revenues(m::Union{SD1, WM1}, d::DataSD, kprice, n_draws, seed; kwargs...)
+function calculate_revenues(m::Union{SD1, WM1}, d::DataSD, kprice, n_draws; kwargs...)
     R = zeros(length(d))
 
-    Random.seed!(seed)
+    seed = get(kwargs, :seed, rand(1:(10^9)))
 
     # Create and define tasks for each chunk
     _, data_chunks = get_chunks(length(d))
@@ -620,7 +624,7 @@ function calculate_revenues(m::Union{SD1, WM1}, d::DataSD, kprice, n_draws, seed
         Threads.@spawn begin
             for i in chunk
                 R[i] = calculate_revenues_i(
-                    m, d, i, kprice, n_draws, seed + i; zd_h, ξj, kwargs...)
+                    m, d, i, kprice, n_draws; zd_h, ξj, kwargs..., seed = seed + i) # this overwrites seed in kw
             end
         end
     end
@@ -630,13 +634,13 @@ function calculate_revenues(m::Union{SD1, WM1}, d::DataSD, kprice, n_draws, seed
     return sum(R), R
 end
 
-function calculate_revenues_i(m, d, i, kprice, n_draws, seed; kwargs...)
+function calculate_revenues_i(m, d, i, kprice, n_draws; kwargs...)
     revenues = 0.0
     for j in eachindex(d.product_ids[i])
         if d.product_ids[i][j] == 0
             continue
         end
-        revenues += calculate_demand(m, d, i, j, n_draws; kwargs..., seed = seed) *
+        revenues += calculate_demand(m, d, i, j, n_draws; kwargs...) *
                     d.product_characteristics[i][j, kprice]
     end
     return revenues

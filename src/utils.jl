@@ -15,19 +15,19 @@ function generate_products(n_sessions;
         kwargs...)
 
     # Set seed 
-    set_seed(kwargs)
+    rng = get_rng(kwargs)
 
     # Product ids, 0 will be outside option 
     pid = collect(1:n_products)
 
     # Draw product characteristics for each consumer 
-    product_characteristics = rand(distribution, n_products, 1)
+    product_characteristics = rand(rng, distribution, n_products, 1)
 
     # Draw products per session randomly from set of products for each session 
     product_ids = if outside_option
-        [vcat(0, rand(pid, n_products_per_session)) for i in 1:n_sessions]
+        [vcat(0, rand(rng, pid, n_products_per_session)) for i in 1:n_sessions]
     else
-        [rand(pid, n_products_per_session) for i in 1:n_sessions]
+        [rand(rng, pid, n_products_per_session) for i in 1:n_sessions]
     end
 
     # Gather characteristics for each product
@@ -66,21 +66,24 @@ function get_functional_form(s::String)
 end
 
 # Set seed 
-function set_seed(kwargs)
-    # Set seed if given 
+function get_rng(kwargs)
+
+    rng = get(kwargs, :rng, Random.default_rng())
+
+    # Set seed for rng if given 
     seed = get(kwargs, :seed, nothing) # if no seed set, just draw one
     if !isnothing(seed)
-        Random.seed!(seed)
+        Random.seed!(rng, seed)
     end
-    return nothing
+    return rng
 end
 
 # Take or generate draw
-@inline function take_or_generate_draw!(draws, distribution::Distribution, i, j, store_draw)
+@inline function take_or_generate_draw!(draws, rng, distribution::Distribution, i, j, store_draw)
     if isnothing(draws)
-        return rand(distribution)::Float64
+        return rand(rng, distribution)::Float64
     elseif store_draw
-        new_draw = rand(distribution)::Float64
+        new_draw = rand(rng, distribution)::Float64
         draws[i, j] = new_draw
         return new_draw
     else
@@ -108,10 +111,10 @@ function get_precomputed_draws_indexed(kwargs, s)
     return (draws_u0, draws_e, draws_v, draws_w)
 end
 
-@inline function replace_typemin_draws!(draws, dist::Distribution)
+@inline function replace_typemin_draws!(draws, rng, dist::Distribution)
     @inbounds for i in eachindex(draws)
         if isequal(draws[i], typemin(eltype(draws)))
-            draws[i] = rand(dist)
+            draws[i] = rand(rng, dist)
         end
     end
 end
@@ -287,7 +290,7 @@ end
 
 Take a random draw from a truncated normal distribution. 
 """
-@inline function rand_trunc(d::Normal, lb::T, ub::T) where {T}
+@inline function rand_trunc(rng, d::Normal, lb::T, ub::T) where {T}
     @assert d.μ == 0
     if lb >= ub
         return lb
@@ -299,7 +302,7 @@ Take a random draw from a truncated normal distribution.
         if l == u > 0
             u += eps(u)
         end
-        r = l + rand() * (u - l)
+        r = l + rand(rng) * (u - l)
         q = quantile(d, max(min(r, 1 - 1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
         return max(min(-q, ub), lb)
     else
@@ -309,7 +312,7 @@ Take a random draw from a truncated normal distribution.
             u += eps(u)
         end
 
-        r = l + rand() * (u - l)
+        r = l + rand(rng) * (u - l)
         q = quantile(d, max(min(r, 1 - 1e-16), 1e-300)) # imposing bounds to avoid numerical issues in gradient leading to nan when inf from quantile
         return max(min(q, ub), lb)
     end
@@ -352,7 +355,7 @@ Calculate the cumulative distribution function of a truncated uniform distributi
     return cdf(d, ub) - cdf(d, lb)
 end
 
-@inline function rand_trunc(d::Uniform, lb::T, ub::T) where {T <: Real}
+@inline function rand_trunc(rng, d::Uniform, lb::T, ub::T) where {T <: Real}
     if ub <= minimum(d) || lb >= maximum(d)
         return zero(T)
     end
@@ -361,7 +364,7 @@ end
     elseif isnan(lb)
         return ub
     end
-    return rand(truncated(d, lb, ub))
+    return rand(rng, truncated(d, lb, ub))
 end
 
 """
@@ -369,7 +372,7 @@ end
 
 Calculate the cumulative distribution function of a generic truncated distribution.
 """
-@inline function rand_trunc(d::Distribution, lb::T, ub::T) where {T}
+@inline function rand_trunc(rng, d::Distribution, lb::T, ub::T) where {T}
     if ub <= minimum(d) || lb >= maximum(d)
         return zero(T)
     end
@@ -382,13 +385,13 @@ Calculate the cumulative distribution function of a generic truncated distributi
 
     r = if tp > sqrt(eps(T))
         c1 = lb < -1e12 ? zero(T) : cdf(d, lb)
-        rtcdf = rand(T) * tp
+        rtcdf = rand(rng, T) * tp
         t = isnan(c1) ? rtcdf : rtcdf + c1
         # note: cdf(d,lb) gives nan if lb too small because of gumbel cdf
         # so accounting for c1 helps AD 
         quantile(d, min(exp(loglcdf) + t, 1))
     else
-        invlogcdf(d, Distributions.logaddexp(loglcdf, log(tp) - randexp()))
+        invlogcdf(d, Distributions.logaddexp(loglcdf, log(tp) - randexp(rng)))
     end
     r = max(min(r, ub), lb)
     return r::T

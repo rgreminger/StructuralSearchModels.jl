@@ -51,14 +51,14 @@ function estimate_model(model::Model, estimator::SmoothMLE, data::Data;
         println(result_solver.original)
     end
 
-    estimates = result_solver.minimizer
-    likelihood_at_estimates = -result_solver.minimum
+    estimates = result_solver.u
+    likelihood_at_estimates = -result_solver.objective
     model_hat = construct_model_from_pars(estimates, model; kwargs...)
 
     # Standard errors
     seed = args_likelihood_function[end]
     std_errors = compute_std_errors ?
-                 calculate_standard_errors(model_hat, estimator, data; kwargs..., seed) :
+                 calculate_standard_errors(model_hat, estimator, data; kwargs...) :
                  nothing
     GC.gc()
     return model_hat, estimates, likelihood_at_estimates, result_solver, std_errors
