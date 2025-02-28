@@ -1,15 +1,15 @@
 # Define model 
-m = SDCore( 
-    β = [-0.05, 3.0], 
-    Ξ = 4.5, 
-    ρ = [-0.1], 
+m = SDCore(
+    β = [-0.05, 3.0],
+    Ξ = 4.5,
+    ρ = [-0.1],
     ξ = 2.5,
-    ξρ = [-0.2], 
-    dE = Normal(), 
-    dV = Normal(), 
-    dU0 = Normal(), 
-    dW = Normal() , 
-    zdfun = "log", 
+    ξρ = [-0.2],
+    dE = Normal(),
+    dV = Normal(),
+    dU0 = Normal(),
+    dW = Normal(),
+    zdfun = "log",
     zsfun = "linear"
 )
 
@@ -18,17 +18,16 @@ seed = 123
 rng = StableRNG(seed)
 
 # Generate data 
-n_consumers = 10 
-seed = 1 
-d, _ = 
-                generate_data(m, n_consumers, 1; rng, seed, 
-                conditional_on_search = false, conditional_on_search_iter = 100,
-                products = generate_products(n_consumers; rng, seed))
+n_consumers = 10
+seed = 1
+d, _ = generate_data(m, n_consumers, 1; rng, seed,
+    conditional_on_search = false, conditional_on_search_iter = 100,
+    products = generate_products(n_consumers; rng, seed))
 
-@test d.consideration_sets[1][1:6] == Bool[0, 1, 0, 1, 1, 0] 
-@test d.purchase_indices[1:3] == [1,2, 1] 
+@test d.consideration_sets[1][1:6] == Bool[0, 1, 0, 1, 1, 0]
+@test d.purchase_indices[1:3] == [1, 2, 1]
 @test d.min_discover_indices[1] == 5
-@test d.search_paths[1][1:2] == [2, 4] 
+@test d.search_paths[1][1:2] == [2, 4]
 @test d.stop_indices[3] == 2
 
 # Cost computation 
@@ -58,7 +57,7 @@ calculate_costs!(m, data, 1000000; seed, rng, position_at_which_correct_beliefs 
 
 # Compute discovery value from costs 
 chars = vcat([data.product_characteristics[i][data.product_ids[i] .> 0, :]
-                for i in eachindex(data)]...) # excludes outside option 
+              for i in eachindex(data)]...) # excludes outside option 
 xβ = chars * m.β
 μ = xβ
 σ = std(xβ)
@@ -68,12 +67,11 @@ G = Normal(mean(xβ), sqrt(m.dV.σ^2 + var(xβ))) # products by default are draw
 
 # Compare computed discovery value with true one 
 @test Ξ == 1.0003289483594588
-@test Ξ ≈ m.Ξ atol = 1e-3 
+@test Ξ≈m.Ξ atol=1e-3
 
 # Compute search value 
 ξ = calculate_ξ(m)
 
 # Compare computed search value with true one
 @test ξ == 0.9999999999999997
-@test ξ ≈ m.ξ atol = 1e-3
-
+@test ξ≈m.ξ atol=1e-3
