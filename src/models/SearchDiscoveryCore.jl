@@ -138,9 +138,6 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
         kwargs...)
     n_sessions = n_consumers * n_sessions_per_consumer
 
-    # Set seed (is stable across threads) 
-    set_seed(kwargs)
-
     # Unpack products
     product_ids, product_characteristics = products
 
@@ -208,6 +205,9 @@ end
 function generate_search_paths(
         m::SDCore, product_ids, product_characteristics, positions; kwargs...)
 
+    # Get rng 
+    rng = get_rng(kwargs)
+
     # Extract keyword arguments 
     conditional_on_search = get(kwargs, :conditional_on_search, false)
     conditional_on_search_iter = get(kwargs, :conditional_on_search_iter, 100)
@@ -259,7 +259,8 @@ function generate_search_paths(
                     indices_stop, utility_purchases,
                     m, i, dU0, dE, dV, dW,
                     product_ids, product_characteristics, positions,
-                    u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
+                    u, zs, v, zdfun, zsfun,
+                    rng, draws_shocks, store_draws)
 
                 # If conditional on click, iterate until have at least one 
                 if conditional_on_search
@@ -269,7 +270,8 @@ function generate_search_paths(
                             indices_stop, utility_purchases,
                             m, i, dU0, dE, dV, dW,
                             product_ids, product_characteristics, positions,
-                            u, zs, v, zdfun, zsfun, draws_shocks, store_draws)
+                            u, zs, v, zdfun, zsfun,
+                            rng, draws_shocks, store_draws)
                         iter += 1
                     end
                     if iter > conditional_on_search_iter
@@ -291,7 +293,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
         m, i, dU0, dE, dV, dW,
         product_ids, product_characteristics, positions,
         u, zs, v, zdfun, zsfun,
-        draws_shocks, store_draws;
+        rng, draws_shocks, store_draws;
         debug_print = false)
     # Define variables tracking state during search 
     max_u = typemin(eltype(u)) # current max utility 
@@ -317,17 +319,17 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
         # Outside option 
         if product_ids[i][j] == 0
             # draw outside option utility 
-            u[j] = take_or_generate_draw!(u0_draws, dU0, i, 1, store_draws) +
+            u[j] = take_or_generate_draw!(u0_draws, rng, dU0, i, 1, store_draws) +
                    product_characteristics[i][1, end] * m.β[end]
             max_u = u[j]
             ind_p = 1
         else
             # Fill in reservation value for product j
             # note: storing v_j draw as also enters utility 
-            v[j] = take_or_generate_draw!(v_draws, dV, i, j, store_draws)
+            v[j] = take_or_generate_draw!(v_draws, rng, dV, i, j, store_draws)
             xβ = @views product_characteristics[i][j, :]' * m.β
             zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] +
-                    take_or_generate_draw!(w_draws, dW, i, j, store_draws)
+                    take_or_generate_draw!(w_draws, rng, dW, i, j, store_draws)
             # Update max search value and index
             if zs[j] > max_zs
                 max_zs = zs[j]
@@ -378,11 +380,11 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
                 end
 
                 # Update reservation value and max 
-                v[j] = take_or_generate_draw!(v_draws, dV, i, j, store_draws)
+                v[j] = take_or_generate_draw!(v_draws, rng, dV, i, j, store_draws)
                 xβ = @views product_characteristics[i][j, :]' * m.β
 
                 zs[j] = xβ + zsfun(m.ξ, m.ξρ, positions[i][j]) + v[j] +
-                        take_or_generate_draw!(w_draws, dW, i, j, store_draws)
+                        take_or_generate_draw!(w_draws, rng, dW, i, j, store_draws)
                 if zs[j] > max_zs
                     max_zs = zs[j]
                     ind_s = j
@@ -418,7 +420,7 @@ function fill_path_i!(paths, consideration_sets, indices_purchase, indices_stop,
 
             # Get utility of searched product 
             # note: recovering previously stored v_j draw as enters utility and search value 
-            u[ind_s] = take_or_generate_draw!(e_draws, dE, i, ind_s, store_draws) +
+            u[ind_s] = take_or_generate_draw!(e_draws, rng, dE, i, ind_s, store_draws) +
                        v[ind_s]
 
             for h in eachindex(m.β) # note: adding xβ this way to avoid allocations
@@ -483,13 +485,15 @@ function generate_draws_with_search(
         m::SDCore, d::DataSD, n_sim, conditional_on_search_iter; kwargs...)
 
     # Set seed (is stable across threads) 
-    set_seed(kwargs)
+    rng = get_rng(kwargs)
 
     # Set up storage for draws across simulations 
     draws_u0_store = Vector{Float64}[]
     draws_e_store = []
     draws_v_store = []
     draws_w_store = []
+
+    seed = rand(1:(10^6))
 
     for s in 1:n_sim
 
@@ -503,11 +507,11 @@ function generate_draws_with_search(
         generate_search_paths(
             m, d.product_ids, d.product_characteristics, d.positions; kwargs...,
             conditional_on_search_iter, conditional_on_search = true,
-            store_draws = true, draws_u0, draws_e, draws_v, draws_w)
+            store_draws = true, rng, seed = seed + s, draws_u0, draws_e, draws_v, draws_w)
 
         # Replace draws that were not filled (because never reached) with draws from respective distributions
         for pair in [[draws_u0, m.dU0], [draws_e, m.dE], [draws_v, m.dV], [draws_w, m.dW]]
-            replace_typemin_draws!(pair[1], pair[2])
+            replace_typemin_draws!(pair[1], rng, pair[2])
         end
 
         # Store draws for this simulation
@@ -573,12 +577,12 @@ end
         kwargs...)
 Calculate discovery cost `cd` for model `m` using data `d` and `n_draws` draws of effective values. The discovery value is calculated at the position where beliefs are correct, which is by default the mean position in the data. 
 """
-function calculate_discovery_cost(m::SD, d::DataSD, n_draws; 
-    position_at_which_correct_beliefs = calculate_mean_position(d),
-    kwargs...)
+function calculate_discovery_cost(m::SD, d::DataSD, n_draws;
+        position_at_which_correct_beliefs = calculate_mean_position(d),
+        kwargs...)
 
     # Set seed from kwargs
-    set_seed(kwargs)
+    rng = get_rng(kwargs)
 
     # characteristics matrix without outside option 
 
@@ -595,23 +599,23 @@ function calculate_discovery_cost(m::SD, d::DataSD, n_draws;
     # Calculate discovery costs by sampling effective values using the empirical xβ distribution 
     # and taste shock assumptions 
     W = zeros(Float64, n_draws)
-    fill_values_cd_compute!(W, m, xβ, zd)
+    fill_values_cd_compute!(W, rng, m, xβ, zd)
 
     # Return mean of the values 
     return mean(W)
 end
 
-function fill_values_cd_compute!(W, m, xβ, zd::T) where {T <: Real}
+function fill_values_cd_compute!(W, rng, m, xβ, zd::T) where {T <: Real}
     _, data_chunks = get_chunks(length(W))
 
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
         Threads.@spawn begin
             for i in chunk
-                e = rand(m.dE)
-                v = rand(m.dV)
-                w = rand(m.dW)
-                xβi = rand(xβ)
+                e = rand(rng, m.dE)
+                v = rand(rng, m.dV)
+                w = rand(rng, m.dW)
+                xβi = rand(rng, xβ)
                 W[i] = max(zero(T), xβi + v + min(m.ξ + w, e) - zd)
             end
         end
@@ -716,9 +720,7 @@ function calculate_welfare(m::SDCore, data::DataSD, n_sim;
 end
 
 function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
-
-    # Set seed 
-    set_seed(kwargs)
+    rng = get_rng(kwargs)
 
     # Average across all consumers 
     utility_choice_avg = zeros(Float64, n_sim)
@@ -841,7 +843,7 @@ end
 function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
 
     # Set seed
-    set_seed(kwargs)
+    rng = get_rng(kwargs)
 
     # Average across all consumers 
     eff_value_choice_avg = zeros(Float64, n_sim)
@@ -872,7 +874,7 @@ function calculate_welfare_effective_values(m::SD, d::DataSD, n_sim; kwargs...)
         # Generate welfare measures 
         welfare_measures = _calculate_welfare_effective_values(
             m, d, vectors_to_fill, zdfun, zsfun,
-            draws_s)
+            rng, draws_s)
 
         # Unpack and fill in welfare measures
         eff_value_choice_avg[s], discovery_costs_avg[s] = welfare_measures[1]
@@ -928,7 +930,7 @@ function preallocate_welfare_vectors(n_ses)
 end
 
 function _calculate_welfare_effective_values(
-        m::SDCore, d::DataSD, vectors_to_fill, zdfun, zsfun, draws_shocks)
+        m::SDCore, d::DataSD, vectors_to_fill, zdfun, zsfun, rng, draws_shocks)
     n_ses = length(d)
 
     # Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
@@ -962,7 +964,7 @@ function _calculate_welfare_effective_values(
                 fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
                     m, zdfun, zsfun,
                     d, i,
-                    draws_shocks,
+                    rng, draws_shocks,
                     dU0, dE, dV, dW)
             end
         end
@@ -986,18 +988,21 @@ end
 function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
         m, zdfun, zsfun,
         d, i,
-        draws_shocks,
+        rng, draws_shocks,
         dU0, dE, dV, dW)
 
     # fill in search and effective values for session i
-    fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks,
+    fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, 
+        rng, draws_shocks,
         dU0, dE, dV, dW)
 
     # Extract pre-allocated vectors   
     u, zs, ws, ws_tilde, _ = vectors_preallocated
 
     # extract vectors to track welfare measures
-    eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_search, discovery_costs_conditional_on_search, clicked, eff_value_choice_conditional_on_purchase, discovery_costs_conditional_on_purchase, purchased = vectors_to_fill
+    eff_value_choice_avg, discovery_costs_avg, eff_value_choice_conditional_on_search, 
+        discovery_costs_conditional_on_search, clicked, eff_value_choice_conditional_on_purchase, 
+        discovery_costs_conditional_on_purchase, purchased = vectors_to_fill
 
     wm, im = findmax(ws) # find max value and index of effective values
 
@@ -1060,7 +1065,8 @@ function fill_welfare_effective_values!(vectors_to_fill, vectors_preallocated,
     end
 end
 
-function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_shocks,
+function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, 
+        rng, draws_shocks,
         dU0, dE, dV, dW)
     @views chars = d.product_characteristics[i]
     @views positions = d.positions[i]
@@ -1072,16 +1078,16 @@ function fill_uzw_values!(vectors_preallocated, m, zdfun, zsfun, d, i, draws_sho
     for j in eachindex(product_ids)
         # Outside option
         if product_ids[j] == 0
-            u[j] = take_or_generate_draw!(u0_draws, dU0, i, j, false) +
+            u[j] = take_or_generate_draw!(u0_draws, rng, dU0, i, j, false) +
                    chars[j, end] * m.β[end]
             ws[j] = u[j]
             ws_tilde[j] = u[j]
             # zs not used 
         else
             # Take draws 
-            e[1] = take_or_generate_draw!(e_draws, dE, i, j, false)
-            v[1] = take_or_generate_draw!(v_draws, dV, i, j, false)
-            w[1] = take_or_generate_draw!(w_draws, dW, i, j, false)
+            e[1] = take_or_generate_draw!(e_draws, rng, dE, i, j, false)
+            v[1] = take_or_generate_draw!(v_draws, rng, dV, i, j, false)
+            w[1] = take_or_generate_draw!(w_draws, rng, dW, i, j, false)
 
             # Fill in utility
             xβ = @views chars[j, :]' * m.β
@@ -1108,7 +1114,7 @@ end
 function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
     # Set seed 
-    set_seed(kwargs)
+    rng = get_rng(kwargs)
 
     # Initialize empty arrays (otherwise error of not found)
     click_stats = []
@@ -1122,7 +1128,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
     conditional_on_search = get(kwargs, :conditional_on_search, false)
 
     # Generate data from new seed 
-    sim_seeds = rand(1:1000000, n_sim)
+    sim_seeds = rand(rng, 1:1000000, n_sim)
 
     n_sim_without_nan_purchase = 0
     for s in 1:n_sim
@@ -1407,9 +1413,10 @@ function prepare_arguments_likelihood(
     data_arguments = prepare_data_arguments_likelihood(d)
 
     # Keep fixed seed: either random or provided by kwargs 
+    rng = get_rng(kwargs)
     seed = get(kwargs, :seed, rand(1:(10^9)))
 
-    return data_arguments..., zdfun, zsfun, seed
+    return data_arguments..., zdfun, zsfun, rng, seed
 end
 
 function prepare_data_arguments_likelihood(d::DataSD)
@@ -1456,7 +1463,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
         args...; kwargs...) where {M <: SD, T <: Real}
 
     # Extract arguments 
-    all_possible_positions, has_search, has_purchase, zdfun, zsfun, seed = args
+    all_possible_positions, has_search, has_purchase, zdfun, zsfun, rng, seed = args
 
     # Extract parameters implied by θ 
     β, Ξ, ρ, ξ, ξρ, ind_last_par = extract_parameters(model, θ; kwargs...)
@@ -1479,6 +1486,9 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
         return -T(MAX_NUMERICAL)
     end
 
+    # Reset seed 
+    Random.seed!(rng, seed)
+
     # Pre-compute search and discovery values across positions -> same for all consumers 
     zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
     zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
@@ -1491,9 +1501,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
             println("zs_h = $(zs_h[1:min(5, end)])")
         end
     end
-
-    # Set seed for random number generation
-    Random.seed!(seed)
 
     # Extract number of draws 
     n_draws = estimator.options_numerical_integration.n_draws
@@ -1514,13 +1521,13 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
                 # Do inner likelihood calculations based on pre-allocated arrays
                 if has_search[i] == 0 # Case 1: no clicks (implies also no purchase)
                     L += ll_no_searches(
-                        model, zd_h, zs_h, β, dV, dU0, data, i, n_draws, false)
+                        model, zd_h, zs_h, β, dV, dU0, data, i, n_draws, false, rng)
                 elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase 
                     L += ll_search_no_purchase(
-                        model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws)
+                        model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws, rng)
                 else # Case 3: Purchase a product 
                     L += ll_purchase(
-                        model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws_purchase)
+                        model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws_purchase, rng)
                 end
             end
 
@@ -1537,7 +1544,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 
                 for i in chunk  # Iterate over consumers in chunk 
                     L += ll_no_searches(
-                        model, zd_h, zs_h, β, dV, dU0, data, i, n_draws, true)
+                        model, zd_h, zs_h, β, dV, dU0, data, i, n_draws, true, rng)
                 end
 
                 return L
@@ -1634,7 +1641,7 @@ end
 function construct_model_from_pars(θ::Vector{T}, m::M; kwargs...) where {M <: SD, T <: Real}
 
     # Extract parameters from vector, some may be fixed through kwargs 
-    β, Ξ, ρ, ξ, ξρ, ind_last_par = extract_parameters(model, θ; kwargs...)
+    β, Ξ, ρ, ξ, ξρ, ind_last_par = extract_parameters(m, θ; kwargs...)
     dE, dV, dU0 = extract_distributions(m, θ, ind_last_par; kwargs...)
 
     # Construct model from parameters 
@@ -1704,7 +1711,7 @@ function add_distribution_parameters(m::M, θ, kwargs) where {M <: SD}
         θ = vcat(θ, params(m.dV)[end])
     end
     if estimation_shock_distributions[4]
-        θ = vcat(θ, params(m.dU0)[2:end])
+        θ = vcat(θ, params(m.dU0)[2:end]...)
     end
 
     return θ
