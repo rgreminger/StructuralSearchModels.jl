@@ -63,7 +63,11 @@ function estimate_model(model::Model, estimator::SmoothMLE, data::Data;
     GC.gc()
     return model_hat, estimates, likelihood_at_estimates, result_solver, std_errors
 end
+"""
+    calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
+Calculate the likelihood of the model `model` given the data `data` and the estimator `estimator`. 
+"""
 function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
     # Extract parameters 

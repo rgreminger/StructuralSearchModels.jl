@@ -7,7 +7,7 @@ export Estimator, Model, Data  # abstract types
 export generate_data, generate_products # data generation
 export estimate_model # functions for estimation
 export evaluate_fit, calculate_likelihood, calculate_standard_errors # post-estimation 
-export calculate_welfare, calculate_costs!, calculate_revenues # welfare and costs 
+export calculate_welfare, calculate_costs! # welfare and costs 
 export calculate_revenues, calculate_demand # revenue and demand functions
 
 # Additional helper functions 

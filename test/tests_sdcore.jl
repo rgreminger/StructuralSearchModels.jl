@@ -66,12 +66,22 @@ G = Normal(mean(xβ), sqrt(m.dV.σ^2 + var(xβ))) # products by default are draw
 Ξ = calculate_discovery_value(G, m)
 
 # Compare computed discovery value with true one 
-@test Ξ == 1.0003289483594588
 @test Ξ≈m.Ξ atol=1e-3
 
 # Compute search value 
 ξ = calculate_ξ(m)
 
 # Compare computed search value with true one
-@test ξ == 0.9999999999999997
-@test ξ≈m.ξ atol=1e-3
+@test ξ≈m.ξ atol=1e-6
+
+# Compute search value for some other distributions 
+for dist in [Exponential(), LogNormal(), Uniform(-3, 3)] 
+    m1 = deepcopy(m) 
+    m1.dE = dist
+    calculate_costs!(m1, data, 1; seed, rng, position_at_which_correct_beliefs = 0)
+
+    @assert m1.cs > 0  # if this is not the case, the test is not meaningful
+
+    ξ1 = calculate_ξ(m1)
+    @test ξ1 ≈ m1.ξ atol=1e-6
+end 

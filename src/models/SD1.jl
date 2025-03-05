@@ -588,7 +588,7 @@ function calculate_demand_product(m::SD1{T}, d::DataSD, i, k, n,
 
     conditional_on_search = get(kwargs, :conditional_on_search, false)
     if conditional_on_search
-        demand = demand / exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true))
+        demand = demand / exp(ll_no_searches(m, zd_h, m.ξ, m.β, m.dV, m.dU0, d, 1, n, true, rng))
     end
 
     return demand / n

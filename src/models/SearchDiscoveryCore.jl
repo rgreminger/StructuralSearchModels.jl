@@ -164,6 +164,10 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
     return data, utility_purchases
 end
 
+"""
+    update_positions!(data::DataSD, nA0, nd)
+Update positions in `data` to fit the number of alternatives in initial awareness set `nA0` and the number of alternatives per position `nd`.
+"""
 function update_positions!(data::DataSD, nA0, nd)
     # Update positions
     for i in eachindex(data)
@@ -526,11 +530,11 @@ end
 
 # Cost computations 
 """
-	caculate_costs!(m::SD, d, n_draws_cd, seed; force_recompute = true)
+	caculate_costs!(model::SD, data::DataSD, n_draws_cd, seed; force_recompute = true)
 
-Calculate search and discovery costs for the Search and Discovery model `m` and data `d` and add/update them in`m`. Uses `n_draws_cd` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true (default), the costs are recomputed even if they are already present in the model.
+Calculate search and discovery costs for the `model <: SD` using `data <: DataSD` and add/update them in the `model`. Uses `n_draws_cd` to calculate the discovery costs using the distribution of characteristics in the data. If `force_recompute` is true (default), the costs are recomputed even if they are already present in the model.
 """
-function calculate_costs!(m::SDCore, d, n_draws_cd;
+function calculate_costs!(m::SDCore, d::DataSD, n_draws_cd;
         force_recompute = true,
         cd_kwargs...)
     # Search costs 
@@ -669,6 +673,11 @@ function integrate_cdfsingle(z, ξ, cs, μ, σ)
            (1 - F((z - ξ - μ) / σ * sqrt(1 + b^2) - a * b / sqrt(1 + b^2)))
 end
 
+"""
+    calculate_ξ(m::SD)
+Calculate the search cost shock `ξ` given `cs` and `dE` from SD model `m`. Works for any distribution of εᵢⱼ.
+"""
+
 function calculate_ξ(m::SD)
     cs = m.cs
     F = m.dE
@@ -685,16 +694,16 @@ function calculate_ξ(m::SD)
     end
 end
 
-# Consumer welfare
 """
-	calculate_welfare(m::SDCore, data::DataSD, n_sim; method = "effective_values", kwargs...)
+	zs_inner_integral(ξ,F)
+Returns ∫_ξ (1-F(ϵ))dϵ.
+"""
+function zs_inner_integral(ξ,F)
+	quadgk(e->(1-cdf(F,e)),ξ,maximum(F))[1]
+end
 
-Calculate consumer welfare for the Search and Discovery model `m` using the data `data` and `n_sim` simulation draws. 
-	
-# Keyword arguments:
-- `method::String`: method to use for welfare calculation. Default is `"effective_values"`, where welfare is calculated using effective values. Alternatively can be `"simulate_paths"`, where welfare is calculated by simulating search paths.
-- `kwargs...`: additional keyword arguments passed to the method used for welfare calculation.
-"""
+
+# Consumer welfare
 function calculate_welfare(m::SDCore, data::DataSD, n_sim;
         method = "effective_values",
         kwargs...)
@@ -1717,6 +1726,10 @@ function add_distribution_parameters(m::M, θ, kwargs) where {M <: SD}
     return θ
 end
 
+"""
+    add_indices_min_discover!(data::DataSD)
+Use clicks to add indices of minimum position consumers must have discovered in `data`.
+"""
 function add_indices_min_discover!(d::DataSD)
     min_discover_indices = get_indices_min_discover(d.consideration_sets, d.positions)
 
