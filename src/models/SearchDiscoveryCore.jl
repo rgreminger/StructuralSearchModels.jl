@@ -1468,7 +1468,7 @@ function vectorize_parameters(m::M; kwargs...) where {M <: SD}
     return θ
 end
 
-function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::DataSD,
+function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
         args...; kwargs...) where {M <: SD, T <: Real}
 
     # Extract arguments 
@@ -1513,7 +1513,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
 
     # Extract number of draws 
     n_draws = estimator.options_numerical_integration.n_draws
-    n_draws_purchase = estimator.options_numerical_integration.n_draws_purchases
 
     # Define chunks for parallelization. Each chunk is a range of consumers for which a single task 
     # calculates and sums up the likelihood. 
@@ -1536,7 +1535,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SmoothMLE, data::Data
                         model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws, rng)
                 else # Case 3: Purchase a product 
                     L += ll_purchase(
-                        model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws_purchase, rng)
+                        model, zd_h, zs_h, β, dE, dV, dU0, data, i, n_draws, rng)
                 end
             end
 

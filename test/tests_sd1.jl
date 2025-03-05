@@ -29,7 +29,7 @@ d, _ = generate_data(m, n_consumers, 1; rng, seed,
 @test d.stop_indices[6] == 8
 
 # Core likelihood calculation 
-e = SmoothMLE()
+e = SMLE()
 @test calculate_likelihood(m, e, d; rng, seed) == -193.60838494006262
 
 # Estimation 

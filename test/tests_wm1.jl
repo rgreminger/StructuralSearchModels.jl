@@ -26,7 +26,7 @@ d.search_paths
 @test d.search_paths[1][1:2] == [25, 2]
 
 ## Core likelihood calculation 
-e = SmoothMLE()
+e = SMLE()
 @test calculate_likelihood(m, e, d; rng, seed) == -188.74515999418938
 
 # Estimation 

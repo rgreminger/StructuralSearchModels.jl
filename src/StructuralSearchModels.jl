@@ -20,7 +20,7 @@ export add_indices_min_discover!, update_positions!
 export SDCore, SD1, WM1, DataSD
 
 # Export concrete estimator types
-export SmoothMLE
+export SMLE
 
 # Dependencies 
 using CairoMakie

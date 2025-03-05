@@ -1,16 +1,34 @@
 abstract type MLE <: Estimator end
 
-@with_kw mutable struct SmoothMLE <: MLE
+"""
+    SMLE(; options_optimization = (
+            algorithm = LBFGS(; linesearch = Optim.BackTracking(order = 2)),
+            differentiation = Optimization.AutoForwardDiff()),
+        options_problem = (),
+        options_solver = (),
+        options_numerical_integration = (n_draws = 100, ),
+        conditional_on_search = false)
+
+Simulated maximum likelihood estimator (SMLE). This estimator is used to estimate models using maximum likelihood estimation when the likelihood function is not available in closed form.  
+
+## Options
+- `options_optimization::NamedTuple`: Options for the optimization algorithm passed as keywords to `OptimizationFunction` of Optimization.jl. Usese LBFGS by default. 
+- `options_problem::NamedTuple`: Options for the optimization problem passed as keywords to `OptimizationProblem` in Optimization.jl.
+- `options_solver::NamedTuple`: Options for the solver passed as keywords to `solve` in Optimization.jl.
+- `options_numerical_integration::NamedTuple`: Options for numerical integration. By default uses draws for numerical integration. 
+- `conditional_on_search::Bool`: Whether the likelihood function is conditional on search.
+"""
+@with_kw mutable struct SMLE <: MLE
     options_optimization = (
         algorithm = LBFGS(; linesearch = Optim.BackTracking(order = 2)),
         differentiation = Optimization.AutoForwardDiff())
     options_problem = ()
     options_solver = ()
-    options_numerical_integration = (n_draws = 100, n_draws_purchases = 100)
+    options_numerical_integration = (n_draws = 100, )
     conditional_on_search = false
 end
 
-function estimate_model(model::Model, estimator::SmoothMLE, data::Data;
+function estimate_model(model::Model, estimator::SMLE, data::Data;
         startvals = nothing,
         compute_std_errors = true,
         print_solver_solution = false,
