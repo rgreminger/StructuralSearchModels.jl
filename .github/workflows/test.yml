@@ -1,13 +1,11 @@
 name: Run tests
 
 on:
-  push:
-    branches:
-      - master
-      - main
-      - dev_tests_rng
   pull_request:
-
+    branches:
+      - main
+      - master 
+      
 # needed to allow julia-actions/cache to delete old caches that it has created
 permissions:
   actions: write
