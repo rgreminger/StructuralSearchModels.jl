@@ -184,9 +184,6 @@ end
 
 function generate_data(m::SDCore, d::DataSD; kwargs...)
 
-    # Set seed (is stable across threads) 
-    set_seed(kwargs)
-
     # Generate new paths
     paths, consideration_sets, indices_purchase, indices_stop, utility_purchases = generate_search_paths(
         m, d.product_ids, d.product_characteristics, d.positions; kwargs...)

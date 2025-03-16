@@ -14,12 +14,11 @@ m = SDCore(
 )
 
 # Use stable RNG, guaranteeing draws stay the same across Julia versions
-seed = 123
+seed = 1
 rng = StableRNG(seed)
 
 # Generate data 
 n_consumers = 10
-seed = 1
 d, _ = generate_data(m, n_consumers, 1; rng, seed,
     conditional_on_search = false, conditional_on_search_iter = 100,
     products = generate_products(n_consumers; rng, seed))
