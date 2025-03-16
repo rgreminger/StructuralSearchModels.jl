@@ -27,13 +27,26 @@ d, _ = generate_data(m, n_consumers, 1; rng, seed,
 @test d.search_paths[1][1:2] == [25, 12]
 @test d.stop_indices[6] == 8
 
-# Core likelihood calculation 
+# Likelihood calculation with stop indices 
 e = SMLE()
-@test calculate_likelihood(m, e, d; rng, seed) == -193.60838494006262
+@test calculate_likelihood(m, e, d; rng, seed) == -196.01499750022353
 
-# Estimation 
+# Estimation with stop indices
 e.options_solver = (f_calls_limit = 1,) # use only 1 iterations
 startvals = vectorize_parameters(m)
+
+model_hat, estimates, likelihood_at_estimates, result_solver,
+std_errors = estimate_model(
+    m, e, d; startvals, rng, seed, compute_std_errors = false)
+
+@test estimates ≈ [-0.2034767906790771, 2.9557276433518527, 
+    4.489520406052184, -0.19405332073951995, 2.5034182412550066] atol = 1e-12
+
+# Likelihood calculation without stop indices
+d.stop_indices = nothing
+@test calculate_likelihood(m, e, d; rng, seed) == -193.60838494006262
+
+# Estimation without stop indices 
 model_hat, estimates, likelihood_at_estimates, result_solver,
 std_errors = estimate_model(
     m, e, d; startvals, rng, seed, compute_std_errors = false)

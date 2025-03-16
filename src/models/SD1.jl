@@ -174,17 +174,32 @@ function extract_parameters(m::SD1, θ::Vector{T}; kwargs...) where {T <: Real}
     return β, Ξ, ρ, ξ, nothing, ind_current
 end
 
-function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0,
-        d::DataSD, i::Int, n_draws, complement, rng) where {T <: Real}
+@inline function construct_range_positions(d::DataSD, i, complement)
+    n_products = length(d.product_ids[i])
+
     min_position_discover = complement ? searchsortedfirst(d.positions[i], 1) - 1 :
                             d.min_discover_indices[i] # if complement 
-    n_products = length(d.product_ids[i])
+
+    range_positions = if isnothing(d.stop_indices)
+        min_position_discover:n_products 
+    else
+        d.stop_indices[i]:d.stop_indices[i]
+    end
+
+    return range_positions, min_position_discover, n_products
+    
+end
+
+function ll_no_searches(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dV, dU0,
+        d::DataSD, i::Int, n_draws, complement, rng) where {T <: Real}
     positions = @views d.positions[i]
     with_outside_option_dummy = d.product_ids[i][1] == 0
 
     LL = zero(T)
 
-    for dd in 1:n_draws, h in min_position_discover:n_products
+    range_positions, _, n_products = construct_range_positions(d, i, complement)
+
+    for dd in 1:n_draws, h in range_positions
 
         # If not last product in same position or last product, skip 
         if h < n_products && positions[h] == positions[h + 1]
@@ -235,15 +250,15 @@ end
 
 function ll_search_no_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV,
         dU0, d::DataSD, i::Int, n_draws, rng) where {T <: Real}
-    min_position_discover = d.min_discover_indices[i]
-    n_products = length(d.product_ids[i])
     positions = @views d.positions[i]
     with_outside_option_dummy = d.product_ids[i][1] == 0
     consideration_set = @views d.consideration_sets[i]
 
     LL = zero(T)
 
-    for dd in 1:n_draws, h in min_position_discover:n_products
+    range_positions, _, n_products = construct_range_positions(d, i, false)
+
+    for dd in 1:n_draws, h in range_positions
 
         # If not last product in same position or last product, skip 
         if h < n_products && positions[h] == positions[h + 1]
@@ -292,8 +307,6 @@ end
 
 function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV,
         dU0, d::DataSD, i::Int, n_draws, rng) where {T <: Real}
-    min_position_discover = d.min_discover_indices[i]
-    n_products = length(d.product_ids[i])
     positions = @views d.positions[i]
     with_outside_option_dummy = d.product_ids[i][1] == 0
     consideration_set = @views d.consideration_sets[i]
@@ -302,7 +315,9 @@ function ll_purchase(m::SD1, zd_h::Vector{T}, ξ::T, β::Vector{T}, dE, dV,
 
     k = d.purchase_indices[i] # index of purchased product
 
-    for dd in 1:n_draws, h in min_position_discover:n_products, ddd in 1:2
+    range_positions, min_position_discover, n_products = construct_range_positions(d, i, false)
+
+    for dd in 1:n_draws, h in range_positions, ddd in 1:2
 
         # If not last product in same position or last product, skip 
         if h < n_products && positions[h] == positions[h + 1]

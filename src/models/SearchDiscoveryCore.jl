@@ -58,11 +58,11 @@ end
 - `product_ids::Vector{Vector{Int}}`: product ids for each session in order
 - `product_characteristics::Vector{Matrix{T}}`: product characteristics matrix
 - `positions::Vector{Vector{Int}}`: positions for each session in order
-- `search_paths::Union{Vector{Vector{Int}}, Nothing}`: search paths for each session, can be nothing
+- `search_paths::Union{Vector{Vector{Int}}, Nothing}`: search paths for each session. Is `nothing` if search order is not available.
 - `consideration_sets::Vector{Vector{Bool}}`: consideration sets for each session, booleans whether searched or not
 - `purchase_indices::Vector{Int}`: which product within session is purchased
 - `min_discover_indices::Vector{Int}`: which product within session is the lowest position clicked on
-- `stop_indices::Vector{Int}`: which product within session is stopped a
+- `stop_indices::Vector{Int}`: last product discovered in session (at which discovery stops). Is `nothing` if not available (e.g., when scrolling is not observed).  
 """
 @with_kw mutable struct DataSD{T} <: Data where {T <: Real}
     consumer_ids::Vector{Int}
