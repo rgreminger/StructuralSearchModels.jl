@@ -19,7 +19,7 @@ rng = StableRNG(seed)
 
 # Generate data 
 n_consumers = 10
-d, _ = generate_data(m, n_consumers, 1; rng, seed,
+d = generate_data(m, n_consumers, 1; rng, seed,
     conditional_on_search = false, conditional_on_search_iter = 100,
     products = generate_products(n_consumers; rng, seed))
 
@@ -48,7 +48,7 @@ m = SDCore(
 )
 
 n_consumers = 3000
-data, utility_purchases = generate_data(m, n_consumers, 2; seed, rng,
+data = generate_data(m, n_consumers, 2; seed, rng,
     conditional_on_search = false, conditional_on_search_iter = 100)
 
 # Compute cd cost   

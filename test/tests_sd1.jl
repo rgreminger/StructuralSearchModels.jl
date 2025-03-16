@@ -17,7 +17,7 @@ rng = StableRNG(seed)
 
 # Data generation 
 n_consumers = 10
-d, _ = generate_data(m, n_consumers, 1; rng, seed,
+d = generate_data(m, n_consumers, 1; rng, seed,
     conditional_on_search = false, conditional_on_search_iter = 100,
     products = generate_products(n_consumers; rng, seed))
 

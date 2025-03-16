@@ -200,7 +200,12 @@ function generate_data(m::SDCore, d::DataSD; kwargs...)
     data = DataSD(d.consumer_ids, d.product_ids, d.product_characteristics, d.positions,
         consideration_sets, indices_purchase, indices_min_discover, paths, indices_stop)
 
-    return data, utility_purchases
+    return_with_utilities = get(kwargs, :return_with_utilities, false)
+    if return_with_utilities
+        return data, utility_purchases
+    else
+        return data
+    end
 end
 
 function generate_search_paths(
@@ -754,7 +759,7 @@ function calculate_welfare_simpaths(m::SDCore, data::DataSD, n_sim; kwargs...)
         # note: every simulation sets a seed, so that this random draw also gets a new number for the seed).
         new_seed = rand(1:(10^9))
         d_sim, utility_purchases = generate_data(m, data; kwargs...,
-            seed = new_seed, draws_u0, draws_e, draws_v, draws_w)
+            seed = new_seed, draws_u0, draws_e, draws_v, draws_w, return_with_utilities = true)
 
         # Compute paid costs 
         search_costs, discovery_costs = calculate_costs_in_sessions(m, d_sim)
@@ -1142,7 +1147,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
         # note: generating unconditional data is much faster than conditional data. So we generate unconditional data and 
         # update the statistics to condition on clicks, using that, e.g., P(click pos 1 | click) = P(click pos 0) / P(click)
         d_sim = generate_data(m, data; kwargs..., seed = sim_seeds[s],
-            compute_min_discover_indices = false, conditional_on_search = false)[1]
+            compute_min_discover_indices = false, conditional_on_search = false)
 
         # Compute fit statistics 
         click_stats_i, purchase_stats_i, stop_probability_i = calculate_statistics_from_data(d_sim)
