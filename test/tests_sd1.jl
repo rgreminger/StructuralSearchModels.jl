@@ -30,6 +30,8 @@ d, _ = generate_data(m, n_consumers, 1; rng, seed,
 # Likelihood calculation with stop indices 
 e = SMLE()
 @test calculate_likelihood(m, e, d; rng, seed) == -196.01499750022353
+e_conditional = SMLE(conditional_on_search = true) # test conditional on search 
+@test calculate_likelihood(m, e_conditional, d; rng, seed) == -187.12805612578248
 
 # Estimation with stop indices
 e.options_solver = (f_calls_limit = 1,) # use only 1 iterations
@@ -45,6 +47,7 @@ std_errors = estimate_model(
 # Likelihood calculation without stop indices
 d.stop_indices = nothing
 @test calculate_likelihood(m, e, d; rng, seed) == -193.60838494006262
+@test calculate_likelihood(m, e_conditional, d; rng, seed) == -192.34158215535305
 
 # Estimation without stop indices 
 model_hat, estimates, likelihood_at_estimates, result_solver,
@@ -90,3 +93,4 @@ dem = [calculate_demand(m, d, i, j, 5; rng, seed) for i in 1:2, j in 1:2]
 rev = calculate_revenues(m, d, 1, 5; rng, seed) 
 @test rev[1] ≈ -0.9775653397690145 atol = 1e-12
 @test rev[2][1:2] ≈ [-0.0645893438951959, -0.03469696420344893] atol = 1e-12
+
