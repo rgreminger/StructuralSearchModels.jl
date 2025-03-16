@@ -20,8 +20,11 @@ function generate_products(n_sessions;
     # Product ids, 0 will be outside option 
     pid = collect(1:n_products)
 
-    # Draw product characteristics for each consumer 
-    product_characteristics = rand(rng, distribution, n_products, 1)
+    # Draw product characteristics for each product  
+    product_characteristics = rand(rng, distribution, n_products)
+    if size(product_characteristics, 2) > 1
+        product_characteristics = product_characteristics'
+    end
 
     # Draw products per session randomly from set of products for each session 
     product_ids = if outside_option
