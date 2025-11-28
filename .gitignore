@@ -1,0 +1,12 @@
+# tmp files 
+tmp/*
+tmp*
+
+# vscode
+.vscode/*
+
+# manifest
+Manifest.toml
+
+# documenter
+docs/build/*
