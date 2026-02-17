@@ -25,7 +25,7 @@ makedocs(
 )
 
 deploydocs(
-    repo = "github.com/rgreminger/StructuralSearchModels.jl.git",\
+    repo = "github.com/rgreminger/StructuralSearchModels.jl.git",
     push_preview = true,
 )
 
