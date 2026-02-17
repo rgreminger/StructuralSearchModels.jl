@@ -1,9 +1,13 @@
 using Documenter
 using StructuralSearchModels
 
-makedocs(sitename="StructuralSearchModels.jl",
+makedocs(
+    sitename="StructuralSearchModels.jl",
+    authors = "Rafael P. Greminger",
+    modules = [StructuralSearchModels],
     format = Documenter.HTML(
         prettyurls = true,
+        canonical = "https://rgreminger.github.io/StructuralSearchModels.jl/stable",
     ),
     pages = [
         "index.md",
@@ -19,7 +23,8 @@ makedocs(sitename="StructuralSearchModels.jl",
 )
 
 deploydocs(
-    repo = "github.com/rgreminger/StructuralSearchModels.jl.git",
+    repo = "github.com/rgreminger/StructuralSearchModels.jl.git",\
+    push_preview = true,
 )
 
 # makedocs(sitename="StructuralSearchModels.jl",
