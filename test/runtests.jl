@@ -21,10 +21,3 @@ end
     include("tests_wm.jl")
 end
 
-# @testset "SDRModel" begin
-#     include("tests_sdrmodel.jl")
-# end
-
-# @testset "SimpleWeightsRanking" begin
-#     include("tests_simpleweightsranking.jl")
-# end

@@ -4,24 +4,9 @@
 abstract type Model end
 
 """
-    Abstract ranking model type. All ranking models are specified as subtypes of this abstract type.
-"""
-abstract type RankingModel <: Model end
-
-"""
     Abstract search model type. All search models are specified as subtypes of this abstract type.
 """
 abstract type SearchModel <: Model end
-
-"""
-    SearchRankingJointModel(search_model::SearchModel, ranking_model::RankingModel)
-Search and ranking model that combines a search model and a ranking model.
-"""
-@with_kw mutable struct SearchRankingJointModel <: Model
-    search_model::SearchModel
-    ranking_model::RankingModel
-end
-
 
 """
 Abstract type for the *Search and Discovery* (SD) model. This type is a base type for all models that are subtypes of the Search and Discovery model.
@@ -121,15 +106,6 @@ function calculate_welfare(model::Model, data::Data, n_sim; kwargs...) end
 Calculate revenues for the model `model` using the data `data` and `n_draws` simulation draws. `kprice` indicates which column in the characteristics table is used as price.
 """
 function calculate_revenues(model::Model, data::Data, kprice, n_draws; kwargs...) end
-
-# Demand
-"""
-    calculate_demand(model::Model, data::Data, i, j, n_draws; kwargs...)
-
-Calculate demand for the model `model` using the data `data` and `n_draws` simulation draws. `i` is the consumer index and `j` is the product index for which demand is calculated.
-"""
-function calculate_demand(model::Model, data::Data, i, j, n_draws; kwargs...) end
-
 
 ##################################################################################
 # Parameter handling

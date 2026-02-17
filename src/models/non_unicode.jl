@@ -311,6 +311,4 @@ function calculate_revenues_i(m::M, d::DataSD, i, kprice, n_draws; kwargs...) wh
     calculate_revenues_i(convert_to_greek(m), d, i, kprice, n_draws; kwargs...)
 end
 
-function calculate_demand(m::M, d::DataSD, i, j, n_draws; kwargs...) where M <: NUModel
-    calculate_demand(convert_to_greek(m), d, i, j, n_draws; kwargs...)
-end
+

@@ -9,7 +9,7 @@ export estimate # functions for estimation
 export calculate_fit_measures, calculate_likelihood, calculate_standard_errors # post-estimation
 export calculate_welfare, calculate_costs! # welfare and costs
 export calculate_revenues # revenues
-export rank_alternatives! # ranking alternatives
+
 
 # Additional helper functions
 export calculate_discovery_value
@@ -19,7 +19,7 @@ export add_product_fe!, find_products_appearing_min_n_times, add_product_fe_data
 export update_heterogeneity_specification!
 
 # Export concrete model types
-export SDCore, SD, WM, DataSD, SimpleWeightsRanking, SearchRankingJointModel
+export SDCore, SD, WM, DataSD
 export InformationStructureSpecification
 export HeterogeneitySpecification
 export DefaultNI, QMC
@@ -69,10 +69,7 @@ include("models/heterogeneity.jl")     # Abstract heterogeneity model
 include("models/SDCore.jl")     # Search and Discovery core model
 include("models/WM.jl")
 include("models/SD.jl")
-include("models/SimpleWeightsRanking.jl")    # Simple weights ranking model
 
-
-include("models/SDRModel.jl")
 include("models/non_unicode.jl") # models that do not use Greek unicode letters for fields
 
 include("utils.jl")             # helper functions
