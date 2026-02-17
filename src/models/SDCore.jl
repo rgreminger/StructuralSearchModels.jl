@@ -14,17 +14,17 @@ Specification for the information structure in the Search and Discovery model. T
 """
 @with_kw mutable struct InformationStructureSpecification{T} <: AbstractSpecification where {T <: Real}
     γ::Vector{T}
-    κ::Vector{T}  
+    κ::Vector{T}
 
-    indices_characteristics_β_union::Union{UnitRange{Int}, Vector{Int}} 
+    indices_characteristics_β_union::Union{UnitRange{Int}, Vector{Int}}
     indices_characteristics_γ_union::Union{UnitRange{Int}, Vector{Int}}
     indices_characteristics_κ_union::Union{UnitRange{Int}, Vector{Int}}
 
-    indices_characteristics_β_individual::Union{UnitRange{Int}, Vector{Int}, 
+    indices_characteristics_β_individual::Union{UnitRange{Int}, Vector{Int},
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_β_union
-    indices_characteristics_γ_individual::Union{UnitRange{Int}, Vector{Int}, 
+    indices_characteristics_γ_individual::Union{UnitRange{Int}, Vector{Int},
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_γ_union
-    indices_characteristics_κ_individual::Union{UnitRange{Int}, Vector{Int}, 
+    indices_characteristics_κ_individual::Union{UnitRange{Int}, Vector{Int},
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_κ_union
 end
 
@@ -58,28 +58,28 @@ function ==(s1::InformationStructureSpecification, s2::InformationStructureSpeci
 end
 
 function all_characteristics_on_list(m::SDModel)
-    length(m.information_structure.indices_characteristics_γ_union) == 0 
+    length(m.information_structure.indices_characteristics_γ_union) == 0
 end
 
 """
-Search and Discovery (SD) core model. This model is a base model for all models that are subtypes of `SDModel`. It implements the most general specification using three shocks and both functional forms for ξ and Ξ. Currently, there is no estimation method for this model, but it is used internally to generate data. 
+Search and Discovery (SD) core model. This model is a base model for all models that are subtypes of `SDModel`. It implements the most general specification using three shocks and both functional forms for ξ and Ξ. Currently, there is no estimation method for this model, but it is used internally to generate data.
 
 - uᵢⱼ = xⱼβ + xⱼκ + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ(h) = xⱼβ + xⱼγ + ξ(h) + νᵢⱼ + ωᵢⱼ, ωᵢⱼ ~ dW
 - uᵢ₀ = β0 + ηᵢ , ηᵢ ~ dU0
 - zd(h) = zdfun(Ξ, ρ, pos) with ρ ≤ 0
-- ξ(h) = zsfun(ξ, ξρ, pos) 
+- ξ(h) = zsfun(ξ, ξρ, pos)
 - For the estimation, the specification of `xⱼβ`, `xⱼκ`, and `xⱼγ` are determined by `information_structure`.
 
-# Fields:  
-- `β::Vector{T}`: Vector of preference weights. 
+# Fields:
+- `β::Vector{T}`: Vector of preference weights.
 - `Ξ::T`: Baseline Ξ for position 1 (not demeaned).
 - `ρ::Union{T, Vector{T}} `: Parameters governing decrease of Ξ across positions.
 - `ξ::T`: Baseline ξ.
 - `ξρ::Union{T, Vector{T}} `: Parameters governing decrease of ξ across positions.
 - `dE::Distribution`: Distribution of εᵢⱼ.
 - `dV::Distribution`: Distribution of νᵢⱼ.
-- `dU0::Distribution`: Distribution of ηᵢ. 
+- `dU0::Distribution`: Distribution of ηᵢ.
 - `dW::Distribution`: Distribution of ωᵢⱼ.
 - `zdfun::String`: Select functional form f(h, Ξ, ρ) that determines the discovery value in position h.
 - `zsfun::String`: Select functional form f(h, ξ, ξρ) that determines the search value in position h.
@@ -114,23 +114,23 @@ end
 
 
 
-""" 
-*Data* type for the core Search and Discovery model. Indexing is based on sessions. See the tutorials for examples on how such data can be simulated or constructed. 
+"""
+*Data* type for the core Search and Discovery model. Indexing is based on sessions. See the tutorials for examples on how such data can be simulated or constructed.
 
 # Fields:
-- `consumer_ids::Vector{Int}`: consumer id for each session. 
-- `product_ids::Vector{Vector{Int}}`: vector of vectors of product ids for each session. 
+- `consumer_ids::Vector{Int}`: consumer id for each session.
+- `product_ids::Vector{Vector{Int}}`: vector of vectors of product ids for each session.
 - `product_characteristics::Vector{Matrix{T}}`: product characteristics matrix.
-- `positions::Vector{Vector{Int}}`: positions for each session. 
-- `consideration_sets::Vector{Vector{Bool}}`: consideration sets for each session, booleans whether searched or not. 
-- `purchase_indices::Vector{Int}`: which product within session is purchased. 
+- `positions::Vector{Vector{Int}}`: positions for each session.
+- `consideration_sets::Vector{Vector{Bool}}`: consideration sets for each session, booleans whether searched or not.
+- `purchase_indices::Vector{Int}`: which product within session is purchased.
 - `min_discover_indices::Union{Vector{Int}, Nothing}`: index of last product must have been discovered in session (lowest position at which click occurred). This is mainly used during estimation, and can be constructed in with the `fill_indices_min_discover!` function.
-- `stop_indices::Union{Vector{Int}, Nothing}`: index of last product discovered in session (at which discovery stops). Is `nothing` if not available (e.g., when scrolling is not observed).  
+- `stop_indices::Union{Vector{Int}, Nothing}`: index of last product discovered in session (at which discovery stops). Is `nothing` if not available (e.g., when scrolling is not observed).
 - `session_characteristics::Union{Vector{Vector{T}}, Nothing}`: session characteristics for each session. Is `nothing` if not available (default).
 - `search_paths::Union{Vector{Vector{Int}}, Nothing}`: search paths for each session. Is `nothing` if search order is not available.
 """
 @with_kw mutable struct DataSD{T} <: Data where {T <: Real}
-    
+
     consumer_ids::Vector{Int}
     product_ids::Vector{Vector{Int}}
     product_characteristics::Vector{Matrix{T}}
@@ -152,14 +152,14 @@ end
             length(min_discover_indices) == length(product_ids)
     @assert isnothing(stop_indices) || length(stop_indices) == length(product_ids)
 
-    # Ensure consumer ids 
+    # Ensure consumer ids
     @assert issorted(consumer_ids)
     @assert unique(consumer_ids) == collect(1:consumer_ids[end])
 end
 
 function DataSD(consumer_ids, product_ids, product_characteristics, positions,
-                session_characteristics, 
-                consideration_sets, purchase_indices, min_discover_indices, 
+                session_characteristics,
+                consideration_sets, purchase_indices, min_discover_indices,
                 search_paths, stop_indices)
 
     # Convert inputs to the correct types
@@ -170,7 +170,7 @@ function DataSD(consumer_ids, product_ids, product_characteristics, positions,
 
     consideration_sets = Vector{Vector{Bool}}(consideration_sets)
     purchase_indices = Vector{Int64}(purchase_indices)
-    
+
     if !isnothing(min_discover_indices)
         min_discover_indices = Vector{Int64}(min_discover_indices)
     end
@@ -182,7 +182,7 @@ function DataSD(consumer_ids, product_ids, product_characteristics, positions,
     end
     if !isnothing(session_characteristics)
         session_characteristics = Vector{Vector{Float64}}(session_characteristics)
-    end 
+    end
 
     return DataSD(consumer_ids, product_ids, product_characteristics, positions,
         session_characteristics,
@@ -212,11 +212,11 @@ function getindex(d::DataSD, elements...)
     ids_new = transform_to_consecutive_ids(d.consumer_ids[i])
 
     return DataSD(ids_new, d.product_ids[i], d.product_characteristics[i],
-        d.positions[i], 
+        d.positions[i],
         isnothing(d.session_characteristics) ? nothing : d.session_characteristics[i],
         d.consideration_sets[i], d.purchase_indices[i],
-        isnothing(d.min_discover_indices) ? nothing : d.min_discover_indices[i], 
-        isnothing(d.search_paths) ? nothing : d.search_paths[i], 
+        isnothing(d.min_discover_indices) ? nothing : d.min_discover_indices[i],
+        isnothing(d.search_paths) ? nothing : d.search_paths[i],
         isnothing(d.stop_indices) ? nothing : d.stop_indices[i],
         )
 end
@@ -226,7 +226,7 @@ function merge_data(data1::DataSD, data2::DataSD)
     if length(unique(consumer_ids)) != length(consumer_ids) # redo consumer ids if duplicates
         consumer_ids = 1:length(consumer_ids)
     end
-        
+
     return DataSD(
         consumer_ids,
         vcat(data1.product_ids, data2.product_ids),
@@ -256,8 +256,8 @@ end
 
 function sessions_with_purchase(d::DataSD)
     sp = Int64[]
-    for i in eachindex(d) 
-        if d.product_ids[i][d.purchase_indices[i]] > 0 # if product_id > 0 -> not outside option /  purchase 
+    for i in eachindex(d)
+        if d.product_ids[i][d.purchase_indices[i]] > 0 # if product_id > 0 -> not outside option /  purchase
             push!(sp, i)
         end
     end
@@ -266,7 +266,7 @@ function sessions_with_purchase(d::DataSD)
 end
 
 function drop_undiscovered_products!(d)
-    for i in eachindex(d) 
+    for i in eachindex(d)
         stop_index = d.stop_indices[i]
         d.product_characteristics[i] = d.product_characteristics[i][1:stop_index, :]
         d.product_ids[i] = d.product_ids[i][1:stop_index]
@@ -277,11 +277,11 @@ end
 
 function construct_indices_characteristics(m::M, d::DataSD, var::Symbol) where M <: SDModel
 
-    n_ses = length(d) 
-    s = m.information_structure 
+    n_ses = length(d)
+    s = m.information_structure
 
-    # Expand to individual if only unit range or vector 
-    if var == :β 
+    # Expand to individual if only unit range or vector
+    if var == :β
         indices_characteristics_β = if typeof(s.indices_characteristics_β_individual) <: UnitRange{Int} || typeof(s.indices_characteristics_β_individual) <: Vector{Int}
             fill(s.indices_characteristics_β_individual, n_ses)
         else
@@ -289,9 +289,9 @@ function construct_indices_characteristics(m::M, d::DataSD, var::Symbol) where M
         end
         return indices_characteristics_β
     elseif var == :γ
-        indices_characteristics_γ = if typeof(s.indices_characteristics_γ_individual) <: UnitRange{Int} || 
+        indices_characteristics_γ = if typeof(s.indices_characteristics_γ_individual) <: UnitRange{Int} ||
             typeof(s.indices_characteristics_γ_individual) <: Vector{Int}
-            
+
             indices_characteristics_γ = fill(s.indices_characteristics_γ_individual, n_ses)
         else
             indices_characteristics_γ = s.indices_characteristics_γ_individual
@@ -326,18 +326,18 @@ function construct_mapping_characteristics(m::M, d::DataSD; kwargs...) where M <
                  typeof(indices_characteristics_κ)]
 
         if any(x -> x == Vector{Vector{Int64}}, types)
-            # If any of the indices are vectors, convert to vector of vectors -> makes sure 
-            # that all types same for compiler 
+            # If any of the indices are vectors, convert to vector of vectors -> makes sure
+            # that all types same for compiler
             mc = [collect.(x) for x in mc]
         end
-        mc 
+        mc
     end
 
     return mc
 end
 
 
-# Data generation 
+# Data generation
 function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
         n_A0 = 1, n_d = 1,
         products = generate_products(n_consumers * n_sessions_per_consumer, MvNormal(I(length(m.β) - 1))),
@@ -347,15 +347,15 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
     n_sessions = n_consumers * n_sessions_per_consumer
 
     # Unpack products
-    product_ids, product_characteristics = deepcopy(products) 
-    #note: need copy as otherwise undiscovered products are also dropped from input 
+    product_ids, product_characteristics = deepcopy(products)
+    #note: need copy as otherwise undiscovered products are also dropped from input
 
     # Create positions based on number of alternatives per position
     positions = [vcat(zeros(Int64, 1 + n_A0),
                      repeat(collect(Int64, 1:((length(product_ids[i]) - 1 - n_A0) / n_d)),
                          inner = n_d)) for i in 1:n_sessions]
 
-    # Create consumer indices mapping consumers into sessions 
+    # Create consumer indices mapping consumers into sessions
     consumer_ids = repeat(1:n_consumers, inner = n_sessions_per_consumer)
 
     # Create empty consideration sets and purchase indices
@@ -364,14 +364,14 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
     purchase_indices = zeros(Int, n_sessions)
     search_paths = [zeros(Int, n - 1) for n in n_products]
     stop_indices = [n for n in n_products]
-    min_discover_indices = nothing 
+    min_discover_indices = nothing
 
-    # Put together as data object 
+    # Put together as data object
     data = DataSD(consumer_ids, product_ids, product_characteristics, positions,
         session_characteristics,
         consideration_sets, purchase_indices, min_discover_indices, search_paths, stop_indices)
 
-    # Generate search paths 
+    # Generate search paths
     utility_purchases = zeros(Float64, length(data))
     generate_search_paths!(data, utility_purchases, m; kwargs...)
     fill_indices_min_discover!(data)
@@ -380,7 +380,7 @@ function generate_data(m::SDCore, n_consumers, n_sessions_per_consumer;
         drop_undiscovered_products!(data)
     end
 
-    # Return together with purchase utilities 
+    # Return together with purchase utilities
     return data
 end
 
@@ -394,7 +394,7 @@ function update_positions!(data::DataSD, nA0, nd)
         n_prod = length(data.positions[i])
         new_positions = vcat(fill(0, 1 + nA0),
             repeat(collect(Int64, 1:((n_prod - 1 - nA0) / nd)), inner = nd))
-        if length(new_positions) < n_prod # last discovery reveals fewer than nd products 
+        if length(new_positions) < n_prod # last discovery reveals fewer than nd products
             new_positions = vcat(
                 new_positions, fill(new_positions[end] + 1, n_prod - length(new_positions)))
         end
@@ -406,20 +406,20 @@ function generate_data(m::SDCore, d::DataSD; kwargs...)
 
     run_compatibility_checks(m, d)
 
-    d1 = deepcopy(d) 
+    d1 = deepcopy(d)
 
     # Generate new paths
     utility_purchases = zeros(Float64, length(d1))
     generate_search_paths!(d1, utility_purchases, m; kwargs...)
 
     # Drop information initially not observed
-    if isnothing(d.stop_indices) 
+    if isnothing(d.stop_indices)
         d1.stop_indices = nothing
     end
     if isnothing(d.search_paths)
         d1.search_paths = nothing
     end
-    
+
     return_with_utilities = get(kwargs, :return_with_utilities, false)
     if return_with_utilities
         return d1, utility_purchases
@@ -430,10 +430,10 @@ end
 
 function generate_search_paths!(data::DataSD, utility_purchases, m::SDCore; kwargs...)
 
-    # Get rng 
+    # Get rng
     rng = get_rng(kwargs)
 
-    # Extract keyword arguments 
+    # Extract keyword arguments
     conditional_on_search = get(kwargs, :conditional_on_search, false)
     conditional_on_search_iter = get(kwargs, :conditional_on_search_iter, 100)
 
@@ -442,34 +442,34 @@ function generate_search_paths!(data::DataSD, utility_purchases, m::SDCore; kwar
     max_products_per_session = maximum(n_products)
     n_sessions = length(data.product_ids)
 
-    # Extract other values 
+    # Extract other values
     zdfun = get_functional_form(m.zdfun)
     zsfun = get_functional_form(m.zsfun)
 
     # Get draws from kwargs
     draws_shocks = get_precomputed_draws(kwargs)
 
-    draws_u0, draws_e, draws_v, draws_w = draws_shocks 
+    draws_u0, draws_e, draws_v, draws_w = draws_shocks
 
-    # Draw consumer-level shocks 
-    draws_η = take_or_generate_consumer_shocks(m, data, kwargs) 
+    # Draw consumer-level shocks
+    draws_η = take_or_generate_consumer_shocks(m, data, kwargs)
 
-    # get maximum pos at which to stop 
-    max_j = get(kwargs, :max_j, typemax(Int)) 
+    # get maximum pos at which to stop
+    max_j = get(kwargs, :max_j, typemax(Int))
 
-    # get indices of characteristics that enter search value if not provided 
+    # get indices of characteristics that enter search value if not provided
     mapping_characteristics = construct_mapping_characteristics(m, data; kwargs...)
-    
-    # Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
+
+    # Define chunks for parallelization. Each chunk is a range of sessions for which a single task
     # creates the search path.
     _, data_chunks = get_chunks(n_sessions)
 
     # Set up missing variables (will be fully overwritten)
-    if isnothing(data.search_paths) 
-        data.search_paths = copy(data.consideration_sets) 
+    if isnothing(data.search_paths)
+        data.search_paths = copy(data.consideration_sets)
     end
-    if isnothing(data.stop_indices) 
-        data.stop_indices = copy(data.purchase_indices) 
+    if isnothing(data.stop_indices)
+        data.stop_indices = copy(data.purchase_indices)
     end
 
     # note: unpacking here and passing into function saves a lot of allocations
@@ -489,33 +489,33 @@ function generate_search_paths!(data::DataSD, utility_purchases, m::SDCore; kwar
             # Loop over sessions in the chunk
             for i in chunk
 
-                # Reset 
+                # Reset
                 u .= typemin(Float64)
                 zs .= typemin(Float64)
                 v .= 0
 
                 @views fill_path_i!(data, utility_purchases,
-                    m, i, dU0, dE, dV, dW, 
+                    m, i, dU0, dE, dV, dW,
                     u, zs, v, zd_h, zs_h,
                     mapping_characteristics,
-                    rng, max_j, 
-                    draws_u0, draws_e, draws_v, draws_w, draws_η) 
+                    rng, max_j,
+                    draws_u0, draws_e, draws_v, draws_w, draws_η)
 
-                # If conditional on click, iterate until have at least one 
+                # If conditional on click, iterate until have at least one
                 if conditional_on_search
                     iter = 1
                     while data.search_paths[i][1] == 0 && iter <= conditional_on_search_iter
-                        # Reset 
+                        # Reset
                         u .= typemin(Float64)
                         zs .= typemin(Float64)
                         v .= 0
 
                         fill_path_i!(data, utility_purchases,
-                            m, i, dU0, dE, dV, dW, 
+                            m, i, dU0, dE, dV, dW,
                             u, zs, v, zd_h, zs_h,
                             mapping_characteristics,
-                            rng, max_j, 
-                            draws_u0, draws_e, draws_v, draws_w, draws_η) 
+                            rng, max_j,
+                            draws_u0, draws_e, draws_v, draws_w, draws_η)
                         iter += 1
                     end
                     if iter > conditional_on_search_iter
@@ -530,7 +530,7 @@ function generate_search_paths!(data::DataSD, utility_purchases, m::SDCore; kwar
     fetch.(tasks)
 
     # Get last product that consumer MUST have discovered, i.e., all products on same position as the lowest one that was clicked on
-    if get(kwargs, :compute_min_discover_indices, true) 
+    if get(kwargs, :compute_min_discover_indices, true)
         fill_indices_min_discover!(data)
     end
 
@@ -543,75 +543,75 @@ function precompute_discovery_and_search_values(m::SDCore,
 
     zdfun = get_functional_form(m.zdfun)
     zsfun = get_functional_form(m.zsfun)
-    positions_longest = data.positions[argmax(maximum.(data.positions))] 
+    positions_longest = data.positions[argmax(maximum.(data.positions))]
     all_possible_positions = sort(unique(positions_longest))
-    zd_h = isnothing(m.zdfun) ? 
-        fill(m.Ξ, length(all_possible_positions)) : 
+    zd_h = isnothing(m.zdfun) ?
+        fill(m.Ξ, length(all_possible_positions)) :
         [zdfun(m.Ξ, m.ρ, pos) for pos in all_possible_positions]
-    zs_h = isnothing(m.zsfun) ? 
-        fill(m.ξ, length(positions_longest)) : 
+    zs_h = isnothing(m.zsfun) ?
+        fill(m.ξ, length(positions_longest)) :
         [zsfun(m.ξ, m.ξρ, j) for j in positions_longest]
 
     return zd_h, zs_h
 end
 
 function fill_path_i!(data::DataSD, utility_purchases,
-        m, i, dU0, dE, dV, dW, 
+        m, i, dU0, dE, dV, dW,
         u, zs, v, zd_h, zs_h,
         mapping_characteristics,
-        rng, max_j, 
+        rng, max_j,
         draws_u0, draws_e, draws_v, draws_w, draws_η;
         debug_print = false)
 
-    # Extract data 
-    @unpack product_ids, consideration_sets, purchase_indices, 
+    # Extract data
+    @unpack product_ids, consideration_sets, purchase_indices,
         positions, product_characteristics, search_paths, stop_indices = data
-    
-    # Reset 
+
+    # Reset
     search_paths[i] .= 0
     consideration_sets[i] .= false
-    
-    # Define variables tracking state during search 
-    max_u = typemin(eltype(u)) # current max utility 
+
+    # Define variables tracking state during search
+    max_u = typemin(eltype(u)) # current max utility
     max_zs = typemin(eltype(zs))  # current max search value
     ind_p = 0 # index of product to purchase
     ind_s = 0 # index of product to search
-    pos = 0 # current position 
+    pos = 0 # current position
     ns = 0 # number of searches
-    ij = 0  # Index tracking current product 
+    ij = 0  # Index tracking current product
     n_prod = length(product_ids[i]) # number of products for consumer
 
-    # Extract characteristics indices  
+    # Extract characteristics indices
     ixb = mapping_characteristics[1][i]
     ixg = mapping_characteristics[2][i]
     ixk = mapping_characteristics[3][i]
 
-    @unpack β, Ξ, ρ, ξ, ξρ = m 
+    @unpack β, Ξ, ρ, ξ, ξρ = m
     @unpack γ, κ = m.information_structure
-    if has_heterogeneity(m) 
-        β, γ, κ, Ξ, ρ, ξ, ξρ = construct_individual_parameters(m, i, data, draws_η) 
+    if has_heterogeneity(m)
+        β, γ, κ, Ξ, ρ, ξ, ξρ = construct_individual_parameters(m, i, data, draws_η)
     end
 
     # Fill reservation values in initial awareness set
     for j in eachindex(positions[i])
-        if positions[i][j] > 0 # only for initial awareness set, indicated with position = 0. 
-            # Update index of current product 
-            ij = j - 1 # last 
+        if positions[i][j] > 0 # only for initial awareness set, indicated with position = 0.
+            # Update index of current product
+            ij = j - 1 # last
             break
         end
 
-        # Outside option 
+        # Outside option
         if product_ids[i][j] == 0
-            # draw outside option utility 
+            # draw outside option utility
             u[j] = take_or_generate_draw!(draws_u0, rng, dU0, 1) +
                    product_characteristics[i][1, end] * β[end]
             max_u = u[j]
             ind_p = 1
         else
             # Fill in reservation value for product j
-            # note: storing v_j draw as also enters utility 
+            # note: storing v_j draw as also enters utility
             v[j] = take_or_generate_draw!(draws_v, rng, dV, j)
-            xβ, xγ, _ = @views construct_util_parts(product_characteristics, i, j, β, γ, κ, 
+            xβ, xγ, _ = @views construct_util_parts(product_characteristics, i, j, β, γ, κ,
                 ixb, ixg, ixk)
 
             zs[j] = xβ + xγ + zs_h[j] + v[j] +
@@ -639,12 +639,12 @@ function fill_path_i!(data::DataSD, utility_purchases,
         println("initial max_u = ", max_u)
     end
 
-    # Loop through discovering more products and searching 
+    # Loop through discovering more products and searching
     while true
 
-        no_further_discoveries = pos > positions[i][end] || ij + 1 > max_j 
+        no_further_discoveries = pos > positions[i][end] || ij + 1 > max_j
         # discover more products
-        if !no_further_discoveries && zd >= max_u && zd >= max_zs 
+        if !no_further_discoveries && zd >= max_u && zd >= max_zs
             if i == 1 && debug_print
                 println("############################")
                 println("DISCOVERY ")
@@ -659,17 +659,17 @@ function fill_path_i!(data::DataSD, utility_purchases,
                 println("max_u = ", max_u)
             end
 
-            # Update reservation values for products in next position 
+            # Update reservation values for products in next position
             for j in (ij + 1):n_prod
-                # Reached next position 
+                # Reached next position
                 if positions[i][j] > pos || j + 1 > max_j
                     ij = j - 1 # current product is last in position
                     break
                 end
 
-                # Update reservation value and max 
+                # Update reservation value and max
                 v[j] = take_or_generate_draw!(draws_v, rng, dV, j)
-                xβ, xγ, _ = @views construct_util_parts(product_characteristics, i, j, β, γ, κ, 
+                xβ, xγ, _ = @views construct_util_parts(product_characteristics, i, j, β, γ, κ,
                     ixb, ixg, ixk)
 
                 zs[j] = xβ + xγ + zs_h[j] + v[j] +
@@ -680,13 +680,13 @@ function fill_path_i!(data::DataSD, utility_purchases,
                 end
             end
 
-            # Update discovery value and position 
-            pos += 1    # next position 
-            if pos + 1 <= length(zd_h) 
+            # Update discovery value and position
+            pos += 1    # next position
+            if pos + 1 <= length(zd_h)
                 zd = zd_h[pos + 1]
             end
 
-            # search next product 
+            # search next product
         elseif max_zs >= max_u && (max_zs >= zd || no_further_discoveries)
             if i == 1 && debug_print
                 println("############################")
@@ -701,7 +701,7 @@ function fill_path_i!(data::DataSD, utility_purchases,
                 println("ind_s = ", ind_s)
             end
 
-            # Increase number of searches and fill in next search 
+            # Increase number of searches and fill in next search
             ns += 1
             search_paths[i][min(ns, end)] = ind_s
             consideration_sets[i][ind_s] = true
@@ -709,25 +709,25 @@ function fill_path_i!(data::DataSD, utility_purchases,
             # Set search value to neg. infinity so that it is not searched again
             zs[ind_s] = typemin(eltype(zs))
 
-            # Get utility of searched product 
-            # note: recovering previously stored v_j draw as enters utility and search value 
-            u[ind_s] = v[ind_s] 
+            # Get utility of searched product
+            # note: recovering previously stored v_j draw as enters utility and search value
+            u[ind_s] = v[ind_s]
             u[ind_s] += take_or_generate_draw!(draws_e, rng, dE, ind_s) # take new draw for e
 
-            xβ, _, xκ = @views construct_util_parts(product_characteristics, i, ind_s, β, γ, κ, 
+            xβ, _, xκ = @views construct_util_parts(product_characteristics, i, ind_s, β, γ, κ,
                 ixb, ixg, ixk)
 
             u[ind_s] += xβ + xκ
 
-            # Update max utility 
+            # Update max utility
             if u[ind_s] > max_u
                 max_u = u[ind_s]
                 ind_p = ind_s
             end
-            # Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen. 
+            # Find next product to search. Note, all undiscovered and already-searched products have zs=-Inf, so that never chosen.
             max_zs, ind_s = findmax(zs)
 
-            # Stop and buy 
+            # Stop and buy
         elseif (max_u > zd || no_further_discoveries) && max_u > max_zs
             if i == 1 && debug_print
                 println("############################")
@@ -745,15 +745,15 @@ function fill_path_i!(data::DataSD, utility_purchases,
                 println("ind_p = ", ind_p)
             end
 
-            # Fill in purchase and stop indices 
+            # Fill in purchase and stop indices
             purchase_indices[i] = ind_p
             utility_purchases[i] = max_u
-            stop_indices[i] = if pos > positions[i][end] || ij + 1 > max_j # special case when discovered all positions, in which case ij was not updated 
+            stop_indices[i] = if pos > positions[i][end] || ij + 1 > max_j # special case when discovered all positions, in which case ij was not updated
                 length(positions[i])
             else
-                ij 
+                ij
             end
-            
+
 
             if i == 1 && debug_print
                 println("utiltiy_purchase = ", utility_purchases[i])
@@ -768,22 +768,22 @@ function fill_path_i!(data::DataSD, utility_purchases,
 end
 
 @inline function construct_util_parts(product_characteristics, i, j, β, γ, κ, ixb, ixg, ixk; no_κ = false)
-        
-    xβ = if isempty(ixb) 
-        zero(eltype(β)) 
+
+    xβ = if isempty(ixb)
+        zero(eltype(β))
     else
         # @views product_characteristics[i][j, ixb]' * β[ixb]
         @inbounds sum(product_characteristics[i][j, k] * β[k] for k in ixb)
     end
     T = typeof(xβ)
-    xγ = if isempty(ixg) 
-        zero(T) 
+    xγ = if isempty(ixg)
+        zero(T)
     else
         # @views product_characteristics[i][j, ixg]' * γ[ixg]
         @inbounds sum(product_characteristics[i][j, k] * γ[k] for k in ixg)
     end
     xκ = if isempty(ixk) || no_κ
-        zero(T) 
+        zero(T)
     else
         # @views product_characteristics[i][j, ixk]' * κ[ixk]
         @inbounds sum(product_characteristics[i][j, k] * κ[k] for k in ixk)
@@ -793,21 +793,21 @@ end
 end
 
 function get_indices_min_discover(d::DataSD)
-    @unpack consideration_sets, positions, stop_indices = d 
+    @unpack consideration_sets, positions, stop_indices = d
 
     index_click_lowest_position = Array{Union{Int, Nothing}, 1}([findlast(C)
                                                                  for C in consideration_sets])
     index_click_lowest_position[isnothing.(index_click_lowest_position)] .= 1 # set to one for those who did not click
 
 
-    indices_min_discover = if isnothing(stop_indices) 
+    indices_min_discover = if isnothing(stop_indices)
         [findlast((positions[i] .==
-                                positions[i][index_click_lowest_position[i]])) 
+                                positions[i][index_click_lowest_position[i]]))
                     for i in eachindex(index_click_lowest_position)]
 
     else
         [findlast((positions[i][1:stop_indices[i]] .==
-                                     positions[i][index_click_lowest_position[i]])) 
+                                     positions[i][index_click_lowest_position[i]]))
                             for i in eachindex(index_click_lowest_position)]
     end
 
@@ -824,12 +824,12 @@ function calculate_costs!(m::SDCore, d::DataSD, n_draws...;
         force_recompute = true,
         kwargs...)
 
-    n_draws_cs = n_draws[1] 
+    n_draws_cs = n_draws[1]
     n_draws_cd = length(n_draws) == 1 ? n_draws_cs : n_draws[2] # if only one element, use same number of draws for discovery costs
 
-    # Search costs 
+    # Search costs
     if isnothing(m.cs) || force_recompute
-        m.cs = calculate_search_costs(m, d, n_draws_cs; kwargs...) 
+        m.cs = calculate_search_costs(m, d, n_draws_cs; kwargs...)
     end
     # Discovery costs
     if isnothing(m.cd) || force_recompute
@@ -838,36 +838,36 @@ function calculate_costs!(m::SDCore, d::DataSD, n_draws...;
     return nothing
 end
 
-""" 
+"""
 	calculate_search_costs(m::SDModel, ξ, d::DataSD, n_draws; kwargs...)
 
 Calculate search costs for `SDModel` model given specific `ξj`. The search cost is given by E[max{0, xβ_detail_demeaned + ε - ξj}], which is computed using MC integration using `n_draws` draws from the demeaned empirical distribution of xβ_detail and the distribution of ε. If all characteristics are revealed on the list, then the search cost is given by E[1 - F(ξ)], where F is the distribution of ε. See (7) in the theory paper and online appendix EC.2.
 """
-function calculate_search_costs(m::SDModel, d::DataSD, n_draws; kwargs...) 
+function calculate_search_costs(m::SDModel, d::DataSD, n_draws; kwargs...)
 
     if has_heterogeneity(m)
         throw(ArgumentError("Heterogeneity not yet supported for search costs."))
     end
 
-    # Unpack 
-    @unpack ξ, ξρ, dE = m 
+    # Unpack
+    @unpack ξ, ξρ, dE = m
     zsfun = get_functional_form(m.zsfun)
 
-    # Compute ξj for every product in data 
+    # Compute ξj for every product in data
     product_ids = vcat(d.product_ids...)
     n = length(product_ids)
     positions = vcat(d.positions...)
-    ξj = zeros(n) 
+    ξj = zeros(n)
 
     all_possible_positions = sort(unique(positions)) # all possible positions across all sessions
     if minimum(all_possible_positions) != 0
         throw(ArgumentError("Positions in `d` should start at 0."))
     end
-    ξh = [zsfun(ξ, ξρ, pos) for pos in all_possible_positions] 
+    ξh = [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
 
-    Threads.@threads for i in eachindex(ξj) 
-        if product_ids[i] == 0 # outside option 
-            ξj[i] = Inf 
+    Threads.@threads for i in eachindex(ξj)
+        if product_ids[i] == 0 # outside option
+            ξj[i] = Inf
         else
             ξj[i] = ξh[positions[i]+1] # +1 because positions start at 0
         end
@@ -908,15 +908,15 @@ end
 
 function get_xγ(m, d) # get xβγ for all products
 
-    chars = vcat(d.product_characteristics...) 
+    chars = vcat(d.product_characteristics...)
 
     ig = m.information_structure.indices_characteristics_γ_individual
 
     xγ = zeros(size(chars, 1)) # pre-allocate xβγ for all products
     Threads.@threads for i in eachindex(xγ)
-        xγ[i] = @views chars[i, ig]' * m.information_structure.γ[ig] 
+        xγ[i] = @views chars[i, ig]' * m.information_structure.γ[ig]
     end
-    
+
     return xγ
 end
 
@@ -926,10 +926,10 @@ function get_xv_spec(m::SDModel, d::DataSD, var::Symbol; kwargs...)
     chars = vcat(d.product_characteristics...) # all characteristics across all sessions
     chars = chars[vcat(d.product_ids...) .> 0, :] # exclude outside option
 
-    # unique speicifications of where characteristics are revealed 
-    ixvar = StructuralSearchModels.construct_indices_characteristics(m, d, var) 
+    # unique speicifications of where characteristics are revealed
+    ixvar = StructuralSearchModels.construct_indices_characteristics(m, d, var)
 
-    # Get all combinations of the two 
+    # Get all combinations of the two
     unique_ix = unique(ixvar)
     xvar = zeros(size(chars, 1), length(unique_ix)) # pre-allocate xβκ_spec for all products
 
@@ -946,7 +946,7 @@ function get_xv_spec(m::SDModel, d::DataSD, var::Symbol; kwargs...)
     Threads.@threads for i in eachindex(unique_ix)
         uix = unique_ix[i] # unique index for this specification
         n_char_k = length(uix) # number of characteristics in this specification
-        xvar[:, i] = if n_char_k > 0 
+        xvar[:, i] = if n_char_k > 0
             @views chars[:, uix] * V[uix]
         else
             zeros(size(chars, 1)) # no characteristics in this specification
@@ -954,30 +954,30 @@ function get_xv_spec(m::SDModel, d::DataSD, var::Symbol; kwargs...)
     end
 
     # Create lookup table to map from row k in session i to xβκ
-    r = create_index_row_to_session(d) # create mapping from session to row in data 
+    r = create_index_row_to_session(d) # create mapping from session to row in data
 
     lookup_i_xvar = zeros(Int, length(r)) # pre-allocate lookup table
 
     Threads.@threads for i_ses in eachindex(d)
         lookup_i_xvar[r .== i_ses] .= findfirst([ixvar[i_ses] == unique_ix[i] for i in eachindex(unique_ix)])
         # println(findfirst([ixκ[i_ses] == unique_ixκ[i] for i in eachindex(unique_ixκ)])) # number of characteristics in this session
-    end 
-    
+    end
+
     return lookup_i_xvar, xvar
-end    
+end
 
 function create_index_row_to_session(d::DataSD)
-    p = vcat(d.product_ids...) 
+    p = vcat(d.product_ids...)
     n = length(p)
     i_ses = zeros(Int, n) # all product ids across all sessions
 
-    c = 0 
+    c = 0
     for i in eachindex(i_ses) # note: assumes new session starts with pid=0 for the outside option
-        if p[i] > 0 
+        if p[i] > 0
             i_ses[i] = c
         else
-            c += 1 
-            i_ses[i] = c # outside option 
+            c += 1
+            i_ses[i] = c # outside option
         end
     end
 
@@ -986,29 +986,29 @@ function create_index_row_to_session(d::DataSD)
 end
 
 
-function _calculate_search_costs(m::SDCore, ξj::T, dE::Distribution, xκ, n_draws, rng) where T <: Real 
+function _calculate_search_costs(m::SDCore, ξj::T, dE::Distribution, xκ, n_draws, rng) where T <: Real
 
-    cs = all_characteristics_on_list(m) ? 
-        calculate_search_cost_all_characteristics_on_list(ξj, dE) : 
+    cs = all_characteristics_on_list(m) ?
+        calculate_search_cost_all_characteristics_on_list(ξj, dE) :
         calculate_search_cost_hidden_characteristics(ξj, dE, xκ, n_draws, rng)
 
-    return cs 
+    return cs
 end
 
 function calculate_search_cost_hidden_characteristics(ξ, dE, xκ, n_draws, rng)
 
     # Calculates search costs based on cs = E[max(0, xκ -mean(xκ) ε - ξ) | x_list].
     # - Expectation E[] is conditional on x_list reflecting consumers' beliefs.
-    # - assumption is that conditional on x_list, xκ is independent of ε and has mean zero. 
-    #   hence, we demean xκ before calculating costs. 
+    # - assumption is that conditional on x_list, xκ is independent of ε and has mean zero.
+    #   hence, we demean xκ before calculating costs.
     xκ_demeaned = xκ .- mean(xκ)
 
     cs = mean(max(0, rand(rng, xκ_demeaned) + rand(rng, dE) - ξ) for i in 1:n_draws)
-    return cs 
+    return cs
 end
 
 function calculate_search_cost_all_characteristics_on_list(ξ::T, dE::Distribution) where T
-    # If all characteristics are revealed on the list, then we only need to integrate over 
+    # If all characteristics are revealed on the list, then we only need to integrate over
     # the distribution of ε, given by m.dE. See (7) in the theory paper and online appendix EC.2.
     return quadgk(e -> (1 - cdf(dE, e)), ξ, maximum(dE))[1]
 end
@@ -1022,7 +1022,7 @@ end
 # _, data_chunks = get_chunks(n_sessions)
 
 # n_cons = length(unique(d.consumer_ids))
-# draws_η = take_or_generate_consumer_shocks(m, d, kwargs) 
+# draws_η = take_or_generate_consumer_shocks(m, d, kwargs)
 
 # tasks = map(data_chunks) do chunk
 #     Threads.@spawn begin
@@ -1030,36 +1030,36 @@ end
 #         local chars, _, xβ_detail = get_xβ(m, d)
 
 #         for i in chunk
-#             β, _, _, ξ, _ = construct_individual_parameters(m, i, d, draws_η) 
+#             β, _, _, ξ, _ = construct_individual_parameters(m, i, d, draws_η)
 
-#             update_xβ_detail!(xβ_detail, chars, β, d, i) 
-            
+#             update_xβ_detail!(xβ_detail, chars, β, d, i)
+
 #             cs[i] = mean(max(0, rand(rng, xβ_detail) + rand(rng, dE) - ξ) for i in 1:n_draws)
 #         end
 #     end
 # end
 
-# fetch.(tasks) 
+# fetch.(tasks)
 
-# function get_xβ(m::SDModel, d::DataSD; position = nothing) 
-        
-#     # characteristics matrix without outside option 
+# function get_xβ(m::SDModel, d::DataSD; position = nothing)
+
+#     # characteristics matrix without outside option
 #     chars = if isnothing(position) # any position
 #         vcat([d.product_characteristics[i][d.product_ids[i] .> 0, :]
-#                   for i in eachindex(d)]...) # excludes outside option 
-#     else # only for specific position 
+#                   for i in eachindex(d)]...) # excludes outside option
+#     else # only for specific position
 #         get_chars_position(d, position)
 #     end
 
-#     indices_list_characteristics = d.indices_list_characteristics[1] 
-#     # will be updated later on when some consumers have different list characteristics 
+#     indices_list_characteristics = d.indices_list_characteristics[1]
+#     # will be updated later on when some consumers have different list characteristics
 
-#     xβ_list = if length(indices_list_characteristics) > 0 
+#     xβ_list = if length(indices_list_characteristics) > 0
 #         @views chars[:, indices_list_characteristics] * m.β[indices_list_characteristics]
 #     else
 #         nothing
 #     end
-    
+
 #     all_characteristics_on_list = length(indices_list_characteristics) == length(m.β)
 #     xβ_detail = if all_characteristics_on_list
 #         nothing
@@ -1071,17 +1071,17 @@ end
 #     return chars, xβ_list, xβ_detail
 # end
 
-# function update_xβ_detail!(xβ_detail, chars, β, d, i) 
-    
-#         indices_list_characteristics = d.indices_list_characteristics[i]    
+# function update_xβ_detail!(xβ_detail, chars, β, d, i)
+
+#         indices_list_characteristics = d.indices_list_characteristics[i]
 #         indices_characteristics_on_detail_page = setdiff(1:length(β), indices_list_characteristics)
 #         xβ_detail .= @views chars[:, indices_characteristics_on_detail_page] * β[indices_characteristics_on_detail_page]
 # end
 
-# function update_xβ_list_and_detail!(xβ_list, xβ_detail, chars, β, d, i) 
-    
-#     indices_list_characteristics = d.indices_list_characteristics[i]    
-    
+# function update_xβ_list_and_detail!(xβ_list, xβ_detail, chars, β, d, i)
+
+#     indices_list_characteristics = d.indices_list_characteristics[i]
+
 #     if !isnothing(xβ_list)
 #         xβ_list = @views chars[:, indices_list_characteristics] * β[indices_list_characteristics]
 #     end
@@ -1090,28 +1090,28 @@ end
 #         indices_characteristics_on_detail_page = setdiff(1:length(β), indices_list_characteristics)
 #         xβ_detail .= @views chars[:, indices_characteristics_on_detail_page] * β[indices_characteristics_on_detail_page]
 #     end
-    
+
 # end
 
 
-# function get_chars_position(d, position) 
+# function get_chars_position(d, position)
 
 #    return vcat(
-#     [d.product_characteristics[i][d.product_ids[i] .> 0 .&& 
-#                 d.positions[i][1:length(d.product_ids[i])] .== position, :] 
+#     [d.product_characteristics[i][d.product_ids[i] .> 0 .&&
+#                 d.positions[i][1:length(d.product_ids[i])] .== position, :]
 #                 for i in eachindex(d)]...
 #    )
 
 # end
 
-# """ 
+# """
 # 	calculate_position_specific_search_costs(m::SDModel, d::DataSD)
 
-# Calculate position-specific search costs for the SD model given `ξ`, `ξρ`, the distribution of ε `dE`, and the distribution of xβ_detail from data. See `calculate_search_cost` for details. 
+# Calculate position-specific search costs for the SD model given `ξ`, `ξρ`, the distribution of ε `dE`, and the distribution of xβ_detail from data. See `calculate_search_cost` for details.
 # """
 # function calculate_position_specific_search_costs(m::SDModel, d::DataSD, n_draws; kwargs...)
 
-#     # Get maximum positions possible 
+#     # Get maximum positions possible
 #     _, i_max_products = findmax(length.(d.product_ids))
 #     positions_max = d.positions[i_max_products]
 
@@ -1124,21 +1124,21 @@ end
 #         cs = calculate_search_cost(m, m.ξ, d, n_draws; kwargs...)
 #         return fill(cs, n_rows)
 #     end
-        
-#     # Extract zsfun 
+
+#     # Extract zsfun
 #     zsfun = get_functional_form(m.zsfun)
 
-#     # Same cost per position across consumers and products 
-#     if isnothing(m.γ) && (!has_heterogeneity(m) || 
-#         m.heterogeneity._observed_hs.ξ ==  
-#         m.heterogeneity._observed_hs.β == 
-#         m.heterogeneity._observed_hs.ξρ == 
-#         m.heterogeneity._unobserved_hs.ξ == 
+#     # Same cost per position across consumers and products
+#     if isnothing(m.γ) && (!has_heterogeneity(m) ||
+#         m.heterogeneity._observed_hs.ξ ==
+#         m.heterogeneity._observed_hs.β ==
+#         m.heterogeneity._observed_hs.ξρ ==
+#         m.heterogeneity._unobserved_hs.ξ ==
 #         m.heterogeneity._unobserved_hs.β ==
-#         m.heterogeneity._unobserved_hs.ξρ == false || 
-#         (all_characteristics_on_list && 
-#         m.heterogeneity._observed_hs.ξ ==  
-#         m.heterogeneity._observed_hs.ξρ == 
+#         m.heterogeneity._unobserved_hs.ξρ == false ||
+#         (all_characteristics_on_list &&
+#         m.heterogeneity._observed_hs.ξ ==
+#         m.heterogeneity._observed_hs.ξρ ==
 #         m.heterogeneity._unobserved_hs.ξ ==
 #         m.heterogeneity._unobserved_hs.ξρ == false))
 
@@ -1152,42 +1152,42 @@ end
 
 #         for j in eachindex(ξ_j)
 #             if j > 1 && positions_max[j] == positions_max[j - 1]
-#                 cs_h[j] = cs_h[j - 1] # same position as previous one 
+#                 cs_h[j] = cs_h[j - 1] # same position as previous one
 #                 continue
 #             end
 
-#             # Get distribution of xβ_detail for this position 
+#             # Get distribution of xβ_detail for this position
 #             _, _, xβ_detail = get_xβ(m, d; position = positions_max[j])
 
-#             # Calculate search cost for this position 
+#             # Calculate search cost for this position
 #             cs_h[j] =  mean(max(0, rand(rng, xβ_detail) + rand(rng, dE) - ξ_j[j]) for i in 1:n_draws)
 #         end
 
-#         positions_rows = vcat(d.positions...) 
+#         positions_rows = vcat(d.positions...)
 #         cs = zeros(eltype(cs_h), n_rows)
 #         for j in eachindex(positions_max)
 #             cs[positions_rows .== positions_max[j]] = cs_h[j]
 #         end
 #         return cs
 
-#     elseif !isnothing(m.γ) && (!has_heterogeneity(m) || 
-#         m.heterogeneity._observed_hs.ξ ==  
-#         m.heterogeneity._observed_hs.β == 
-#         m.heterogeneity._observed_hs.ξρ == 
-#         m.heterogeneity._unobserved_hs.ξ == 
+#     elseif !isnothing(m.γ) && (!has_heterogeneity(m) ||
+#         m.heterogeneity._observed_hs.ξ ==
+#         m.heterogeneity._observed_hs.β ==
+#         m.heterogeneity._observed_hs.ξρ ==
+#         m.heterogeneity._unobserved_hs.ξ ==
 #         m.heterogeneity._unobserved_hs.β ==
-#         m.heterogeneity._unobserved_hs.ξρ == false || 
-#         (all_characteristics_on_list && 
-#         m.heterogeneity._observed_hs.ξ ==  
-#         m.heterogeneity._observed_hs.ξρ == 
+#         m.heterogeneity._unobserved_hs.ξρ == false ||
+#         (all_characteristics_on_list &&
+#         m.heterogeneity._observed_hs.ξ ==
+#         m.heterogeneity._observed_hs.ξρ ==
 #         m.heterogeneity._unobserved_hs.ξ ==
 #         m.heterogeneity._unobserved_hs.ξρ == false))
 
 #         @unpack ξ, ξρ, dE = m
 
-#         # Get xb XXX 
+#         # Get xb XXX
 
-#         # construct ξ_j 
+#         # construct ξ_j
 #         ξ_j = xγ + [zsfun(ξ, ξρ, pos) for pos in vcat(d.positions...)]
 
 #         # If all characteristics are revealed on the list, then simpler method available
@@ -1197,42 +1197,42 @@ end
 
 #         for j in eachindex(ξ_j)
 #             if j > 1 && positions_max[j] == positions_max[j - 1]
-#                 cs_h[j] = cs_h[j - 1] # same position as previous one 
+#                 cs_h[j] = cs_h[j - 1] # same position as previous one
 #                 continue
 #             end
 
-#             # Get distribution of xβ_detail for this position 
+#             # Get distribution of xβ_detail for this position
 #             _, _, xβ_detail = get_xβ(m, d; position = positions_max[j])
 
-#             # Calculate search cost for this position 
+#             # Calculate search cost for this position
 #             cs_h[j] =  mean(max(0, rand(rng, xβ_detail) + rand(rng, dE) - ξ_j[j]) for i in 1:n_draws)
 #         end
 
 
-#     else isnothing(m.γ) # Same cost across products but different across consumers 
+#     else isnothing(m.γ) # Same cost across products but different across consumers
 #         cs_h = [zeros(length(positions_max)) for i in eachindex(d)]
 #         rng = get_rng(kwargs)
 
-#         draws_η = take_or_generate_consumer_shocks(m, d, kwargs) 
+#         draws_η = take_or_generate_consumer_shocks(m, d, kwargs)
 
-#         # Parallelize across positions 
+#         # Parallelize across positions
 #         _, data_chunks = get_chunks(length(cs_h[1]))
 
 #         tasks = map(data_chunks) do chunk
 #             Threads.@spawn begin
 #                 local xβ_detail = zeros(Float64, length(positions_max))
 
-#                 for h in chunk 
+#                 for h in chunk
 #                     chars = get_chars_position(d, h)
 
-#                     # Loop over consumers and fill in costs 
+#                     # Loop over consumers and fill in costs
 #                     for i in eachindex(d)
 #                         @unpack dE, cs = m
-#                         if positions_max[h] == 0 # save time by just filling in baseline cost 
+#                         if positions_max[h] == 0 # save time by just filling in baseline cost
 #                             cs_h[i][h] = typeof(cs) <: Real ? cs : cs[i]
 #                             continue
 #                         end
-#                         # Get individual-specific parameters 
+#                         # Get individual-specific parameters
 #                         β, _, _, ξ, ξρ = construct_individual_parameters(m, i, d, draws_η)
 #                         ξ_h = zsfun(ξ, ξρ, positions_max[h])
 
@@ -1250,14 +1250,14 @@ end
 #         end
 
 #         fetch.(tasks)
-#         return cs_h 
+#         return cs_h
 #     end
 # end
 
 """
-	calculate_discovery_costs(m::SDModel, d::DataSD, n_draws; 
+	calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
         kwargs...)
-Calculate discovery cost `cd` for model `m` using data `d` and `n_draws` draws of effective values. The discovery value is calculated under the assumption that beliefs are correct across positions. 
+Calculate discovery cost `cd` for model `m` using data `d` and `n_draws` draws of effective values. The discovery value is calculated under the assumption that beliefs are correct across positions.
 """
 function calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
         kwargs...)
@@ -1271,14 +1271,14 @@ function calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
     zdfun = get_functional_form(m.zdfun)
     rng = get_rng(kwargs)
 
-    # Get xκ, xγ, xβ for all specifications in data, with values in rows and specs in cols 
+    # Get xκ, xγ, xβ for all specifications in data, with values in rows and specs in cols
     # Also gets lookup tables to map from row in data to spec col in xβ, xγ, xκ
-    lookup_i_xκ, xκ = get_xv_spec(m, d, :κ; kwargs...) 
-    lookup_i_xγ, xγ = get_xv_spec(m, d, :γ; kwargs...) 
-    lookup_i_xβ, xβ = get_xv_spec(m, d, :β; kwargs...) 
+    lookup_i_xκ, xκ = get_xv_spec(m, d, :κ; kwargs...)
+    lookup_i_xγ, xγ = get_xv_spec(m, d, :γ; kwargs...)
+    lookup_i_xβ, xβ = get_xv_spec(m, d, :β; kwargs...)
 
-    # Get all possible unique combintaions of specifications from lookup tables 
-    unique_combinations = unique(hcat(lookup_i_xβ, lookup_i_xγ, lookup_i_xκ), dims=1) 
+    # Get all possible unique combintaions of specifications from lookup tables
+    unique_combinations = unique(hcat(lookup_i_xβ, lookup_i_xγ, lookup_i_xκ), dims=1)
 
     # Compute costs for each unique specification combination
     n_spec = size(unique_combinations, 1)
@@ -1288,7 +1288,7 @@ function calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
     W = zeros(Float64, n_draws)
     for i in axes(unique_combinations, 1)
         # which column in xβ, xγ, xκ to use
-        ixβ = unique_combinations[i, 1] 
+        ixβ = unique_combinations[i, 1]
         ixγ = unique_combinations[i, 2]
         ixκ = unique_combinations[i, 3]
         xβ_i = size(xβ, 2) > 1 ? xβ[:, ixβ] : xβ[:]
@@ -1297,7 +1297,7 @@ function calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
 
         fill_values_cd_compute!(W, rng, m, m.ξ, xβ_i, xγ_i, xκ_i, max_pos)
 
-        cd_for_each_spec[i] = mean(W) 
+        cd_for_each_spec[i] = mean(W)
     end
 
     # Expand cd_for_each_spec to all sessions (not just unique specs)
@@ -1319,12 +1319,12 @@ function calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
 
     cd = cd[i_to_keep]
 
-    return cd 
+    return cd
 end
 
 function fill_values_cd_compute!(W, rng, m, ξ::T, xβ, xγ, xκ, max_pos) where T <: Real
 
-    # Take draws for effective values in parallel 
+    # Take draws for effective values in parallel
     _, data_chunks = get_chunks(length(W))
 
     # Demean xκ
@@ -1334,7 +1334,7 @@ function fill_values_cd_compute!(W, rng, m, ξ::T, xβ, xγ, xκ, max_pos) where
     tasks = map(data_chunks) do chunk
         Threads.@spawn begin
             for i in chunk
-                # Draws for a product 
+                # Draws for a product
                 e = rand(rng, m.dE)
                 v = rand(rng, m.dV)
                 w = rand(rng, m.dW)
@@ -1343,8 +1343,8 @@ function fill_values_cd_compute!(W, rng, m, ξ::T, xβ, xγ, xκ, max_pos) where
                 xκi = rand(rng, xκ_demeaned)
 
                 # Construct effective value of product i
-                W[i] = xβi + xγi + v + min(ξ + w, xκi + e) 
-                # note: in line with how search costs are computed, i.e., what's revealed on 
+                W[i] = xβi + xγi + v + min(ξ + w, xκi + e)
+                # note: in line with how search costs are computed, i.e., what's revealed on
                 # the detail page is mean zero (so demeaned xκ)
                 # have E[xβi + xγi + v + min(ξ + w, xκi + e) ] = E[xβi + xγi + v] + E[min(ξ + w, xκi + e) | xγ ]
             end
@@ -1358,17 +1358,17 @@ function fill_values_cd_compute!(W, rng, m, ξ::T, xβ, xγ, xκ, max_pos) where
     μ = mean(W)
 
     # Recover Ξ and μ1
-    μ1, Ξ = calculate_μ1_Ξ(m, μ, max_pos) 
+    μ1, Ξ = calculate_μ1_Ξ(m, μ, max_pos)
 
     # For expectation, update effective  value to max{0, wi - μ - Ξ}
     Threads.@threads for i in eachindex(W)
         W[i] = max(0, W[i] - μ - Ξ)
-    end 
+    end
 
     return nothing
 end
 function calculate_maximum_position(d)
-    # Get positions without outside option 
+    # Get positions without outside option
     positions = 0:maximum(vcat(d.positions...))
     return round(Int, mean(positions[positions .> 0]))
 end
@@ -1382,12 +1382,12 @@ function calculate_μ1_Ξ(m::SDCore, μ::T, max_pos) where T <: Real
     # note: zdfun computes Ξ + some function of ρ, so need to subtract Ξ when using zdfun to compute μ(h)
 
     # Now get Ξ
-    Ξ1 = m.Ξ - μ1 
+    Ξ1 = m.Ξ - μ1
 
     return μ1, Ξ1
 end
 
-# Reservation values / inverse calculations for costs 
+# Reservation values / inverse calculations for costs
 """
 	calculate_discovery_value(G::Normal, m::SDModel, ξ::T, cs::T, cd::T)
 Calculate the discovery value `zd` given `cs`, `cd` and `ξ`. Assumes that pre-search values xβ + v + w follow normal distribution `G`.
@@ -1398,7 +1398,7 @@ function calculate_discovery_value(G::Normal, m::SDModel, ξ::T, cs::T, cd::T) w
         throw(ArgumentError("Discovery value computation currently only defined for normal distribution of ε."))
     end
 
-    zd = if integrate_cdfsingle(cd, ξ, cs, mean(G), std(G)) - cd ≈ -cd  # case where no convergence 
+    zd = if integrate_cdfsingle(cd, ξ, cs, mean(G), std(G)) - cd ≈ -cd  # case where no convergence
         -cd
     elseif cd <= 0 || (std(G) > 1e9 && cd <= 1e8)
         Inf
@@ -1425,9 +1425,9 @@ end
 
 """
     calculate_ξ(cs, F)
-Calculate the search value `ξ` given cost `cs` and distribution `F`. 
+Calculate the search value `ξ` given cost `cs` and distribution `F`.
 """
-function calculate_ξ(cs, F) 
+function calculate_ξ(cs, F)
     if F == Normal() # Faster way when having std normal, and also structured to be suitable for Autodiff
         function fz_N(cs)
             fzero(ξ -> -ξ + ξ * cdf(F, ξ) + pdf(F, ξ) - cs, -abs(cs) * 10, 100 * std(F))
@@ -1454,7 +1454,7 @@ end
 function calculate_welfare(m::SDCore, data::DataSD, n_sim;
         kwargs...)
 
-    # Input checking 
+    # Input checking
     if isnothing(m.cs) || isnothing(m.cd)
         throw(ArgumentError("Search and discovery costs not calculated. Run `calculate_costs!` first."))
     end
@@ -1480,7 +1480,7 @@ function calculate_welfare_simpaths(m::SDCore, d::DataSD, n_draws; kwargs...)
     search_costs_avg = zeros(Float64, n_sessions)
     discovery_costs_avg = zeros(Float64, n_sessions)
 
-    # Average conditional on click 
+    # Average conditional on click
     welfare_conditional_on_search = zeros(Float64, n_sessions)
     utility_choice_conditional_on_search = zeros(Float64, n_sessions)
     search_costs_conditional_on_search = zeros(Float64, n_sessions)
@@ -1522,23 +1522,23 @@ function calculate_welfare_simpaths(m::SDCore, d::DataSD, n_draws; kwargs...)
             local u = zeros(Float64, max_n_products)
             local zs = zeros(Float64, max_n_products)
             local v = zeros(Float64, max_n_products)
-            local draws_u0, draws_e, draws_v, draws_w, draws_η = 
-                get_empty_vectors_for_shocks(full_draws_for_fixed_seed, max_n_products) 
+            local draws_u0, draws_e, draws_v, draws_w, draws_η =
+                get_empty_vectors_for_shocks(full_draws_for_fixed_seed, max_n_products)
 
-            for i in chunk 
+            for i in chunk
 
                 welfare_i = calculate_welfare_i(d_sim, utility_purchases, m, i, n_draws,
-                    dU0, dE, dV, dW, 
+                    dU0, dE, dV, dW,
                     u, zs, v, zd_h, zs_h,
-                    mapping_characteristics, 
-                    rng, seed, 
+                    mapping_characteristics,
+                    rng, seed,
                     max_n_products,
                     draws_u0, draws_e, draws_v, draws_w, draws_η,
-                    full_draws_for_fixed_seed) 
+                    full_draws_for_fixed_seed)
 
-                # Fill paid costs 
-                fill_welfare_measures!(vectors_to_fill, welfare_i, i) 
-                
+                # Fill paid costs
+                fill_welfare_measures!(vectors_to_fill, welfare_i, i)
+
             end
         end
     end
@@ -1554,11 +1554,11 @@ function calculate_welfare_simpaths(m::SDCore, d::DataSD, n_draws; kwargs...)
                                       discovery_costs_conditional_on_purchase
 
     # drop nans due to no purchases or searches
-    welfare_conditional_on_search = 
+    welfare_conditional_on_search =
         welfare_conditional_on_search[isnan.(welfare_conditional_on_search).==false]
-    utility_choice_conditional_on_search = 
+    utility_choice_conditional_on_search =
         utility_choice_conditional_on_search[isnan.(utility_choice_conditional_on_search).==false]
-    search_costs_conditional_on_search =       
+    search_costs_conditional_on_search =
         search_costs_conditional_on_search[isnan.(search_costs_conditional_on_search).==false]
     discovery_costs_conditional_on_search =
         discovery_costs_conditional_on_search[isnan.(discovery_costs_conditional_on_search).==false]
@@ -1572,7 +1572,7 @@ function calculate_welfare_simpaths(m::SDCore, d::DataSD, n_draws; kwargs...)
         discovery_costs_conditional_on_purchase[isnan.(discovery_costs_conditional_on_purchase).==false]
 
 
-    # Return averages across simulations as Dict 
+    # Return averages across simulations as Dict
     result = Dict()
     result[:average] = Dict(
         :welfare => mean(welfare_avg),
@@ -1592,17 +1592,17 @@ function calculate_welfare_simpaths(m::SDCore, d::DataSD, n_draws; kwargs...)
     return result
 end
 
-function fill_welfare_measures!(vectors_to_fill, welfare_i, i) 
-    welfare_avg, u_avg, cs_avg, cd_avg, 
-    welfare_conditional_on_search, u_conditional_on_search, 
+function fill_welfare_measures!(vectors_to_fill, welfare_i, i)
+    welfare_avg, u_avg, cs_avg, cd_avg,
+    welfare_conditional_on_search, u_conditional_on_search,
     cs_conditional_on_search, cd_conditional_on_search,
-    welfare_conditional_on_purchase, u_conditional_on_purchase, 
+    welfare_conditional_on_purchase, u_conditional_on_purchase,
     cs_conditional_on_purchase, cd_conditional_on_purchase = vectors_to_fill
 
-    (welfare_i_avg, u_i_avg, cs_i_avg, cd_i_avg), 
-    (welfare_i_conditional_on_search, u_i_conditional_on_search, 
+    (welfare_i_avg, u_i_avg, cs_i_avg, cd_i_avg),
+    (welfare_i_conditional_on_search, u_i_conditional_on_search,
      cs_i_conditional_on_search, cd_i_conditional_on_search),
-    (welfare_i_conditional_on_purchase, u_i_conditional_on_purchase, 
+    (welfare_i_conditional_on_purchase, u_i_conditional_on_purchase,
      cs_i_conditional_on_purchase, cd_i_conditional_on_purchase), _ = welfare_i
 
     welfare_avg[i] = welfare_i_avg
@@ -1620,23 +1620,23 @@ function fill_welfare_measures!(vectors_to_fill, welfare_i, i)
     cs_conditional_on_purchase[i] = cs_i_conditional_on_purchase
     cd_conditional_on_purchase[i] = cd_i_conditional_on_purchase
 
-    return nothing 
+    return nothing
 
 end
 
 
 
 function calculate_welfare_i(d, utility_purchases, m, i, n_draws,
-    dU0, dE, dV, dW, 
+    dU0, dE, dV, dW,
     u, zs, v, zd_h, zs_h,
-    mapping_characteristics, 
+    mapping_characteristics,
     rng, seed, max_j,
     draws_u0, draws_e, draws_v, draws_w, draws_η,
-    full_draws_for_fixed_seed) 
+    full_draws_for_fixed_seed)
 
-    u_i = 0.0 
+    u_i = 0.0
     cs_i = 0.0
-    cd_i = 0.0 
+    cd_i = 0.0
 
     u_i_conditional_on_search = 0.0
     cs_i_conditional_on_search = 0.0
@@ -1653,15 +1653,15 @@ function calculate_welfare_i(d, utility_purchases, m, i, n_draws,
     if full_draws_for_fixed_seed
         Random.seed!(rng, seed + i) # set seed for each consumer
     end
-    
+
     @inbounds for dd in 1:n_draws
 
-        # Draw shocks if full evaluation. Otherwise drawn within 
-        # fill_path_i!, which does not draw for all products 
+        # Draw shocks if full evaluation. Otherwise drawn within
+        # fill_path_i!, which does not draw for all products
         if full_draws_for_fixed_seed
             draws_u0[1] = rand(rng, dU0)
             for j in eachindex(draws_e)
-                if j == 1 # skip taking draw for outside option 
+                if j == 1 # skip taking draw for outside option
                     continue
                 end
                 draws_e[j] = rand(rng, dE) # draw e
@@ -1670,19 +1670,19 @@ function calculate_welfare_i(d, utility_purchases, m, i, n_draws,
             end
         end
 
-        # Reset 
+        # Reset
         u .= typemin(Float64)
         zs .= typemin(Float64)
         v .= 0
 
         @views fill_path_i!(d, utility_purchases,
-            m, i, dU0, dE, dV, dW, 
+            m, i, dU0, dE, dV, dW,
             u, zs, v, zd_h, zs_h,
             mapping_characteristics,
-            rng, max_j, 
-            draws_u0, draws_e, draws_v, draws_w, draws_η) 
+            rng, max_j,
+            draws_u0, draws_e, draws_v, draws_w, draws_η)
 
-        u_sim = utility_purchases[i] 
+        u_sim = utility_purchases[i]
 
         last_search = if d.search_paths[i][1] == 0 # no search
             0
@@ -1695,16 +1695,16 @@ function calculate_welfare_i(d, utility_purchases, m, i, n_draws,
         cs_sim = if last_search == 0 # no searches
             0.0
             else
-                @views sum(m.cs[i][s] for s in d.search_paths[i][1:last_search])  # loop over searches and sum up costs 
+                @views sum(m.cs[i][s] for s in d.search_paths[i][1:last_search])  # loop over searches and sum up costs
             end
 
         cd_sim = d.positions[i][d.stop_indices[i]] * m.cd[i]
 
-        u_i += u_sim 
+        u_i += u_sim
         cs_i += cs_sim
         cd_i += cd_sim
 
-        if d.search_paths[i][1] > 0 
+        if d.search_paths[i][1] > 0
             n_sim_with_search += 1
             u_i_conditional_on_search += u_sim
             cs_i_conditional_on_search += cs_sim
@@ -1725,21 +1725,21 @@ function calculate_welfare_i(d, utility_purchases, m, i, n_draws,
 
 
     return (w_i /n_draws, u_i / n_draws, cs_i / n_draws, cd_i / n_draws),
-            (w_i_conditional_on_search / n_sim_with_search, 
-             u_i_conditional_on_search / n_sim_with_search, 
-             cs_i_conditional_on_search / n_sim_with_search, 
+            (w_i_conditional_on_search / n_sim_with_search,
+             u_i_conditional_on_search / n_sim_with_search,
+             cs_i_conditional_on_search / n_sim_with_search,
              cd_i_conditional_on_search / n_sim_with_search),
-            (w_i_conditional_on_purchase / n_sim_with_purchase, 
+            (w_i_conditional_on_purchase / n_sim_with_purchase,
              u_i_conditional_on_purchase / n_sim_with_purchase,
              cs_i_conditional_on_purchase / n_sim_with_purchase,
                 cd_i_conditional_on_purchase / n_sim_with_purchase),
-                (n_sim_with_purchase / n_draws, ) 
+                (n_sim_with_purchase / n_draws, )
 
 end
 
 
 function get_empty_vectors_for_shocks(full_draws_for_fixed_seed, max_n_products)
-    
+
     draws_u0, draws_e, draws_v, draws_w, draws_η = nothing, nothing, nothing, nothing, nothing
 
     if full_draws_for_fixed_seed
@@ -1752,10 +1752,10 @@ function get_empty_vectors_for_shocks(full_draws_for_fixed_seed, max_n_products)
     return draws_u0, draws_e, draws_v, draws_w, draws_η
 end
 
-# Revenues 
+# Revenues
 function calculate_revenues(m::SDCore, d::DataSD, kprice, n_draws; kwargs...)
 
-    # Extract and set seed 
+    # Extract and set seed
     rng = get_rng(kwargs)
     seed = get(kwargs, :seed, 0)
 
@@ -1768,7 +1768,7 @@ function calculate_revenues(m::SDCore, d::DataSD, kprice, n_draws; kwargs...)
     mapping_characteristics = construct_mapping_characteristics(m, d)
 
 
-    # Iterate over sessions and fill in welfare measures 
+    # Iterate over sessions and fill in welfare measures
     d_sim = deepcopy(d)
     d_sim.search_paths = [zeros(Int, length(d_sim.product_ids[i])) for i in eachindex(d_sim)]
     d_sim.stop_indices = [0 for i in eachindex(d_sim.product_ids)]
@@ -1788,19 +1788,19 @@ function calculate_revenues(m::SDCore, d::DataSD, kprice, n_draws; kwargs...)
             local u = zeros(Float64, max_n_products)
             local zs = zeros(Float64, max_n_products)
             local v = zeros(Float64, max_n_products)
-            local draws_u0, draws_e, draws_v, draws_w, draws_η = 
-                get_empty_vectors_for_shocks(full_draws_for_fixed_seed, max_n_products) 
+            local draws_u0, draws_e, draws_v, draws_w, draws_η =
+                get_empty_vectors_for_shocks(full_draws_for_fixed_seed, max_n_products)
 
-            for i in chunk 
+            for i in chunk
 
                 rev, dem = calculate_revenues_i(d_sim, utility_purchases, m, kprice, i, n_draws,
-                        dU0, dE, dV, dW, 
+                        dU0, dE, dV, dW,
                         u, zs, v, zd_h, zs_h,
-                        mapping_characteristics, 
-                        rng, seed, 
+                        mapping_characteristics,
+                        rng, seed,
                         max_n_products,
                         draws_u0, draws_e, draws_v, draws_w, draws_η,
-                        full_draws_for_fixed_seed) 
+                        full_draws_for_fixed_seed)
 
                 revenues[i] = rev
                 demands[i] = dem
@@ -1816,12 +1816,12 @@ function calculate_revenues(m::SDCore, d::DataSD, kprice, n_draws; kwargs...)
 end
 
 function calculate_revenues_i(d::DataSD, utility_purchases, m::SDCore, kprice, i, n_draws,
-    dU0, dE, dV, dW, 
+    dU0, dE, dV, dW,
     u, zs, v, zd_h, zs_h,
-    mapping_characteristics, 
+    mapping_characteristics,
     rng, seed, max_j,
     draws_u0, draws_e, draws_v, draws_w, draws_η,
-    full_draws_for_fixed_seed) 
+    full_draws_for_fixed_seed)
 
     revenues = 0.0
     demand = 0.0
@@ -1829,41 +1829,41 @@ function calculate_revenues_i(d::DataSD, utility_purchases, m::SDCore, kprice, i
     if full_draws_for_fixed_seed
         Random.seed!(rng, seed + i) # set seed for each consumer
     end
-    
+
     @inbounds for dd in 1:n_draws
 
-        # Draw shocks if full evaluation. Otherwise drawn within 
-        # fill_path_i!, which does not draw for all products 
+        # Draw shocks if full evaluation. Otherwise drawn within
+        # fill_path_i!, which does not draw for all products
         if full_draws_for_fixed_seed
             draws_u0[1] = rand(rng, dU0)
             for j in eachindex(draws_e)
-                if j == 1 # skip taking draw for outside option 
+                if j == 1 # skip taking draw for outside option
                     continue
                 end
                 draws_e[j] = rand(rng, dE) # draw e
                 draws_v[j] = rand(rng, dV) # draw v
                 draws_w[j] = rand(rng, dW) # draw w
             end
-        elseif (isnothing(draws_u0) && isnothing(draws_e) && 
-                isnothing(draws_v) && isnothing(draws_w) ) == false 
+        elseif (isnothing(draws_u0) && isnothing(draws_e) &&
+                isnothing(draws_v) && isnothing(draws_w) ) == false
             throw(ArgumentError("Draws need to be provided if not full evaluation."))
         end
 
-        # Reset 
+        # Reset
         u .= typemin(Float64)
         zs .= typemin(Float64)
         v .= 0
 
         @views fill_path_i!(d, utility_purchases,
-            m, i, dU0, dE, dV, dW, 
+            m, i, dU0, dE, dV, dW,
             u, zs, v, zd_h, zs_h,
             mapping_characteristics,
-            rng, max_j, 
-            draws_u0, draws_e, draws_v, draws_w, draws_η) 
+            rng, max_j,
+            draws_u0, draws_e, draws_v, draws_w, draws_η)
 
         # Compute revenues and demand
         j_chosen = d.purchase_indices[i]
-        if j_chosen > 1 # j_chosen=1 is outside option -> no purchase 
+        if j_chosen > 1 # j_chosen=1 is outside option -> no purchase
             demand += 1
             revenues += d.product_characteristics[i][j_chosen, kprice]
         end
@@ -1873,10 +1873,10 @@ function calculate_revenues_i(d::DataSD, utility_purchases, m::SDCore, kprice, i
     return revenues / n_draws, demand / n_draws
 end
 
-# Fit evaluations 
+# Fit evaluations
 function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
 
-    # Set seed 
+    # Set seed
     rng = get_rng(kwargs)
 
     # Initialize empty arrays (otherwise error of not found)
@@ -1884,28 +1884,28 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
     purchase_stats = []
     stop_probabilities = []
 
-    # Track statistics across simulations to get percentiles 
+    # Track statistics across simulations to get percentiles
     click_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
     purchase_probability_per_pos = zeros(Float64, maximum(length.(data.product_ids)), n_sim)
 
     conditional_on_search = get(kwargs, :conditional_on_search, false)
 
-    # Generate data from new seed 
+    # Generate data from new seed
     sim_seeds = rand(rng, 1:1000000, n_sim)
 
     n_sim_without_nan_purchase = 0
 
-    d_sim = deepcopy(data) 
+    d_sim = deepcopy(data)
     utility_purchases = zeros(Float64, length(data))
 
     for s in 1:n_sim
 
-        # note: generating unconditional data is much faster than conditional data. So we generate unconditional data and 
+        # note: generating unconditional data is much faster than conditional data. So we generate unconditional data and
         # update the statistics to condition on clicks, using that, e.g., P(click pos 1 | click) = P(click pos 0) / P(click)
         generate_search_paths!(d_sim, utility_purchases, m; kwargs..., seed = sim_seeds[s],
-            conditional_on_search, compute_min_discover_indices = false) 
+            conditional_on_search, compute_min_discover_indices = false)
 
-        # Compute fit statistics 
+        # Compute fit statistics
         click_stats_i, purchase_stats_i, stop_probability_i = calculate_statistics_from_data(d_sim)
 
         # Fill in statistics
@@ -1918,7 +1918,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
             stop_probabilities += stop_probability_i
 
             # Special case for purchases: if no purchases in entire dataset, we get NaN for characteristics purchased and position (divided by n_purchases)
-            # In this case, we do not use statistic for where purchases are made and characteristics purchased 
+            # In this case, we do not use statistic for where purchases are made and characteristics purchased
 
             if isnan(purchase_stats[4]) == false && isnan(purchase_stats_i[4]) == false
                 purchase_stats += purchase_stats_i
@@ -1938,17 +1938,17 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
         purchase_probability_per_pos[:, s] = purchase_stats_i[2]
     end
 
-    # Compute average 
+    # Compute average
     click_stats_sim = click_stats ./ n_sim
 
     purchase_stats_sim = vcat(
         purchase_stats[1:2] ./ n_sim, purchase_stats[3:4] ./ n_sim_without_nan_purchase)
     stop_probablities_sim = stop_probabilities ./ n_sim
 
-    # Get stats for data 
+    # Get stats for data
     click_stats_data, purchase_stats_data, stop_probabilities_data = calculate_statistics_from_data(data)
 
-    # Create dictionaries with different stats 
+    # Create dictionaries with different stats
     click_stats_sim = Dict(:no_clicks_per_session => click_stats_sim[1],
         :click_probability_per_position => click_stats_sim[2],
         :probability_at_least_one_click_in_session => click_stats_sim[3],
@@ -1970,7 +1970,7 @@ function calculate_fit_measures(m::SDCore, data::DataSD, n_sim; kwargs...)
         :characteristics_purchased => purchase_stats_data[3],
         :mean_position_purchased => purchase_stats_data[4])
 
-    # Compute lower/upper bound based on given percentile 
+    # Compute lower/upper bound based on given percentile
     percentile_across_sims = get(kwargs, :percentile, 0.95)
     sort!(click_probability_per_pos, dims = 2)
     sort!(purchase_probability_per_pos, dims = 2)
@@ -1994,7 +1994,7 @@ end
 
 function calculate_statistics_from_data(d::DataSD)
 
-    # Set up click statistics that will be filled in by looping over sessions 
+    # Set up click statistics that will be filled in by looping over sessions
     maximum_n_prod = maximum(length.(d.product_ids))
     clicks_per_pos = zeros(Int, maximum_n_prod)
     n_click_conditional_on_search = 0
@@ -2023,7 +2023,7 @@ function calculate_statistics_from_data(d::DataSD)
                 clicked = true
                 clicks_per_pos[j] += 1
                 characteristics_clicked .+= d.product_characteristics[i][
-                    j, 1:(end - with_outside_option)] # if outside option, last characteristic is dummy 
+                    j, 1:(end - with_outside_option)] # if outside option, last characteristic is dummy
                 n_clicks_i += 1
                 position_click += d.positions[i][j]
             end
@@ -2072,59 +2072,59 @@ function calculate_statistics_from_data(d::DataSD)
     purchase_stats = [purchase_probability, purchase_probability_per_pos,
         characteristics_purchased, mean_position_purchased]
 
-    # Get stopping probabilities mean 
+    # Get stopping probabilities mean
     stop_probabilities /= n_ses
 
     return click_stats, purchase_stats, stop_probabilities
 end
 
-# Estimation 
+# Estimation
 function prepare_arguments_likelihood(
         m::M, e::Estimator, d::DataSD; kwargs...) where {M <: SDModel}
 
-    # Get functional forms 
+    # Get functional forms
     zdfun = get_functional_form(m.zdfun)
     zsfun = get_functional_form(m.zsfun)
 
-    # get data arguments 
+    # get data arguments
     data_arguments = prepare_data_arguments_likelihood(d)
 
-    # Keep fixed seed: either random or provided by kwargs 
+    # Keep fixed seed: either random or provided by kwargs
     rng = get_rng(kwargs)
     seed = get(kwargs, :seed, rand(1:(10^9)))
 
     # Mapping characteristics to parameters
     mapping_characteristics = construct_mapping_characteristics(m, d; kwargs...)
 
-    # Draws for unobserved heterogeneity 
-    ni_pts_whts = if has_unobserved_heterogeneity(m) 
-        prepare_draws_unobserved_heterogeneity(m, 
+    # Draws for unobserved heterogeneity
+    ni_pts_whts = if has_unobserved_heterogeneity(m)
+        prepare_draws_unobserved_heterogeneity(m,
             e.numerical_integration_method_heterogeneity, d, rng)
     else
         (nothing, nothing)
     end
 
-    return data_arguments..., zdfun, zsfun, rng, seed, 
+    return data_arguments..., zdfun, zsfun, rng, seed,
         mapping_characteristics, ni_pts_whts
 end
 
-function prepare_cache(d) 
+function prepare_cache(d)
     max_n_products = maximum(length.(d.product_ids))
 
     # Create cache to store xβ, xγ, xκ for each product (avoids )
-    xβγ = DiffCache(zeros(max_n_products)) 
+    xβγ = DiffCache(zeros(max_n_products))
     xβκ = DiffCache(zeros(max_n_products))
 
     return (xβγ, xβκ)
 end
 
-function prepare_draws_unobserved_heterogeneity(m::M, ni::NIMethod, 
+function prepare_draws_unobserved_heterogeneity(m::M, ni::NIMethod,
         d::D, rng) where {M <: SDModel, D <: DataSD}
 
     n_dims = length(m.heterogeneity.parameters_with_unobserved_heterogeneity)
-    n_cons = get_n_consumers(d)     
+    n_cons = get_n_consumers(d)
 
-    return generate_ni_points(n_dims, n_cons, ni, rng) 
+    return generate_ni_points(n_dims, n_cons, ni, rng)
 
 end
 
@@ -2191,7 +2191,7 @@ end
 function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
         args...; kwargs...) where {M <: SDModel, T <: Real}
 
-    # Extract parameters implied by θ 
+    # Extract parameters implied by θ
     β, γ, κ, Ξ, ρ, ξ, ξρ, ind_last_par = extract_parameters(model, θ; kwargs...)
     ψ, U, ind_last_par = extract_heterogeneity_parameters(model, θ, ind_last_par; kwargs...)
     dE, dV, dU0, dW, _= extract_distributions(model, θ, ind_last_par; kwargs...)
@@ -2214,24 +2214,24 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
         println("U = $U")
     end
 
-    # If ρ is larger than zero, return extremly small number for optimization to try other 
+    # If ρ is larger than zero, return extremly small number for optimization to try other
     # values
     return_ind_last_par = get(kwargs, :return_ind_last_par, false)
     if !isnothing(ρ) && ρ[1] > 0 && !return_ind_last_par
         return -T(MAX_NUMERICAL)
-    elseif !isnothing(ρ) && ρ[1] > 0 
+    elseif !isnothing(ρ) && ρ[1] > 0
         return -T(MAX_NUMERICAL), ind_last_par
     end
 
 
-    tasks = if has_unobserved_heterogeneity(model) 
+    tasks = if has_unobserved_heterogeneity(model)
                 @views construct_tasks_heterogeneous(
-                    model, estimator, data, 
+                    model, estimator, data,
                     β, γ, κ, Ξ, ρ, ξ, ξρ, ψ, U, dE, dV, dU0, dW,
                     args...)
             else
                 @views construct_tasks_homogeneous(
-                    model, estimator, data, 
+                    model, estimator, data,
                     β, γ, κ, Ξ, ρ, ξ, ξρ, ψ, dE, dV, dU0, dW,
                     args...)
 
@@ -2250,11 +2250,11 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
         println("LL2 = $LL2")
     end
 
-    if return_ind_last_par 
+    if return_ind_last_par
         # prevent Inf values, helps AD
         if isinf(LL) || isnan(LL) || LL >= 0
             return -T(MAX_NUMERICAL), ind_last_par
-        elseif estimator.conditional_on_search && LL2 < -7.0 * length(data) # if P(click) < 0.001 
+        elseif estimator.conditional_on_search && LL2 < -7.0 * length(data) # if P(click) < 0.001
             return -T(MAX_NUMERICAL), ind_last_par
         else
             return LL::T, ind_last_par
@@ -2262,7 +2262,7 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
     end
 
     # prevent Inf values, helps AD
-    if isinf(LL) || isnan(LL) || LL >= 0 
+    if isinf(LL) || isnan(LL) || LL >= 0
         return -T(MAX_NUMERICAL)
     elseif estimator.conditional_on_search && LL2 < -7.0 * length(data) # if P(click) < 0.001, so logP(click) < -6.9
         return -T(MAX_NUMERICAL)
@@ -2271,35 +2271,35 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
     end
 end
 
-function construct_tasks_homogeneous(model::M, estimator::SMLE, data::DataSD, 
+function construct_tasks_homogeneous(model::M, estimator::SMLE, data::DataSD,
     β::Vector{T}, γ, κ, Ξ, ρ, ξ, ξρ, ψ, dE, dV, dU0, dW,
     args...) where {M <: SDModel, T <: Real}
 
-    # Extract arguments 
-    all_possible_positions, has_search, has_purchase, zdfun, zsfun, rng, 
+    # Extract arguments
+    all_possible_positions, has_search, has_purchase, zdfun, zsfun, rng,
         seed, mapping_characteristics, _ = args
 
-    # Reset seed 
+    # Reset seed
     Random.seed!(rng, seed)
 
     # Create pre-allocated arrays for search and discovery values (same for all consumers by default)
     zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
     zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
 
-    # Define chunks for parallelization. Each chunk is a range of sessions for which a single task 
-    # calculates and sums up the likelihood. Looping over sessions as no need to keep track over 
+    # Define chunks for parallelization. Each chunk is a range of sessions for which a single task
+    # calculates and sums up the likelihood. Looping over sessions as no need to keep track over
     # consumers.
-    _, data_chunks = get_chunks(length(data)) 
+    _, data_chunks = get_chunks(length(data))
 
-    # Extract number of draws 
+    # Extract number of draws
     n_draws = estimator.numerical_integration_method.n_draws
 
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
         Threads.@spawn begin
 
-            # Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer 
-            local logL = zeros(T, 2) # sums up log likelihood across sessions 
+            # Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer
+            local logL = zeros(T, 2) # sums up log likelihood across sessions
 
             # Pre-allocate arrays for heterogeneity
             local zd_hi = isnothing(zdfun) ? nothing : copy(zd_h)
@@ -2309,29 +2309,29 @@ function construct_tasks_homogeneous(model::M, estimator::SMLE, data::DataSD,
             local κi = copy(κ)
             local cache = prepare_cache(data) # cache for xβ, xγ, xκ
 
-            for i in chunk  # Iterate over sessions in chunk                 
-                    
+            for i in chunk  # Iterate over sessions in chunk
+
                 # Do inner likelihood calculations based on pre-allocated arrays
                 if has_search[i] == 0 # Case 1: no clicks (implies also no purchase)
                     logL[1] += lik_no_searches(
-                        model, zd_hi, zs_hi, βi, γi, κi, dV, dU0, mapping_characteristics, 
+                        model, zd_hi, zs_hi, βi, γi, κi, dV, dU0, mapping_characteristics,
                         data, i, n_draws, false, rng, true,
                         cache)
-                elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase 
+                elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase
                     logL[1] += lik_search_no_purchase(
-                        model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics, 
+                        model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
                         data, i, n_draws, rng, true,
                         cache)
-                else # Case 3: Purchase a product 
+                else # Case 3: Purchase a product
                     logL[1] += lik_purchase(
-                        model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics, 
+                        model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
                         data, i, n_draws, rng, true,
                         cache)
                 end
 
                 if estimator.conditional_on_search
                     logL[2] += lik_no_searches(
-                        model, zd_h, zs_h, βi, γi, κi, dV, dU0, mapping_characteristics, 
+                        model, zd_h, zs_h, βi, γi, κi, dV, dU0, mapping_characteristics,
                         data, i, n_draws, true, rng, true,
                         cache)
                 end
@@ -2345,39 +2345,39 @@ function construct_tasks_homogeneous(model::M, estimator::SMLE, data::DataSD,
 end
 
 
-function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD, 
+function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
     β::Vector{T}, γ::Vector{T}, κ::Vector{T}, Ξ, ρ, ξ, ξρ, ψ, U, dE, dV, dU0, dW,
     args...) where {M <: SDModel, T <: Real}
 
-    # Extract arguments 
+    # Extract arguments
     all_possible_positions, has_search, has_purchase, zdfun, zsfun, rng, seed,
         mapping_characteristics, ni_pts_whts = args
     ni_points, ni_weights = ni_pts_whts
 
-    # Reset seed 
+    # Reset seed
     Random.seed!(rng, seed)
 
     # Create pre-allocated arrays for search and discovery values (same for all consumers by default)
     zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
     zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
 
-    # Define chunks for parallelization. Each chunk is a range of consumers for which 
-    # a single calculates and sums up the likelihood. For each consumer, we integrate out 
-    # the unobserved heterogeneity 
+    # Define chunks for parallelization. Each chunk is a range of consumers for which
+    # a single calculates and sums up the likelihood. For each consumer, we integrate out
+    # the unobserved heterogeneity
     _, data_chunks = get_chunks(get_n_consumers(data))  # last consumer id is number of consumers
 
-    # Extract number of draws 
+    # Extract number of draws
     n_draws = estimator.numerical_integration_method.n_draws
 
     # Create and define tasks for each chunk
     tasks = map(data_chunks) do chunk
         Threads.@spawn begin
 
-            # Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer 
-            local logL = zeros(T, 2)    # sums up log likelihood across consumers 
+            # Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer
+            local logL = zeros(T, 2)    # sums up log likelihood across consumers
                                         # and heterogeneity draws draws for each consumer
             local Linner = ones(T, 2)   # product of likelihoods for each consumer across sessions given draw
-            local Louter = zeros(T, 2)   # sum across (weighted) heterogeneity draws 
+            local Louter = zeros(T, 2)   # sum across (weighted) heterogeneity draws
 
             # Pre-allocate arrays for heterogeneity
             local zd_hi = isnothing(zdfun) ? nothing : copy(zd_h)
@@ -2389,20 +2389,20 @@ function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
             local ξρi = isnothing(ξρ) ? nothing : copy(ξρ)
             local ni_points_i = zeros(T, size(ni_points[1])) # pre-allocate draws for each consumer
 
-            for cons_id in chunk  # Iterate over consumers in chunk 
+            for cons_id in chunk  # Iterate over consumers in chunk
                 si = searchsorted(data.consumer_ids, cons_id) # get index of sessions belonging to consumer
 
                 Louter .= 0 # reset likelihood for this consumer
-            
-                mul!(ni_points_i, U, ni_points[cons_id]) # adjust draws with covariance U * draws 
+
+                mul!(ni_points_i, U, ni_points[cons_id]) # adjust draws with covariance U * draws
 
                 for di in axes(ni_points[cons_id], 2) # iterate over draws for this consumer
 
                     shocks = @views ni_points_i[:, di]
                     Ξi, ξi = add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_hi, zs_hi, model,
-                        β, γ, Ξ, ρ, ξ, ξρ, shocks, all_possible_positions, zdfun, zsfun) 
+                        β, γ, Ξ, ρ, ξ, ξρ, shocks, all_possible_positions, zdfun, zsfun)
 
-                    # Update discovery and search values in case are reals 
+                    # Update discovery and search values in case are reals
                     # (rather than arrays that are updated in place)
                     if isnothing(zdfun)
                         zd_hi = Ξi
@@ -2410,28 +2410,28 @@ function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
                     if isnothing(zsfun)
                         zs_hi = ξi
                     end
-                    
+
                     if !isnothing(ρi) && ρi[1] > 0
                         Linner[1] += -T(MAX_NUMERICAL)
                         continue
                     end
 
-                    # Reset likelihood for draw 
+                    # Reset likelihood for draw
                     Linner .= 1
 
-                    for i in si # iterate over sessions of consumer 
-                    
-                        # Update based on session characteristics, which may differ for same consumer 
+                    for i in si # iterate over sessions of consumer
+
+                        # Update based on session characteristics, which may differ for same consumer
                         if has_observed_heterogeneity(model)
                             # Update search values, discovery values, and preference parameters for each consumer
 
-                            Ξi, ξi = add_observed_shifters_parameters!(βi, γi, κi, zd_hi, zs_hi, model, 
-                                Ξi, ρi, ξi, ξρi, ψ, 
+                            Ξi, ξi = add_observed_shifters_parameters!(βi, γi, κi, zd_hi, zs_hi, model,
+                                Ξi, ρi, ξi, ξρi, ψ,
                                 zdfun, zsfun,
                                 data.session_characteristics[i],
                                 all_possible_positions)
 
-                            # Update discovery and search values in case are reals 
+                            # Update discovery and search values in case are reals
                             # (rather than arrays that are updated in place)
                             if isnothing(zdfun)
                                 zd_hi = Ξi
@@ -2439,7 +2439,7 @@ function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
                             if isnothing(zsfun)
                                 zs_hi = ξi
                             end
-                            
+
                             if !isnothing(ρi) && ρi[1] > 0
                                 Linner[1] += -T(MAX_NUMERICAL)
                                 continue
@@ -2447,24 +2447,24 @@ function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
                         end
 
                         # Do inner likelihood calculations based on pre-allocated arrays
-                        return_log = false 
+                        return_log = false
                         if has_search[i] == 0 # Case 1: no clicks (implies also no purchase)
                             Linner[1] *= lik_no_searches(
-                                model, zd_hi, zs_hi, βi, γi, κi, dV, dU0, mapping_characteristics, 
+                                model, zd_hi, zs_hi, βi, γi, κi, dV, dU0, mapping_characteristics,
                                 data, i, n_draws, false, rng, return_log)
-                        elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase 
+                        elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase
                             Linner[1] *=lik_search_no_purchase(
-                                model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics, 
+                                model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
                                 data, i, n_draws, rng, return_log)
-                        else # Case 3: Purchase a product 
+                        else # Case 3: Purchase a product
                             Linner[1] *= lik_purchase(
-                                model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics, 
+                                model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
                                 data, i, n_draws, rng, return_log)
                         end
 
                         if estimator.conditional_on_search
                             Linner[2] *= lik_no_searches(
-                                            model, zd_h, zs_h, βi, γi, κi, dV, dU0, mapping_characteristics, 
+                                            model, zd_h, zs_h, βi, γi, κi, dV, dU0, mapping_characteristics,
                                             data, i, n_draws, true, rng, return_log)
                         end
                     end
@@ -2484,9 +2484,9 @@ function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
     return tasks
 end
 
-function unpack_cache(cache, β) 
+function unpack_cache(cache, β)
 
-    xβγ = get_tmp(cache[1], β) 
+    xβγ = get_tmp(cache[1], β)
     xβκ = get_tmp(cache[2], β)
 
     return xβγ, xβκ
@@ -2495,19 +2495,19 @@ end
 function unpack_cache(cache::Union{Tuple{Vector{T}, Vector{T}},
                                     Vector{Vector{T}}}, β) where {T <: Real}
 
-    xβγ = get_tmp(cache[1], β) 
+    xβγ = get_tmp(cache[1], β)
     xβκ = get_tmp(cache[2], β)
 
     return xβγ, xβκ
 end
 
 
-# Parameter handling 
+# Parameter handling
 function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SDModel, T <: Real}
     n_ρ = length(m.ρ)
     n_ξρ = length(m.ξρ)
 
-    # track where in parameter vector we are and move it. 
+    # track where in parameter vector we are and move it.
     ind_current = 1
 
     # Default: estimate all parameters
@@ -2546,16 +2546,16 @@ function extract_parameters(m::M, θ::Vector{T}; kwargs...) where {M <: SDModel,
     # If keyword supplied, don't estimate parameters indicated in fixed_parameters
     fixed_parameters = get(kwargs, :fixed_parameters, nothing)
 
-    β = T.(m.β) 
-    if :β ∉ fixed_parameters 
-        n_β = length(m.β) 
+    β = T.(m.β)
+    if :β ∉ fixed_parameters
+        n_β = length(m.β)
         for i in 1:n_β
             β[i] = θ[ind_current]
             ind_current += 1
         end
         β[end] = θ[ind_current] # last parameter is the outside option
         ind_current += 1
-    end 
+    end
 
     γ = T.(m.γ)
     if :γ ∉ fixed_parameters
@@ -2612,7 +2612,7 @@ end
 
 function construct_model_from_pars(θ::Vector{T}, m::M; kwargs...) where {M <: SDModel, T <: Real}
 
-    # Extract parameters from vector, some may be fixed through kwargs 
+    # Extract parameters from vector, some may be fixed through kwargs
     β, γ, κ, Ξ, ρ, ξ, ξρ, ind_last_par = extract_parameters(m, θ; kwargs...)
     ψ, U, ind_last_par = extract_heterogeneity_parameters(m, θ, ind_last_par; kwargs...)
     dE, dV, dU0, dW, ind_last_par= extract_distributions(m, θ, ind_last_par; kwargs...)
@@ -2636,13 +2636,13 @@ function construct_model_from_pars(θ::Vector{T}, m::M; kwargs...) where {M <: S
 end
 
 """
-Construct shock distributions using variances in vector θ. Starts from index c. 
+Construct shock distributions using variances in vector θ. Starts from index c.
 """
 function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SDModel, T <: Real}
 
-    # Default: don't estimate any variance 
+    # Default: don't estimate any variance
     if !haskey(kwargs, :estimation_shock_variances)
-        dE = m.dE # convoluted way to allow for distributions other than Normal 
+        dE = m.dE # convoluted way to allow for distributions other than Normal
         dV = m.dV
         dU0 = m.dU0
         dW = typeof(m) <: SDCore ? m.dW : nothing
@@ -2681,12 +2681,12 @@ function extract_distributions(m::M, θ::Vector{T}, c; kwargs...) where {M <: SD
 
     dW = typeof(m) <: SDCore ? m.dW : nothing # dW currently cannot be estimated
 
-    return dE, dV, dU0, dW, c 
+    return dE, dV, dU0, dW, c
 end
 
 function add_distribution_parameters(m::M, θ, kwargs) where {M <: SDModel}
 
-    # Default: don't estimate any variance 
+    # Default: don't estimate any variance
     if !haskey(kwargs, :estimation_shock_variances)
         return θ
     end
@@ -2698,7 +2698,7 @@ function add_distribution_parameters(m::M, θ, kwargs) where {M <: SDModel}
     if :σ_dV ∈ estimation_shock_distributions
         θ = vcat(θ, params(m.dV)[end])
     end
-    if :σ_dU0 ∈ estimation_shock_distributions 
+    if :σ_dU0 ∈ estimation_shock_distributions
         θ = vcat(θ, params(m.dU0)[2:end]...)
     end
 
@@ -2716,13 +2716,13 @@ function fill_indices_min_discover!(d::DataSD)
     return nothing
 end
 
-function add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_h, zs_h, m::M, 
+function add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_h, zs_h, m::M,
         β, γ, Ξ, ρ, ξ::T, ξρ, ni_points,
         all_possible_positions,
         zdfun, zsfun) where {M <: SDModel, T <: Real}
 
-    # Reset 
-    βi .= β      
+    # Reset
+    βi .= β
     γi .= γ
 
     if !isnothing(ρi)
@@ -2730,65 +2730,65 @@ function add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_h, zs_h, m::M,
     end
     if !isnothing(ξρ)
         ξρi .= ξρ
-    end 
-    
+    end
+
     Ξi = Ξ
     ξi = ξ
 
     hs = m.heterogeneity._unobserved_hs
-    
-    c = 1 
+
+    c = 1
 
     for k in hs.β
-        βi[k] = βi[k] + ni_points[c] 
-        c += 1 
+        βi[k] = βi[k] + ni_points[c]
+        c += 1
     end
 
     for k in hs.γ
-        γi[k] = γi[k] + ni_points[c] 
+        γi[k] = γi[k] + ni_points[c]
         c += 1
     end
     for k in hs.κ
-        κi[k] = κi[k] + ni_points[c] 
+        κi[k] = κi[k] + ni_points[c]
         c += 1
     end
-    
+
     if hs.Ξ
-        Ξi = Ξi + ni_points[c] 
-        c += 1 
+        Ξi = Ξi + ni_points[c]
+        c += 1
     end
 
-    if !isnothing(ρi) # in WM model, returns ρ as nothing when extracting parameters 
+    if !isnothing(ρi) # in WM model, returns ρ as nothing when extracting parameters
         for k in hs.ρ
-            ρi[k] = ρi[k] + ni_points[c] 
-            c += 1 
+            ρi[k] = ρi[k] + ni_points[c]
+            c += 1
         end
     end
 
     if hs.ξ
-        ξi = ξi + ni_points[c] 
-        c += 1 
+        ξi = ξi + ni_points[c]
+        c += 1
     end
 
-    if isnothing(ρi) # in WM model, use ρ as only parameter 
+    if isnothing(ρi) # in WM model, use ρ as only parameter
         for k in hs.ρ
-            ξρi[k] = ξρi[k] + ni_points[c] 
-            c += 1 
+            ξρi[k] = ξρi[k] + ni_points[c]
+            c += 1
         end
     else
         for k in hs.ξρ
-            ξρi[k] = ξρi[k] + ni_points[c] 
-            c += 1 
+            ξρi[k] = ξρi[k] + ni_points[c]
+            c += 1
         end
     end
 
-    if has_observed_heterogeneity(m) == false 
-        # with observed heterogeneity, updated later on and can be skipped 
-        if !isnothing(zdfun) 
+    if has_observed_heterogeneity(m) == false
+        # with observed heterogeneity, updated later on and can be skipped
+        if !isnothing(zdfun)
             update_reservation_values_across_positions!(
             zd_h, Ξi, ρi, zdfun, all_possible_positions) # update discovery values
         end
-        if !isnothing(zsfun) 
+        if !isnothing(zsfun)
             update_reservation_values_across_positions!(
                 zs_h, ξi, ξρi, zsfun, all_possible_positions) # update search values
         end
@@ -2797,10 +2797,10 @@ function add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_h, zs_h, m::M,
     return Ξi, ξi
 end
 
-function add_observed_shifters_parameters!(βi, γi, κi, zd_h, zs_h, m::M, 
-        Ξ, ρ, ξ::T, ξρ, ψ, 
-        zdfun, zsfun, 
-        session_characteristics, 
+function add_observed_shifters_parameters!(βi, γi, κi, zd_h, zs_h, m::M,
+        Ξ, ρ, ξ::T, ξρ, ψ,
+        zdfun, zsfun,
+        session_characteristics,
         all_possible_positions) where {M <: SDModel, T <: Real}
 
     Ξi = Ξ
@@ -2809,12 +2809,12 @@ function add_observed_shifters_parameters!(βi, γi, κi, zd_h, zs_h, m::M,
     ξρi = ξρ
 
     heterogeneity_specification = m.heterogeneity._observed_hs
-    
-    c = 1 
+
+    c = 1
 
     for k in heterogeneity_specification.β
         βi[k] = βi[k] + session_characteristics' * ψ[c]
-        c += 1 
+        c += 1
     end
 
     for k in heterogeneity_specification.γ
@@ -2829,38 +2829,38 @@ function add_observed_shifters_parameters!(βi, γi, κi, zd_h, zs_h, m::M,
 
     if heterogeneity_specification.Ξ
         Ξi = Ξi + session_characteristics' * ψ[c]
-        c += 1 
+        c += 1
     end
 
-    if !isnothing(ρi) # in WM model, returns ρ as nothing when extracting parameters 
+    if !isnothing(ρi) # in WM model, returns ρ as nothing when extracting parameters
         for k in heterogeneity_specification.ρ
             ρi[k] = ρi[k] + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
     end
 
     if heterogeneity_specification.ξ
         ξi = ξi + session_characteristics' * ψ[c]
-        c += 1 
+        c += 1
     end
 
-    if isnothing(ρi) # in WM model, use ρ as only parameter 
+    if isnothing(ρi) # in WM model, use ρ as only parameter
         for k in heterogeneity_specification.ρ
             ξρi[k] = ξρi[k] + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
     else
         for k in heterogeneity_specification.ξρ
             ξρi[k] = ξρi[k] + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
     end
 
-    if !isnothing(zdfun) 
+    if !isnothing(zdfun)
         update_reservation_values_across_positions!(
         zd_h, Ξi, ρi, zdfun, all_possible_positions) # update discovery values
     end
-    if !isnothing(zsfun) 
+    if !isnothing(zsfun)
         update_reservation_values_across_positions!(
             zs_h, ξi, ξρi, zsfun, all_possible_positions) # update search values
     end
@@ -2878,7 +2878,7 @@ function construct_individual_parameters(model::M, i, data::DataSD, draws_η)  w
     end
 
     βi = copy(β)
-    γi = isnothing(γ) ? γ : copy(γ) 
+    γi = isnothing(γ) ? γ : copy(γ)
     κi = isnothing(κ) ? κ : copy(κ)
     Ξi = Ξ
     ρi = copy(ρ)
@@ -2890,10 +2890,10 @@ function construct_individual_parameters(model::M, i, data::DataSD, draws_η)  w
         observed_hs = model.heterogeneity._observed_hs
         session_characteristics = @views data.session_characteristics[i]
 
-        c = 1 
+        c = 1
         for k in observed_hs.β
             βi[k] = βi[k] + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
 
         for k in observed_hs.γ
@@ -2908,37 +2908,37 @@ function construct_individual_parameters(model::M, i, data::DataSD, draws_η)  w
 
         if observed_hs.Ξ
             Ξi = Ξi + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
 
         for k in observed_hs.ρ
-            if k == 1 && typeof(ρi) <: Real # if not vector, cannot replace with ρi[k] 
+            if k == 1 && typeof(ρi) <: Real # if not vector, cannot replace with ρi[k]
                 ρi = ρi + session_characteristics' * ψ[c]
             else
                 ρi[k] = ρi[k] + session_characteristics' * ψ[c]
             end
-            c += 1 
+            c += 1
         end
 
         if observed_hs.ξ
             ξi = ξi + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
 
         for k in observed_hs.ξρ
             ξρi[k] = ξρi[k] + session_characteristics' * ψ[c]
-            c += 1 
+            c += 1
         end
     end
 
     if has_unobserved_heterogeneity(model)
         unobserved_hs = model.heterogeneity._unobserved_hs
         draws_ηi = @views draws_η[data.consumer_ids[i], :]
-        
-        c = 1 
+
+        c = 1
         for k in unobserved_hs.β
             βi[k] = βi[k] + draws_ηi[c]
-            c += 1 
+            c += 1
         end
 
         for k in unobserved_hs.γ
@@ -2957,42 +2957,42 @@ function construct_individual_parameters(model::M, i, data::DataSD, draws_η)  w
         end
 
         for k in unobserved_hs.ρ
-            if k == 1 && typeof(ρi) <: Real # if not vector, cannot replace with ρi[k] 
+            if k == 1 && typeof(ρi) <: Real # if not vector, cannot replace with ρi[k]
                 ρi = ρi + draws_ηi[c]
             else
                 ρi[k] = ρi[k] + draws_ηi[c]
             end
-            c += 1 
+            c += 1
         end
 
         if unobserved_hs.ξ
             ξi = ξi + draws_ηi[c]
-            c += 1 
+            c += 1
         end
 
         for k in unobserved_hs.ξρ
             ξρi[k] = ξρi[k] + draws_ηi[c]
-            c += 1 
+            c += 1
         end
     end
 
     return βi, γi, κi, Ξi, ρi, ξi, ξρi
 end
 
-function update_reservation_values_across_positions!(z, Ξ, ρ, f::Function, 
+function update_reservation_values_across_positions!(z, Ξ, ρ, f::Function,
         all_possible_positions)
     for (j, h) in enumerate(all_possible_positions)
         z[j] = f(Ξ, ρ, h)
     end
 
-    return nothing 
+    return nothing
 end
 
 
 function run_compatibility_checks(model::SDModel, data::DataSD; kwargs...)
 
     svs = model.information_structure
-    if typeof(svs.indices_characteristics_β_individual) <: Vector{Vector{T}} where T && 
+    if typeof(svs.indices_characteristics_β_individual) <: Vector{Vector{T}} where T &&
         length(svs.indices_characteristics_β_individual) != length(data)
         throw(ArgumentError("Length of indices_characteristics_β_individual does not match number of sessions in data"))
     end
@@ -3002,7 +3002,7 @@ function run_compatibility_checks(model::SDModel, data::DataSD; kwargs...)
         throw(ArgumentError("Model β has non-zero values for indices not in indices_characteristics_β_union"))
     end
 
-    if typeof(svs.indices_characteristics_γ_individual) <: Vector{Vector{T}} where T && 
+    if typeof(svs.indices_characteristics_γ_individual) <: Vector{Vector{T}} where T &&
         length(svs.indices_characteristics_γ_individual) != length(data)
         throw(ArgumentError("Length of indices_characteristics_γ_individual does not match number of sessions in data"))
     end
@@ -3011,7 +3011,7 @@ function run_compatibility_checks(model::SDModel, data::DataSD; kwargs...)
         throw(ArgumentError("Model γ has non-zero values for indices not in indices_characteristics_γ_union"))
     end
 
-    if typeof(svs.indices_characteristics_κ_individual) <: Vector{Vector{T}} where T && 
+    if typeof(svs.indices_characteristics_κ_individual) <: Vector{Vector{T}} where T &&
         length(svs.indices_characteristics_κ_individual) != length(data)
         throw(ArgumentError("Length of indices_characteristics_κ_individual does not match number of sessions in data"))
     end

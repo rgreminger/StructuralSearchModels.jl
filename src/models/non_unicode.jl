@@ -2,18 +2,18 @@
 
 @with_kw mutable struct HeterogeneitySpecificationNU{T} <: AbstractHeterogeneitySpecification  where {T <: Real}
     # Parameters for observed heterogeneity (multiplied with session_characteristics)
-    parameters_with_observed_heterogeneity::Dict{Symbol, Any} = Dict{Symbol, Any}() 
-    psi::Vector{Vector{T}} = Vector{Vector{Float64}}() 
+    parameters_with_observed_heterogeneity::Dict{Symbol, Any} = Dict{Symbol, Any}()
+    psi::Vector{Vector{T}} = Vector{Vector{Float64}}()
 
-    _observed_hs::HeterogeneityCases = parse_heterogeneity_specification(parameters_with_observed_heterogeneity) 
+    _observed_hs::HeterogeneityCases = parse_heterogeneity_specification(parameters_with_observed_heterogeneity)
 
     # Parameters and specification for unobserved heterogeneity
-    parameters_with_unobserved_heterogeneity::Dict{Symbol, Any} = Dict{Symbol, Any}() 
+    parameters_with_unobserved_heterogeneity::Dict{Symbol, Any} = Dict{Symbol, Any}()
     distribution::D where D <: MvNormal = MvNormal(Diagonal([0.0]))
     _unobserved_hs::HeterogeneityCases = parse_heterogeneity_specification(parameters_with_unobserved_heterogeneity)
 
     @assert length(psi) == length(parameters_with_observed_heterogeneity) "Length of psi must be equal to the length of parameters_with_observed_heterogeneity. Have length(psi) = $(length(psi)) and length(parameters_with_observed_heterogeneity) = $(length(parameters_with_observed_heterogeneity))."
-    @assert length(distribution) == length(parameters_with_unobserved_heterogeneity) || 
+    @assert length(distribution) == length(parameters_with_unobserved_heterogeneity) ||
         (isempty(parameters_with_unobserved_heterogeneity) && distribution.Σ[1] == 0) "Distribution must match number of parameters with heterogeneity. Have length(distribution) = $(length(distribution))  and length(parameters_with_unobserved_heterogeneity) = $(length(parameters_with_unobserved_heterogeneity)). The covariance matrix is $(distribution.Σ), and should be set to match parameters_with_unobserved_heterogeneity."
 end
 
@@ -43,17 +43,17 @@ Non-unicode version of the specification for the information structure in the Se
 """
 @with_kw mutable struct InformationStructureSpecificationNU{T} <: AbstractSpecification where {T <: Real}
     gamma::Vector{T}
-    kappa::Vector{T}  
+    kappa::Vector{T}
 
-    indices_characteristics_beta_union::Union{UnitRange{Int}, Vector{Int}} 
+    indices_characteristics_beta_union::Union{UnitRange{Int}, Vector{Int}}
     indices_characteristics_gamma_union::Union{UnitRange{Int}, Vector{Int}}
     indices_characteristics_kappa_union::Union{UnitRange{Int}, Vector{Int}}
 
-    indices_characteristics_beta_individual::Union{UnitRange{Int}, Vector{Int}, 
+    indices_characteristics_beta_individual::Union{UnitRange{Int}, Vector{Int},
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_beta_union
-    indices_characteristics_gamma_individual::Union{UnitRange{Int}, Vector{Int}, 
+    indices_characteristics_gamma_individual::Union{UnitRange{Int}, Vector{Int},
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_gamma_union
-    indices_characteristics_kappa_individual::Union{UnitRange{Int}, Vector{Int}, 
+    indices_characteristics_kappa_individual::Union{UnitRange{Int}, Vector{Int},
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_kappa_union
 end
 
@@ -100,7 +100,7 @@ function ==(s1::InformationStructureSpecificationNU, s2::InformationStructureSpe
 end
 
 ####################################################################
-abstract type NUModel end 
+abstract type NUModel end
 
 """
 *Search and Discovery* model `SDNU{T} <: NUModel`. This is the same as `SD` without Greek
@@ -147,25 +147,25 @@ end
 function SDNU(β, Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
     Ξ, ξ = promote(Ξ, ξ)
     T = eltype(Ξ)
-    ρ = convert_ρ(ρ, T) 
-    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity) 
-end 
+    ρ = convert_ρ(ρ, T)
+    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+end
 
 # this one for some reason is necessary as Parameters.jl does not seem to enforce T for β
-function SDNU(β::Vector{Any}, Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity) 
+function SDNU(β::Vector{Any}, Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
     Ξ, ξ = promote(Ξ, ξ)
     T = eltype(Ξ)
-    ρ = convert_ρ(ρ, T) 
-    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity) 
-end 
+    ρ = convert_ρ(ρ, T)
+    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+end
 
 function SDNU(β, Ξ, ρ, ξ, dE, dV, dU0, zdfun; cs = nothing, cd = nothing,
     heterogeneity = HeterogeneitySpecificationNU())
     Ξ, ξ = promote(Ξ, ξ)
     T = eltype(Ξ)
-    ρ = convert_ρ(ρ, T) 
-    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity) 
-end 
+    ρ = convert_ρ(ρ, T)
+    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+end
 
 function convert_to_greek(m::SDNU)
     return SD(
@@ -221,34 +221,34 @@ unicode letters for the fields. The parameterization of the `WM` model is as fol
     cs_h::Union{Vector{T}, Nothing} = nothing
 end
 
-function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity) 
+function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
     T = eltype(ξ)
-    ρ = convert_ρ(ρ, T) 
+    ρ = convert_ρ(ρ, T)
     cs = convert_cs(cs, T)
     cs_h = convert_cs(cs_h, T)
-    if cs_h isa Real 
+    if cs_h isa Real
         throw(ArgumentError("cs_h must be a vector or nothing."))
     end
-    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity) 
-end 
+    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
+end
 
 function WMNU(β::Vector{Any}, ξ, ρ, dE, dV, dU0, zsfun; cs = nothing, cs_h = nothing,
     heterogeneity = HeterogeneitySpecificationNU())
     T = eltype(ξ)
-    ρ = convert_ρ(ρ, T) 
+    ρ = convert_ρ(ρ, T)
     cs = convert_cs(cs, T)
     cs_h = convert_cs(cs_h, T)
-    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity) 
-end 
+    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
+end
 
 function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun; cs = nothing, cs_h = nothing,
     heterogeneity = HeterogeneitySpecificationNU())
     T = eltype(ξ)
-    ρ = convert_ρ(ρ, T) 
+    ρ = convert_ρ(ρ, T)
     cs = convert_cs(cs, T)
     cs_h = convert_cs(cs_h, T)
     return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
-end 
+end
 
 function convert_to_greek(m::WMNU)
     return WM(
@@ -273,7 +273,7 @@ end
 function generate_data(m::M, n_consumers, n_products; kwargs...) where M <: NUModel
     generate_data(convert_to_greek(m), n_consumers, n_products; kwargs...)
 end
-generate_data(m::M, d::DataSD; kwargs...) where M <: NUModel = 
+generate_data(m::M, d::DataSD; kwargs...) where M <: NUModel =
     generate_data(convert_to_greek(m), d; kwargs...)
 
 function calculate_fit_measures(m::M, d::DataSD, n_sim; kwargs...) where M <: NUModel
@@ -283,7 +283,7 @@ end
 function calculate_costs!(m::M, d, n_draws_cd; kwargs...) where M <: NUModel
     m1 = convert_to_greek(m)
     calculate_costs!(m1, d, n_draws_cd; kwargs...)
-    for f in  [:cs, :cd, :cs_h] 
+    for f in  [:cs, :cd, :cs_h]
         if hasfield(M, f)
             setfield!(m, f, getfield(m1, f))
         end

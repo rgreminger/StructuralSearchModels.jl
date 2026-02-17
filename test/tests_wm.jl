@@ -12,7 +12,7 @@ m = WM(
 seed = 1
 rng = StableRNG(seed)
 
-# Data generation 
+# Data generation
 n_consumers = 10
 d = generate_data(m, n_consumers, 1; rng, seed,
     conditional_on_search = false, conditional_on_search_iter = 100,
@@ -23,13 +23,13 @@ d.search_paths
 @test d.purchase_indices[1:3] == [25, 3, 18]
 @test d.search_paths[1][1:2] == [25, 2]
 
-## Core likelihood calculation 
+## Core likelihood calculation
 e = SMLE(100)
 @test calculate_likelihood(m, e, d; rng, seed) == -188.74515999418938
 e_conditional = SMLE(100; conditional_on_search = true) # test conditional on search
 @test calculate_likelihood(m, e_conditional, d; rng, seed) == -181.33845598253282
 
-# Estimation 
+# Estimation
 e.options_solver = (f_calls_limit = 1,) # use only 1 iterations
 startvals = vectorize_parameters(m)
 model_hat, estimates, likelihood_at_estimates, result_solver,
@@ -56,19 +56,19 @@ end
 calculate_costs!(m, d, 10000; rng, seed)
 @test m.cs[1][2]≈3.2550068765896386e-9 atol=1e-12
 
-# Demand computation 
+# Demand computation
 # dem = [calculate_demand(m, d, i, j, 5; rng, seed) for i in 1:2, j in 1:2]
 # @test dem≈[0.03690244166985573 1.875275451226644e-8;
 #            0.036393388945450425 6.001942664422739e-7] atol=1e-12
 
-# Revenue computation 
-rev = calculate_revenues(m, d, 1, 5; rng, seed) 
+# Revenue computation
+rev = calculate_revenues(m, d, 1, 5; rng, seed)
 @test rev[:revenues] ≈ -1.6032108037892683 atol = 1e-12
 @test rev[:demand] ≈ 8.6 atol = 1e-12
 
 
-# Test when ρ is scalar 
-m.ρ = m.ρ[1] 
+# Test when ρ is scalar
+m.ρ = m.ρ[1]
 d = generate_data(m, n_consumers, 1; rng, seed,
     conditional_on_search = false, conditional_on_search_iter = 100,
     products = generate_products(n_consumers, Normal(); rng, seed))
@@ -86,9 +86,9 @@ m = WM(
     dU0 = Normal(0, 1.0),
     zsfun = "log",
     information_structure = InformationStructureSpecification(
-        γ = [0.0, 0.0, 0.0], 
+        γ = [0.0, 0.0, 0.0],
         κ = [0.0, 0.1, 0.0],
-        indices_characteristics_β_union = 1:1, 
+        indices_characteristics_β_union = 1:1,
         indices_characteristics_γ_union= 1:0,
         indices_characteristics_κ_union = 2:2,
     )
@@ -98,19 +98,19 @@ d = generate_data(m, n_consumers, 1; seed, rng,
     conditional_on_search = false, conditional_on_search_iter = 100,
     products = generate_products(n_consumers, MvNormal([0.0, 0.0], [1.0 0.0; 0.0 1.0]); seed, rng))
 
-# Likelihood 
+# Likelihood
 @test calculate_likelihood(m, e, d; rng, seed) == -210.80306282999703
 @test calculate_likelihood(m, e_conditional, d; rng, seed) == -203.54861051449006
 
-# Demand 
+# Demand
 # @test calculate_demand(m, d, 1, 1, 20; rng, seed) == 0.007936350892620288
 # @test calculate_demand(m, d, 1, 2, 20; rng, seed) == 0.052936204593320255
 
 #########################################################################################
-## Test with inference about detail page 
-m.information_structure.γ[1] = 0.1 
+## Test with inference about detail page
+m.information_structure.γ[1] = 0.1
 m.ξ = 3.5
-m.information_structure.indices_characteristics_γ_union = 1:1 
+m.information_structure.indices_characteristics_γ_union = 1:1
 m.information_structure.indices_characteristics_γ_individual = 1:1
 d = generate_data(m, n_consumers, 1; seed, rng,
     products = generate_products(n_consumers, MvNormal([0.0, 0.0], [1.0 0.0; 0.0 1.0]); seed, rng))
@@ -123,7 +123,7 @@ d = generate_data(m, n_consumers, 1; seed, rng,
 calculate_costs!(m, d, 1000; seed, rng, position_at_which_correct_beliefs = 0)
 @test m.cs[1][2] ≈ 0.0005976045705265474 atol=1e-12
 
-# Check welfare 
+# Check welfare
 W = calculate_welfare(m, d, 100; rng, seed)
 
 @test W[:average][:welfare] ≈ 2.694750336682387 atol=1e-12
@@ -133,9 +133,9 @@ W = calculate_welfare(m, d, 100; rng, seed)
 
 
 #########################################################################################
-## Test heterogeneity specification 
+## Test heterogeneity specification
 
-# pars_to_test = [  
+# pars_to_test = [
 #     [[:β], [:ξ], [:ρ]],
 #     [(:β, :ξ), (:ξ, :ρ), (:β, :ξ, :ρ)]
 # ]
@@ -148,8 +148,8 @@ W = calculate_welfare(m, d, 100; rng, seed)
 #     dU0 = Normal(0, 1.0),
 #     zsfun = "log"
 # )
-    
-# test_observed_heterogeneity_spec(m, pars_to_test, -168.44562611498037) 
+
+# test_observed_heterogeneity_spec(m, pars_to_test, -168.44562611498037)
 
 # ll_het = [-192.14247757635047
 # -166.27913626830156
@@ -168,8 +168,8 @@ W = calculate_welfare(m, d, 100; rng, seed)
 # test_unobserved_heterogeneity_spec(m, pars_to_test, ll_het, ll_het_qmc)
 
 #########################################################################################
-## Test constructors 
-function construct_wm_model(β) 
+## Test constructors
+function construct_wm_model(β)
     m = WM(
         β = β,
         ρ = [-0.1],
@@ -183,6 +183,6 @@ function construct_wm_model(β)
 end
 m = construct_wm_model([0.0, 1.0])
 
-for β in [Int.(m.β), convert(Vector{Any}, m.β)] 
+for β in [Int.(m.β), convert(Vector{Any}, m.β)]
     @test isequal(construct_wm_model(β), m)
 end

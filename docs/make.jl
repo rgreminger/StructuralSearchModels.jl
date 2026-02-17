@@ -18,9 +18,9 @@ makedocs(sitename="StructuralSearchModels.jl",
         ]
 )
 
-# deploydocs(
-#     repo = "github.com/rgreminger/StructuralSearchModels.jl.git",
-# )
+deploydocs(
+    repo = "github.com/rgreminger/StructuralSearchModels.jl.git",
+)
 
 # makedocs(sitename="StructuralSearchModels.jl",
 #     format = Documenter.LaTeX(),

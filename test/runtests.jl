@@ -1,11 +1,11 @@
-using Distributions 
+using Distributions
 using QuasiMonteCarlo
 using Random
 using StableRNGs
 using StructuralSearchModels
-using Test 
+using Test
 
-if Threads.nthreads() != 1 
+if Threads.nthreads() != 1
     error("Tests are only reproducible if run on single thread.")
 end
 

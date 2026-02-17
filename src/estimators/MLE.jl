@@ -35,7 +35,7 @@ e = SMLE(; numerical_integration_method = QMC(n_draws = 500))
 """
 @with_kw mutable struct SMLE <: MLE
     options_optimization = (
-        algorithm = LBFGS(; linesearch = Optim.BackTracking(order = 2)),
+        algorithm = LBFGS(; linesearch = LineSearches.BackTracking(order = 2)),
         differentiation = Optimization.AutoForwardDiff())
     options_problem = ()
     options_solver = (iterations = 100_000,) # increases default no. iterations
@@ -59,7 +59,7 @@ function estimate(model::Model, estimator::SMLE, data::Data;
         throw(ArgumentError("Starting values must have the same length as the model parameters. Have $(length(startvals)) but expected $(length(vectorize_parameters(model; kwargs...)))."))
     end
 
-    # Prepare additional arguments for objective function 
+    # Prepare additional arguments for objective function
     args_likelihood_function = prepare_arguments_likelihood(
         model, estimator, data; kwargs...)
 
@@ -69,12 +69,12 @@ function estimate(model::Model, estimator::SMLE, data::Data;
     ############################################################################
     # Optimization.jl optimization (wrapper around many solvers)
 
-    # Define objective function as negative likelihood function 
+    # Define objective function as negative likelihood function
     function objective_function(θ, p)
         -loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
     end
 
-    # Extract options 
+    # Extract options
     options_optimization = estimator.options_optimization
     options_problem = estimator.options_problem
     options_solver = estimator.options_solver
@@ -84,11 +84,11 @@ function estimate(model::Model, estimator::SMLE, data::Data;
     prob = OptimizationProblem(obj, startvals;
         options_problem...)
 
-    # Run optimization 
+    # Run optimization
     result_solver = solve(prob, options_optimization.algorithm;
         options_solver...)
 
-    # Print complete solver solution if requested 
+    # Print complete solver solution if requested
     if print_solver_solution
         println(result_solver.original)
     end
@@ -107,20 +107,20 @@ end
 """
     calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
-Calculate the likelihood of the model `model` given the data `data` and the estimator `estimator`. 
+Calculate the likelihood of the model `model` given the data `data` and the estimator `estimator`.
 """
 function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
-    # Extract parameters 
+    # Extract parameters
     θ = vectorize_parameters(model; kwargs...)
 
-    # Prepare additional arguments for objective function 
+    # Prepare additional arguments for objective function
     args_likelihood_function = prepare_arguments_likelihood(
         model, estimator, data; kwargs...)
 
     # return likelihood
     ll = loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
-    
+
     show_timing = get(kwargs, :show_timing, false)
     if show_timing
         @info "Likelihood calculation takes $(@elapsed loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)) seconds and requires $(@allocations loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)) allocations."
@@ -130,19 +130,19 @@ end
 
 function calculate_standard_errors(model::Model, estimator::MLE, data::Data; kwargs...)
 
-    # Extract parameters 
+    # Extract parameters
     θ = vectorize_parameters(model; kwargs...)
 
-    # Prepare additional arguments for objective function 
+    # Prepare additional arguments for objective function
     args_likelihood_function = prepare_arguments_likelihood(
         model, estimator, data; kwargs...)
 
-    # Compute Hessian for negative likelihood function 
+    # Compute Hessian for negative likelihood function
     f(θ) = -loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
 
     options_optimization = estimator.options_optimization
 
-    H = if options_optimization.differentiation == Optimization.AutoForwardDiff() # default, use autodiff 
+    H = if options_optimization.differentiation == Optimization.AutoForwardDiff() # default, use autodiff
         @suppress ForwardDiff.hessian(f, θ)
     elseif options_optimization.differentiation == Optimization.AutoFiniteDiff() # use finite differences
         relstep = get(options_optimization, :relstep,

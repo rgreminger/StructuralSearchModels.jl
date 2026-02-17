@@ -1,4 +1,4 @@
-# Generate products 
+# Generate products
 
 """
     generate_products(n_sessions, distribution::Distribution;
@@ -7,11 +7,11 @@
         outside_option = true,
         kwargs...)
 
-Generate product IDs and their characteristics for `n_sessions` sessions. Each session has `n_products_per_session` products randomly sampled from `n_products` available in total. By default, `n_products` is large and 30 products are sampled per session. 
-    
+Generate product IDs and their characteristics for `n_sessions` sessions. Each session has `n_products_per_session` products randomly sampled from `n_products` available in total. By default, `n_products` is large and 30 products are sampled per session.
+
 Product characteristics for each product are sampled from the specified `distribution`, which needs to be multivariate (e.g., `MvNormal`) when using multiple characteristics. If `outside_option=true`, then an outside option is included as the first product for each session with product ID 0. For this product, the last characteristic is set to 1.0 and the remaining product characteristics are set to 0.0.
-    
-Returns product IDs and product characteristics as two separate vectors. Each element is a session, with a vector of product IDs or matrix of characteristics for all products available to the session. 
+
+Returns product IDs and product characteristics as two separate vectors. Each element is a session, with a vector of product IDs or matrix of characteristics for all products available to the session.
 """
 function generate_products(n_sessions, distribution::Distribution;
         n_products = 1_000_000,
@@ -19,19 +19,19 @@ function generate_products(n_sessions, distribution::Distribution;
         outside_option = true,
         kwargs...)
 
-    # Set seed 
+    # Set seed
     rng = get_rng(kwargs)
 
-    # Product ids, 0 will be outside option 
+    # Product ids, 0 will be outside option
     pid = collect(1:n_products)
 
-    # Draw product characteristics for each product  
+    # Draw product characteristics for each product
     product_characteristics = rand(rng, distribution, n_products)
     if size(product_characteristics, 2) > 1
         product_characteristics = product_characteristics'
     end
 
-    # Draw products per session randomly from set of products for each session 
+    # Draw products per session randomly from set of products for each session
     product_ids = if outside_option
         [vcat(0, rand(rng, pid, n_products_per_session)) for i in 1:n_sessions]
     else
@@ -51,24 +51,24 @@ function generate_products(n_sessions, distribution::Distribution;
     return product_ids, product_characteristics
 end
 
-function expand_products!(data; kwargs...) 
+function expand_products!(data; kwargs...)
 
-    rng = get_rng(kwargs) # set seed 
+    rng = get_rng(kwargs) # set seed
 
     n_prod_in_session = length.(data.product_ids)
     n_prod_max = maximum(n_prod_in_session)
 
     session_ids_with_enough_products = [findall(x -> x >= h, n_prod_in_session) for h in 1:n_prod_max]
 
-    for i in eachindex(data) 
+    for i in eachindex(data)
         n_prod_i = n_prod_in_session[i]
-        if n_prod_i < n_prod_max # expand if not full 
+        if n_prod_i < n_prod_max # expand if not full
             data.positions[i] = data.positions[session_ids_with_enough_products[end][1]] # last one has full position
             n_added_products = n_prod_max - n_prod_i
-            
+
             for h in n_prod_i+1:n_prod_max
-                sid = rand(rng, session_ids_with_enough_products[h]) # session from which to take product 
-                push!(data.product_ids[i], data.product_ids[sid][h]) 
+                sid = rand(rng, session_ids_with_enough_products[h]) # session from which to take product
+                push!(data.product_ids[i], data.product_ids[sid][h])
                 data.product_characteristics[i] = vcat(data.product_characteristics[i], data.product_characteristics[sid][h, :]')
                 push!(data.consideration_sets[i], fill(false, n_added_products)...)
             end
@@ -86,7 +86,7 @@ function get_chunks(n::Int)
     return chunk_size, data_chunks
 end
 
-# Functional form definitions 
+# Functional form definitions
 function get_functional_form(s::String)
     if s == ""
         (Ξ, ρ, pos) -> Ξ[1]
@@ -97,7 +97,7 @@ function get_functional_form(s::String)
     elseif s == "exp"
         (Ξ, ρ, pos) -> Ξ[1] + ρ[1] * _EP[pos + 1]
 
-    elseif length(s) >= 7 && s[1:7] == "linear-" 
+    elseif length(s) >= 7 && s[1:7] == "linear-"
         k = parse(Int, s[8:end])
         function (Ξ, ρ, pos)
             if pos == 0
@@ -121,12 +121,12 @@ function get_functional_form(s::String)
     end
 end
 
-# Set seed 
+# Set seed
 function get_rng(kwargs)
 
     rng = get(kwargs, :rng, Random.default_rng())
 
-    # Set seed for rng if given 
+    # Set seed for rng if given
     seed = get(kwargs, :seed, nothing) # if no seed set, just draw one
     if !isnothing(seed)
         Random.seed!(rng, seed)
@@ -173,16 +173,16 @@ end
     end
 end
 
-function take_or_generate_consumer_shocks(m, d, kwargs) 
+function take_or_generate_consumer_shocks(m, d, kwargs)
 
-    if !has_unobserved_heterogeneity(m) 
+    if !has_unobserved_heterogeneity(m)
         return nothing
     end
 
     draws_η = get(kwargs, :draws_η, nothing)
     rng = get_rng(kwargs)
-    
-    if isnothing(draws_η) 
+
+    if isnothing(draws_η)
         draws_η = generate_consumer_shocks(m, d, rng)
     end
 
@@ -191,21 +191,21 @@ end
 
 function generate_consumer_shocks(m, d, rng)
 
-    if !has_unobserved_heterogeneity(m) 
+    if !has_unobserved_heterogeneity(m)
         return nothing
     end
 
     n_cons = d.consumer_ids[end]
-    _, chunks = get_chunks(n_cons) 
+    _, chunks = get_chunks(n_cons)
 
     draws_η = zeros(Float64, n_cons, size(m.heterogeneity.distribution.Σ, 1))
 
     tasks = map(chunks) do chunk
         Threads.@spawn begin
 
-            for i in chunk 
-                # Draws for unobserved heterogeneity 
-                r = rand(rng, m.heterogeneity.distribution) 
+            for i in chunk
+                # Draws for unobserved heterogeneity
+                r = rand(rng, m.heterogeneity.distribution)
                 draws_η[i, :] .= r
             end
         end
@@ -216,8 +216,8 @@ end
 
 function lik_return_stable(lik::T, return_log) where T <: Real
 
-    if return_log 
-        return log(max(T(ALMOST_ZERO_NUMERICAL), lik)) 
+    if return_log
+        return log(max(T(ALMOST_ZERO_NUMERICAL), lik))
     else
         return lik
     end
@@ -226,50 +226,50 @@ end
 """
     add_product_fe!(model::SDModel, data::DataSD, n_min::Int, location::String)
 
-Add product fixed effects for all products that observed at least `n_min` times in the data. Fixed effects can shift either the search value, the hidden part of utility, or both. This is specified through `location`, which is set to eitehr `"search"`, `"hidden"`, or `"both"`. 
+Add product fixed effects for all products that observed at least `n_min` times in the data. Fixed effects can shift either the search value, the hidden part of utility, or both. This is specified through `location`, which is set to eitehr `"search"`, `"hidden"`, or `"both"`.
 """
 function add_product_fe!(model::SDModel, data::DataSD, n_min::Int, location::String)
 
-    product_ids_with_fe = find_products_appearing_min_n_times(data, n_min) 
+    product_ids_with_fe = find_products_appearing_min_n_times(data, n_min)
 
-    add_product_fe_data!(data, product_ids_with_fe) 
+    add_product_fe_data!(data, product_ids_with_fe)
 
-    add_product_fe_model!(model, data, location) 
+    add_product_fe_model!(model, data, location)
 
-    return nothing 
+    return nothing
 
 end
 
-function add_product_fe_data!(data, product_ids_with_fe) 
+function add_product_fe_data!(data, product_ids_with_fe)
 
     sort!(product_ids_with_fe) # sort product ids with fixed effects (yields faster search later on)
 
-    # Expand characteristics and add product indicator 
+    # Expand characteristics and add product indicator
     n_fe = length(product_ids_with_fe)
     for i in eachindex(data)
         product_ids = data.product_ids[i]
-        product_indicator = zeros(length(product_ids), n_fe) 
-    
-        for (j, id) in enumerate(product_ids) 
-            index_in_product_fe = searchsorted(product_ids_with_fe, id) 
-    
+        product_indicator = zeros(length(product_ids), n_fe)
+
+        for (j, id) in enumerate(product_ids)
+            index_in_product_fe = searchsorted(product_ids_with_fe, id)
+
             # Skip if no FE for this product (e.g., outside option)
-            if length(index_in_product_fe) < 1 
+            if length(index_in_product_fe) < 1
                 continue
             end
-            product_indicator[j, index_in_product_fe[1]] = 1 
+            product_indicator[j, index_in_product_fe[1]] = 1
         end
-    
-    
-        data.product_characteristics[i] = 
-            hcat(data.product_characteristics[i][:, 1:end-1], 
+
+
+        data.product_characteristics[i] =
+            hcat(data.product_characteristics[i][:, 1:end-1],
                  product_indicator,
-                 data.product_characteristics[i][:, end], # moves outside option indicator to end 
+                 data.product_characteristics[i][:, end], # moves outside option indicator to end
                  )
     end
     println("Number of product fixed effects added: ", n_fe)
 
-    return product_ids_with_fe 
+    return product_ids_with_fe
 end
 
 function find_products_appearing_min_n_times(data, n_min)
@@ -277,8 +277,8 @@ function find_products_appearing_min_n_times(data, n_min)
     product_ids = sort(vcat(data.product_ids...))
     counts = countmap(product_ids )
     counts = sort(collect(counts), by=x->x[2], rev=true) # sort by counts
-    product_ids_with_fe = [pid for (pid, count) in counts if count >= n_min] # only keep products with more than n_min observatoins 
-    product_ids_with_fe = product_ids_with_fe[2:end] # first is outside option, dropping this one 
+    product_ids_with_fe = [pid for (pid, count) in counts if count >= n_min] # only keep products with more than n_min observatoins
+    product_ids_with_fe = product_ids_with_fe[2:end] # first is outside option, dropping this one
 
     sort!(product_ids_with_fe) # sort product ids with fixed effects (yields faster search later on)
 
@@ -287,9 +287,9 @@ end
 
 
 
-function add_product_fe_model!(m::SDModel, d::DataSD, location) 
+function add_product_fe_model!(m::SDModel, d::DataSD, location)
     n_coef = length(m.β) - 1 # -1 for outside option
-    n_fe = size(d.product_characteristics[1], 2) - n_coef - 1 
+    n_fe = size(d.product_characteristics[1], 2) - n_coef - 1
     β = vcat(m.β[1:n_coef], zeros(n_fe), m.β[end])
     m.β = β
 
@@ -301,50 +301,50 @@ function add_product_fe_model!(m::SDModel, d::DataSD, location)
 
     if location == "both"
 
-        add_fe_γ!(m, n_coef, n_fe) 
-        add_fe_κ!(m, n_coef, n_fe) 
+        add_fe_γ!(m, n_coef, n_fe)
+        add_fe_κ!(m, n_coef, n_fe)
 
-    elseif location == "search" 
-        add_fe_γ!(m, n_coef, n_fe) 
+    elseif location == "search"
+        add_fe_γ!(m, n_coef, n_fe)
 
-    elseif location == "hidden" 
-        add_fe_κ!(m, n_coef, n_fe) 
+    elseif location == "hidden"
+        add_fe_κ!(m, n_coef, n_fe)
     else
         throw(ArgumentError("Location must be either 'both', 'search' or 'hidden'."))
     end
 end
 
-function add_fe_γ!(m, n_coef, n_fe) 
+function add_fe_γ!(m, n_coef, n_fe)
     m.information_structure.indices_characteristics_γ_union = vcat(
-        collect(m.information_structure.indices_characteristics_γ_union), 
+        collect(m.information_structure.indices_characteristics_γ_union),
         collect(n_coef+1:n_coef + n_fe)
     )
 
-    if typeof(m.information_structure.indices_characteristics_γ_union) <: UnitRange || 
+    if typeof(m.information_structure.indices_characteristics_γ_union) <: UnitRange ||
         typeof(m.information_structure.indices_characteristics_γ_union) <: Vector{Int}
 
         m.information_structure.indices_characteristics_γ_individual= m.information_structure.indices_characteristics_γ_union
     else
         si =  m.information_structure.indices_characteristics_γ_individual
-        for i in eachindex(si) 
+        for i in eachindex(si)
             si[i] = vcat(collect(si[i]), collect(n_coef+1:n_coef + n_fe))
         end
     end
 end
 
-function add_fe_κ!(m, n_coef, n_fe) 
+function add_fe_κ!(m, n_coef, n_fe)
     m.information_structure.indices_characteristics_κ_union = vcat(
-        collect(m.information_structure.indices_characteristics_κ_union), 
+        collect(m.information_structure.indices_characteristics_κ_union),
         collect(n_coef+1:n_coef + n_fe)
     )
 
-    if typeof(m.information_structure.indices_characteristics_κ_union) <: UnitRange || 
+    if typeof(m.information_structure.indices_characteristics_κ_union) <: UnitRange ||
         typeof(m.information_structure.indices_characteristics_κ_union) <: Vector{Int}
 
         m.information_structure.indices_characteristics_κ_individual= m.information_structure.indices_characteristics_κ_union
     else
         si =  m.information_structure.indices_characteristics_κ_individual
-        for i in eachindex(si) 
+        for i in eachindex(si)
             si[i] = vcat(collect(si[i]), collect(n_coef+1:n_coef + n_fe))
         end
     end
@@ -352,7 +352,7 @@ end
 
 
 ##################################################################################
-# Computations for bivariate normal 
+# Computations for bivariate normal
 
 # Source: https://github.com/JuliaStats/StatsFuns.jl/blob/60dc61c63ba74d0da0e1000a4b3b785a6badacf5/src/tvpack.jl
 # (open pull request on StatsFuns.jl)
@@ -467,7 +467,7 @@ function bvnuppercdf(dh::T, dk::T, r::Tf)::T where {T <: Real, Tf}
                 bvn = a * exp(asr) *
                       (1.0 - c * (bs - as) * (1.0 - d * bs / 5.0) / 3.0 +
                        c * d * as * as / 5.0)
-            end 
+            end
             if -hk < 100
                 b = sqrt(bs)
                 bvn -= exp(-hk * 0.5) * sqrt(2.0pi) * normcdf(-b / a) * b *
@@ -505,9 +505,9 @@ end
 @inline bvncdf(dh, dk, r) = bvnuppercdf(-dh, -dk, r)
 
 ##################################################################################
-# Truncation of random variables -> use own functions for normal to avoid rejection sampling 
+# Truncation of random variables -> use own functions for normal to avoid rejection sampling
 
-# Normal distribution: helper functions 
+# Normal distribution: helper functions
 @inline cdf_n(z::T) where {T <: Real} = Distributions.erfc(-z * invsqrt2) / 2
 
 @inline function invcdf_n(z::T) where {T <: Real}
@@ -525,15 +525,15 @@ end
 """
 	rand_trunc(d::Normal, lb::T, ub::T) where T
 
-Take a random draw from a truncated normal distribution. 
+Take a random draw from a truncated normal distribution.
 """
 @inline function rand_trunc(rng, d::Normal, lb::T, ub::T) where {T}
     @assert d.μ == 0
     if lb >= ub
-        rand(rng) # just drawing a number keeps seed fixed 
+        rand(rng) # just drawing a number keeps seed fixed
         return lb
     end
-    # Differ whether in upper or lower tail. By symmetry same, but works more accurately. Further tests an improvements welcome. 
+    # Differ whether in upper or lower tail. By symmetry same, but works more accurately. Further tests an improvements welcome.
     if lb > 0 && ub > 0
         l = cdf(d, -ub)
         u = cdf(d, -lb)
@@ -557,28 +557,28 @@ Take a random draw from a truncated normal distribution.
 end
 
 # @inline function rand_trunc(d::Gumbel,lb::T,ub::T) where T
-# 	if lb >= ub 
-# 		return lb 
+# 	if lb >= ub
+# 		return lb
 # 	end
 # 	if ub < -1e6 || lb > 1e6  || abs(ub-lb) < 1e-8
-# 		return (ub-lb) / 2 
+# 		return (ub-lb) / 2
 # 	end
 
 # 	tp = trunc_cdf(d,lb,ub)
-# 	r = if tp > sqrt(eps(T)) 
-# 			c1 = lb < -1e6 ? zero(T) : cdf(d,lb) 
+# 	r = if tp > sqrt(eps(T))
+# 			c1 = lb < -1e6 ? zero(T) : cdf(d,lb)
 # 			rtcdf = rand(T)*trunc_cdf(d,lb,ub)
 # 			t = isnan(c1) ? rtcdf : rtcdf + c1
 # 			# note: cdf(d,lb) gives nan if lb too small because of gumbel cdf
-# 			# so accounting for c1 helps AD 
+# 			# so accounting for c1 helps AD
 # 			d.μ - d.θ*log(-log(t))
-# 		else 
+# 		else
 # 			loglcdf = max(logcdf(d,lb),-1e100)
-# 			logtp = log(tp) 
+# 			logtp = log(tp)
 # 			invlogcdf(d, Distributions.logaddexp(loglcdf, logtp - randexp(T)))
 # 		end
 # 	r = max(min(r,ub),lb)
-# 	return r::T	
+# 	return r::T
 # end
 
 """
@@ -595,14 +595,14 @@ end
 
 @inline function rand_trunc(rng, d::Uniform, lb::T, ub::T) where {T <: Real}
     if ub <= minimum(d) || lb >= maximum(d)
-        rand(rng) # just drawing a number keeps seed fixed 
+        rand(rng) # just drawing a number keeps seed fixed
         return zero(T)
     end
     if lb >= ub || isnan(ub)
-        rand(rng) # just drawing a number keeps seed fixed 
+        rand(rng) # just drawing a number keeps seed fixed
         return lb
     elseif isnan(lb)
-        rand(rng) # just drawing a number keeps seed fixed 
+        rand(rng) # just drawing a number keeps seed fixed
         return ub
     end
     return rand(rng, truncated(d, lb, ub))
@@ -631,7 +631,7 @@ Calculate the cumulative distribution function of a generic truncated distributi
         rtcdf = rand(rng, T) * tp
         t = isnan(c1) ? rtcdf : rtcdf + c1
         # note: cdf(d,lb) gives nan if lb too small because of gumbel cdf
-        # so accounting for c1 helps AD 
+        # so accounting for c1 helps AD
         quantile(d, min(exp(loglcdf) + t, 1))
     else
         invlogcdf(d, Distributions.logaddexp(loglcdf, log(tp) - randexp(rng)))
@@ -642,7 +642,7 @@ end
 
 @inline function trunc_cdf(d, lb::T, ub::T) where {T <: Real}
     # Do calculation in log-scale to avoid numerical issues
-    # Note: follows truncate.jl in Distributions package 
+    # Note: follows truncate.jl in Distributions package
     # introduces additional max(..) to help AD avoid NaN
     if ub <= minimum(d) || lb >= maximum(d) || lb >= ub
         return zero(T)
@@ -655,7 +655,7 @@ end
     return max(1e-300, tp)
 end
 
-@inline function transform_to_consecutive_ids(ids) 
+@inline function transform_to_consecutive_ids(ids)
 
     unique_vals = sort(unique(ids))
 

@@ -1,25 +1,25 @@
 """
-Abstract type for the *Weitzman* (WM) model. This type is a base type for all models that are subtypes of the WM model. 
+Abstract type for the *Weitzman* (WM) model. This type is a base type for all models that are subtypes of the WM model.
 """
 abstract type WMModel <: SDModel end
 
 """
-*Weitzman model* `WM{T} <: WMModel` with the following parameterization: 
+*Weitzman model* `WM{T} <: WMModel` with the following parameterization:
 - uᵢⱼ = xⱼβ + xⱼκ + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
-- zsᵢⱼ(h) = xⱼβ + xⱼγ + ξ(h) + νᵢⱼ 
+- zsᵢⱼ(h) = xⱼβ + xⱼγ + ξ(h) + νᵢⱼ
 - uᵢ₀ = x₀'β + ηᵢ , ηᵢ ~ dU0
 - ξ(h) = zsfun(ξ, ρ, pos)
 
-## Fields:  
+## Fields:
 - `β::Vector{T}`: Vector of preference weights.
 - `ξ::T`: Baseline ξ.
 - `ρ::Union{T, Vector{T}} `: Parameters governing decrease of ξ across positions.
 - `dE::Distribution`: Distribution of εᵢⱼ.
 - `dV::Distribution`: Distribution of νᵢⱼ.
-- `dU0::Distribution`: Distribution of ηᵢ. 
+- `dU0::Distribution`: Distribution of ηᵢ.
 - `information_structure::InformationStructureSpecification{T}`: Specification of information structure, including `γ`, `κ` and characteristics for `β`, `γ`, and `κ`. See `InformationStructureSpecification` for details.
-- `zsfun::String`: Select functional form f(ξ, ρ, h) that determines the search value in position h. 
-- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs on a product level. Initialized as `nothing` and only used for welfare calculations. Vector of vector, matching structure in data. Can be added through `calculate_costs!(m, data; kwargs...)`. 
+- `zsfun::String`: Select functional form f(ξ, ρ, h) that determines the search value in position h.
+- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs on a product level. Initialized as `nothing` and only used for welfare calculations. Vector of vector, matching structure in data. Can be added through `calculate_costs!(m, data; kwargs...)`.
 - `heterogeneity::HeterogeneitySpecification`: Specification of heterogeneity (unobserved and observed) in the model. By default assumes homogeneous model.
 """
 @with_kw mutable struct WM{T} <: WMModel where {T <: Real}
@@ -53,7 +53,7 @@ function ==(m1::WM, m2::WM)
             isequal(m1.heterogeneity, m2.heterogeneity)
 end
 
-function WM(β, ξ, ρ, dE, dV, dU0, zsfun, 
+function WM(β, ξ, ρ, dE, dV, dU0, zsfun,
     information_structure, heterogeneity, cs)
     T = eltype(ξ)
     ρ = convert_ρ(ρ, T)
@@ -81,13 +81,13 @@ function WM(β, ξ, ρ, dE, dV, dU0, zsfun; cs = nothing,
     cs = convert_cs(cs, T)
     return WM(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun,
         cs, information_structure, heterogeneity)
-end 
-function convert_cs(c, T) 
-    if isnothing(c) 
+end
+function convert_cs(c, T)
+    if isnothing(c)
         return nothing
     elseif c isa Vector
         return convert(Vector{T}, c)
-    elseif c isa Matrix where R 
+    elseif c isa Matrix where R
         return convert(Matrix{T}, c)
     else
         throw(ArgumentError("cs must be either nothing, a scalar or a vector of type T."))
@@ -111,7 +111,7 @@ function SDCore(m::WM)
         dW = Normal(0, 0), zdfun = "", zsfun = m.zsfun,
         information_structure = m.information_structure,
         heterogeneity = h)
-    update_heterogeneity_specification!(m_new) 
+    update_heterogeneity_specification!(m_new)
 
     return m_new
 end
@@ -145,39 +145,39 @@ function calculate_fit_measures(m::WM, data::DataSD, n_sim; kwargs...)
     calculate_fit_measures(SDCore(m), data, n_sim; kwargs...)
 end
 
-# Estimation 
+# Estimation
 function prepare_arguments_likelihood(m::WM, e::Estimator, d::DataSD; kwargs...)
 
-    # Get functional forms 
+    # Get functional forms
     zsfun = get_functional_form(m.zsfun)
 
     # Get maximum number of products
     data_arguments = prepare_data_arguments_likelihood(d)
 
-    # Keep fixed seed: either random or provided by kwargs 
+    # Keep fixed seed: either random or provided by kwargs
     rng = get_rng(kwargs)
     seed = get(kwargs, :seed, rand(rng, 1:(10^9)))
 
     # Mapping characteristics to parameters
     mapping_characteristics = construct_mapping_characteristics(m, d; kwargs...)
 
-    # Draws for unobserved heterogeneity 
-    ni_pts_whts = prepare_draws_unobserved_heterogeneity(m, 
+    # Draws for unobserved heterogeneity
+    ni_pts_whts = prepare_draws_unobserved_heterogeneity(m,
         e.numerical_integration_method_heterogeneity, d, rng)
 
-    return data_arguments..., nothing, zsfun, rng, seed, 
+    return data_arguments..., nothing, zsfun, rng, seed,
         mapping_characteristics, ni_pts_whts
 end
 
-# Vectorize parameters 
+# Vectorize parameters
 function vectorize_parameters(m::WM; kwargs...)
-    # Default estimate all parameters 
+    # Default estimate all parameters
     θ = if !haskey(kwargs, :fixed_parameters)
         θ = vcat(m.β[vcat(m.information_structure.indices_characteristics_β_union, end)],
             m.information_structure.γ[m.information_structure.indices_characteristics_γ_union],
             m.information_structure.κ[m.information_structure.indices_characteristics_κ_union],
             m.ξ, m.ρ)
-        if has_observed_heterogeneity(m) 
+        if has_observed_heterogeneity(m)
             θ = vcat(θ, m.heterogeneity.ψ...)
         end
         if has_unobserved_heterogeneity(m)
@@ -219,7 +219,7 @@ end
 
 function construct_model_from_pars(θ::Vector{T}, m::WM; kwargs...) where {T <: Real}
 
-    # Extract parameters from vector, some may be fixed through kwargs 
+    # Extract parameters from vector, some may be fixed through kwargs
     β, γ, κ, _, _, ξ, ρ, ind_last_par = extract_parameters(m, θ; kwargs...)
     ψ, U, ind_last_par = extract_heterogeneity_parameters(m, θ, ind_last_par; kwargs...)
     dE, dV, dU0, _, ind_last_par = extract_distributions(m, θ, ind_last_par; kwargs...)
@@ -233,7 +233,7 @@ function construct_model_from_pars(θ::Vector{T}, m::WM; kwargs...) where {T <: 
 
     # Construct model from parameters
     m_new = WM{T}(; β, ξ, ρ, dE, dV, dU0, zsfun = m.zsfun,
-        information_structure, heterogeneity) 
+        information_structure, heterogeneity)
 
     if get(kwargs, :return_ind_last_par, false)
         return m_new, ind_last_par
@@ -245,7 +245,7 @@ end
 function extract_parameters(m::WM, θ::Vector{T}; kwargs...) where {T <: Real}
     n_ρ = length(m.ρ)
 
-    # track where in parameter vector we are and move it. 
+    # track where in parameter vector we are and move it.
     ind_current = 1
 
     # Default: estimate all parameters
@@ -280,18 +280,18 @@ function extract_parameters(m::WM, θ::Vector{T}; kwargs...) where {T <: Real}
     # If keyword supplied, don't estimate parameters indicated in fixed_parameters
     fixed_parameters = get(kwargs, :fixed_parameters, nothing)
 
-    β = T.(m.β) 
-    if :β ∉ fixed_parameters 
-        n_β = length(m.β) 
+    β = T.(m.β)
+    if :β ∉ fixed_parameters
+        n_β = length(m.β)
         for i in 1:n_β
             β[i] = θ[ind_current]
             ind_current += 1
         end
         β[end] = θ[ind_current] # last parameter is the outside option
         ind_current += 1
-    end 
+    end
 
-    γ = T.(m.information_structure.γ) 
+    γ = T.(m.information_structure.γ)
     if :γ ∉ fixed_parameters
         n_γ = length(m.information_structure.γ)
         for i in 1:n_γ
@@ -325,7 +325,7 @@ function extract_parameters(m::WM, θ::Vector{T}; kwargs...) where {T <: Real}
 end
 
 function lik_no_searches(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
-        dV, dU0, 
+        dV, dU0,
         mapping_characteristics, d::DataSD, i::Int, n_draws, complement, rng,
         return_log, cache) where {T <: Real}
 
@@ -334,24 +334,24 @@ function lik_no_searches(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
     ixg = mapping_characteristics[2][i]
     ixk = mapping_characteristics[3][i]
 
-    xβγ, _ = unpack_cache(cache, β) 
-    xβγ .= typemin(T) # reset 
+    xβγ, _ = unpack_cache(cache, β)
+    xβγ .= typemin(T) # reset
 
     LL = zero(T)
 
     for dd in 1:n_draws
 
-        # Unbounded draw for u0 
+        # Unbounded draw for u0
         u0_draw = rand(rng, dU0) + β[end] * d.product_characteristics[i][1, end]
 
         # Initialize for probability
         prob_no_search_given_draw = one(T)
 
-        # Loop over products up to one discovered 
+        # Loop over products up to one discovered
         for j in 2:n_products
-            if xβγ[j] == typemin(T) # fill only if not already filled 
-                xβ_j, xγ_j, _ = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ, 
-                    ixb, ixg, ixk; no_κ = true) 
+            if xβγ[j] == typemin(T) # fill only if not already filled
+                xβ_j, xγ_j, _ = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ,
+                    ixb, ixg, ixk; no_κ = true)
                 xβγ[j] = xβ_j + xγ_j
             end
 
@@ -359,7 +359,7 @@ function lik_no_searches(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
             prob_no_search_given_draw *= prob_not_search(m, u0_draw, zj, dV)
 
             if prob_no_search_given_draw == 0
-                prob_no_search_given_draw = T(ALMOST_ZERO_NUMERICAL)  # adding this helps AD 
+                prob_no_search_given_draw = T(ALMOST_ZERO_NUMERICAL)  # adding this helps AD
                 break
             end
         end
@@ -370,11 +370,11 @@ function lik_no_searches(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
         end
     end
 
-    return lik_return_stable(LL/n_draws, return_log) 
+    return lik_return_stable(LL/n_draws, return_log)
 end
 
 function lik_search_no_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
-        dE, dV, dU0, 
+        dE, dV, dU0,
         mapping_characteristics, d::DataSD, i::Int, n_draws, rng,
         return_log, cache) where {T <: Real}
     n_products = length(d.product_ids[i])
@@ -383,7 +383,7 @@ function lik_search_no_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ
     ixg = mapping_characteristics[2][i]
     ixk = mapping_characteristics[3][i]
 
-    xβγ, xβκ = unpack_cache(cache, β) 
+    xβγ, xβκ = unpack_cache(cache, β)
     xβγ .= typemin(T) # reset
     xβκ .= typemin(T) # reset
 
@@ -392,16 +392,16 @@ function lik_search_no_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ
 
     for dd in 1:n_draws
 
-        # Unbounded draw for u0 
+        # Unbounded draw for u0
         u0_draw = rand(rng, dU0) + β[end] * d.product_characteristics[i][1, end]
 
         prob_searches_given_draw = one(T)
 
         for j in 2:n_products
-            if consideration_set[j] # searched item 
-                if xβγ[j] == typemin(T) # fill only if not already filled 
-                    xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ, 
-                        ixb, ixg, ixk) 
+            if consideration_set[j] # searched item
+                if xβγ[j] == typemin(T) # fill only if not already filled
+                    xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ,
+                        ixb, ixg, ixk)
                     xβγ[j] = xβ_j + xγ_j
                     xβκ[j] = xβ_j + xκ_j
                 end
@@ -409,8 +409,8 @@ function lik_search_no_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ
                 prob_searches_given_draw *= prob_search_not_buy(
                     m, xβγ[j], xβκ[j], ξj[j], u0_draw, u0_draw, dE, dV)
             else
-                if xβγ[j] == typemin(T) # fill only if not already filled 
-                    xβ_j, xγ_j, _ = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ, 
+                if xβγ[j] == typemin(T) # fill only if not already filled
+                    xβ_j, xγ_j, _ = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ,
                         ixb, ixg, ixk; no_κ = true)
                     xβγ[j] = xβ_j + xγ_j
                 end
@@ -426,11 +426,11 @@ function lik_search_no_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ
 
         LL += prob_searches_given_draw
     end
-    return lik_return_stable(LL/n_draws, return_log) 
+    return lik_return_stable(LL/n_draws, return_log)
 end
 
-function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ, 
-        dE, dV, dU0, 
+function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
+        dE, dV, dU0,
         mapping_characteristics, d::DataSD, i::Int, n_draws, rng,
         return_log, cache) where {T <: Real}
     n_products = length(d.product_ids[i])
@@ -440,7 +440,7 @@ function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
     ixg = mapping_characteristics[2][i]
     ixk = mapping_characteristics[3][i]
 
-    xβγ, xβκ = unpack_cache(cache, β) 
+    xβγ, xβκ = unpack_cache(cache, β)
     xβγ .= typemin(T) # reset
     xβκ .= typemin(T) # reset
 
@@ -448,8 +448,8 @@ function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
 
     k = d.purchase_indices[i] # index of purchased product
 
-    # xb of purchased 
-    xβ_k, xγ_k, xκ_k = @views construct_util_parts(d.product_characteristics, i, k, β, γ, κ, 
+    # xb of purchased
+    xβ_k, xγ_k, xκ_k = @views construct_util_parts(d.product_characteristics, i, k, β, γ, κ,
                     ixb, ixg, ixk)
     xβγ_k = xβ_k + xγ_k
     xβκ_k = xβ_k + xκ_k
@@ -459,14 +459,14 @@ function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
         # Reset for each draw
         prob_searches_given_draw = one(T)
 
-        # Fill 
-        if ddd == 1 # e + xβ_k_detail  < ξ 
+        # Fill
+        if ddd == 1 # e + xβ_k_detail  < ξ
             e = rand_trunc(rng, dE, -one(T) * MAX_NUMERICAL, ξj[k] + xγ_k - xκ_k)
             v = rand(rng, dV)
             u_k = xβκ_k + e + v
             z_k = xβγ_k + v + ξj[k] # this way v draw still stored in u_k
             prob_draw_in_bounds = trunc_cdf(dE, -one(T) * MAX_NUMERICAL, ξj[k] + xγ_k - xκ_k)
-        else # e + xβ_k_detail  >= ξ 
+        else # e + xβ_k_detail  >= ξ
             e = rand_trunc(rng, dE, ξj[k] + xγ_k - xκ_k, one(T) * MAX_NUMERICAL)
             v = rand(rng, dV)
             u_k = xβκ_k + e + v
@@ -484,9 +484,9 @@ function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
 
         # Probabilities for other products
         for j in 2:n_products
-            if xβγ[j] == typemin(T) # fill only if not already filled 
-                xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ, 
-                    ixb, ixg, ixk) 
+            if xβγ[j] == typemin(T) # fill only if not already filled
+                xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ,
+                    ixb, ixg, ixk)
                 xβγ[j] = xβ_j + xγ_j
                 xβκ[j] = xβ_j + xκ_j
             end
@@ -494,11 +494,11 @@ function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
             xβγ_j = xβγ[j]
             xβκ_j = xβκ[j]
 
-            # searched 
+            # searched
             if consideration_set[j] && j != k
                 prob_searches_given_draw *= prob_search_not_buy(
                     m, xβγ_j, xβκ_j, ξj[j], wt_k, wt_k, dE, dV)
-            # unsearched 
+            # unsearched
             elseif j != k
                 prob_searches_given_draw *= prob_not_search(m, wt_k, xβγ_j + ξj[j], dV)
             end
@@ -509,10 +509,10 @@ function lik_purchase(m::WM, zd, ξj::Vector{T}, β::Vector{T}, γ, κ,
         end
         LL += prob_searches_given_draw * prob_draw_in_bounds
     end
-    return lik_return_stable(LL/n_draws, return_log) 
+    return lik_return_stable(LL/n_draws, return_log)
 end
 
-##  Demand functions based on partitioned probability space 
+##  Demand functions based on partitioned probability space
 # function calculate_demand_outside_option(m::WM{T}, d::DataSD, i, mapping_characteristics, n; kwargs...) where {T}
 
 #     # note: unpacking things here and passing into function saves a lot of allocations
@@ -532,9 +532,9 @@ end
 #     xβγ = get(kwargs, :xβγ, zeros(T, length(d.product_ids[i])))
 #     xβκ = get(kwargs, :xβκ, zeros(T, length(d.product_ids[i])))
 
-#     # Reset 
-#     xβγ .= typemin(T) 
-#     xβκ .= typemin(T) 
+#     # Reset
+#     xβγ .= typemin(T)
+#     xβκ .= typemin(T)
 
 #     return calculate_demand_outside_option(m, d, i, n, β, γ, κ, zs_h, dE, dV, dU0,
 #         mapping_characteristics, xβγ, xβκ; kwargs...)
@@ -542,7 +542,7 @@ end
 
 
 # function calculate_demand_outside_option(m::WM{T}, d::DataSD, i, n,
-#     β, γ, κ, zs_h, dE, dV, dU0, 
+#     β, γ, κ, zs_h, dE, dV, dU0,
 #     mapping_characteristics, xβγ, xβκ; kwargs...) where T <: Real
 
 #     with_outside_option_dummy = d.product_ids[i][1] == 0
@@ -568,9 +568,9 @@ end
 #         prob_buy_u0 = one(T)
 
 #         for j in 2:n_products
-#             if xβγ[j] == typemin(T) # fill only if not already filled 
-#                 xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ, 
-#                     ixb, ixg, ixk) 
+#             if xβγ[j] == typemin(T) # fill only if not already filled
+#                 xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ,
+#                     ixb, ixg, ixk)
 #                 xβγ[j] = xβ_j + xγ_j
 #                 xβκ[j] = xβ_j + xκ_j
 #             end
@@ -608,16 +608,16 @@ end
 #     end
 
 #     if zs_h[k] <= -T(MAX_NUMERICAL)
-        
+
 #         return zero(T)
 #     end
 
 #     xβγ = get(kwargs, :xβγ, zeros(T, length(d.product_ids[i])))
 #     xβκ = get(kwargs, :xβκ, zeros(T, length(d.product_ids[i])))
 
-#     # Reset 
-#     xβγ .= typemin(T) 
-#     xβκ .= typemin(T) 
+#     # Reset
+#     xβγ .= typemin(T)
+#     xβκ .= typemin(T)
 
 
 #     return calculate_demand_product(m, d, i, k, n, β, γ, κ, zs_h, dE, dV, dU0,
@@ -626,7 +626,7 @@ end
 
 # function calculate_demand_product(m::WM{T}, d::DataSD, i, k, n,
 #         β::Vector{T}, γ, κ, zs_h, dE::Distribution,
-#         dV::Distribution, dU0::Distribution, 
+#         dV::Distribution, dU0::Distribution,
 #         mapping_characteristics, xβγ, xβκ;  kwargs...) where {T <: Real}
 #     n_products = length(d.product_ids[i])
 #     with_outside_option_dummy = d.product_ids[i][1] == 0
@@ -636,8 +636,8 @@ end
 
 #     demand = zero(T)
 
-#     # xβ of purchased 
-#     xβ_k, xγ_k, xκ_k = @views construct_util_parts(d.product_characteristics, i, k, β, γ, 
+#     # xβ of purchased
+#     xβ_k, xγ_k, xκ_k = @views construct_util_parts(d.product_characteristics, i, k, β, γ,
 #         κ, ixb, ixg, ixk)
 #     xβγ_k = xβ_k + xγ_k
 #     xβκ_k = xβ_k + xκ_k
@@ -648,22 +648,22 @@ end
 #         # Reset for each draw
 #         prob_purchase_k = one(T)
 
-#         # Fill 
-#         if ddd == 1 # e + xβ_k_detail < ξ -> ̃w_k = u_k 
+#         # Fill
+#         if ddd == 1 # e + xβ_k_detail < ξ -> ̃w_k = u_k
 #             e = rand_trunc(rng, dE, -one(T) * MAX_NUMERICAL, zs_h[k] + xγ_k - xκ_k)
 #             v = rand(rng, dV) # truncate v so that u_k in bounds
 #             u_k = xβκ_k + e + v
-#             z_k = xβγ_k + v + zs_h[k] 
+#             z_k = xβγ_k + v + zs_h[k]
 #             prob_draws_in_bounds = trunc_cdf(dE, -one(T) * MAX_NUMERICAL, zs_h[k] + xγ_k - xκ_k)
 #         else # e + xβ_k_detail >= ξ -> ̃w_k = z_k
 #             e = rand_trunc(rng, dE, zs_h[k] + xγ_k - xκ_k, one(T) * MAX_NUMERICAL)
-#             v = rand(rng, dV) # truncate v so that z_k in bounds 
+#             v = rand(rng, dV) # truncate v so that z_k in bounds
 #             u_k = xβκ_k + e + v
-#             z_k = xβγ_k + v + zs_h[k] 
-#             prob_draws_in_bounds = trunc_cdf(dE, zs_h[k] + xγ_k - xκ_k, one(T) * MAX_NUMERICAL) 
+#             z_k = xβγ_k + v + zs_h[k]
+#             prob_draws_in_bounds = trunc_cdf(dE, zs_h[k] + xγ_k - xκ_k, one(T) * MAX_NUMERICAL)
 #         end
 
-#         # Get values only if last click not in initial awareness set 
+#         # Get values only if last click not in initial awareness set
 #         wt_k = min(u_k, z_k)
 
 #         if with_outside_option_dummy
@@ -675,9 +675,9 @@ end
 #             if j == k
 #                 continue
 #             end
-#             if xβγ[j] == typemin(T) # fill only if not already filled 
-#                 xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ, 
-#                     ixb, ixg, ixk) 
+#             if xβγ[j] == typemin(T) # fill only if not already filled
+#                 xβ_j, xγ_j, xκ_j = @views construct_util_parts(d.product_characteristics, i, j, β, γ, κ,
+#                     ixb, ixg, ixk)
 #                 xβγ[j] = xβ_j + xγ_j
 #                 xβκ[j] = xβ_j + xκ_j
 #             end

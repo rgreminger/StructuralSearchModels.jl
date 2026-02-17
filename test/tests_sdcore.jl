@@ -1,4 +1,4 @@
-# Define model 
+# Define model
 m = SDCore(
     β = [-0.05, 3.0],
     Ξ = 4.5,
@@ -17,7 +17,7 @@ m = SDCore(
 seed = 1
 rng = StableRNG(seed)
 
-# Generate data 
+# Generate data
 n_consumers = 10
 d = generate_data(m, n_consumers, 1; rng, seed,
     conditional_on_search = false, conditional_on_search_iter = 100,
@@ -29,10 +29,10 @@ d = generate_data(m, n_consumers, 1; rng, seed,
 @test d.search_paths[1][1:2] == [2, 4]
 @test d.stop_indices[3] == 2
 
-# Cost computation 
+# Cost computation
 
 # Verify costs correct: need that Ξ again same as m.Ξ after getting cd and recomputing Ξ
-# note: requires many draws for accuracy 
+# note: requires many draws for accuracy
 m = SDCore(
     β = [0.5, 1.0],
     Ξ = 5.0,
@@ -52,30 +52,30 @@ d = generate_data(m, n_consumers, 1; seed, rng,
     conditional_on_search = false, conditional_on_search_iter = 100,
     products = generate_products(n_consumers, Normal(); rng, seed))
 
-# Compute cd cost   
+# Compute cd cost
 calculate_costs!(m, d, 100000; seed, rng)
 
-# Compute discovery value from costs 
+# Compute discovery value from costs
 chars = vcat([d.product_characteristics[i][d.product_ids[i] .> 0, :]
-              for i in eachindex(d)]...) # excludes outside option 
+              for i in eachindex(d)]...) # excludes outside option
 xβ = chars * m.β
 
 G = Normal(mean(xβ), sqrt(m.dV.σ^2 + var(xβ))) # products by default are drawn from normal distribution
 Ξ = StructuralSearchModels.calculate_discovery_value(G, m, m.ξ, m.cs[1][2], m.cd[1])
 
-# Compare computed discovery value with true one 
+# Compare computed discovery value with true one
 # loose tolerance because of random draws
 @test abs(Ξ - m.Ξ) ≤ 0.05
 
-# Compute search value 
-ξ = StructuralSearchModels.calculate_ξ(m.cs[1][2], m.dE) 
+# Compute search value
+ξ = StructuralSearchModels.calculate_ξ(m.cs[1][2], m.dE)
 
 # Compare computed search value with true one
 @test ξ≈m.ξ atol=1e-6
 
-# Compute search value for some other distributions 
-for dist in [Exponential(), LogNormal(), Uniform(-3, 3)] 
-    m1 = deepcopy(m) 
+# Compute search value for some other distributions
+for dist in [Exponential(), LogNormal(), Uniform(-3, 3)]
+    m1 = deepcopy(m)
     m1.dE = dist
     calculate_costs!(m1, d, 10000; seed, rng, position_at_which_correct_beliefs = 0)
 
@@ -83,16 +83,16 @@ for dist in [Exponential(), LogNormal(), Uniform(-3, 3)]
 
     ξ1 = StructuralSearchModels.calculate_ξ(m1.cs[1][2], m1.dE)
     @test ξ1 ≈ m1.ξ atol=1e-6
-end 
+end
 
-# Test position-specific search costs 
+# Test position-specific search costs
 m.ξρ = [-0.2]
 calculate_costs!(m, d, 1000000; seed, rng)
 @test m.cs[1][2] == 0.08331547058768628
 @test m.cs[1][3] == 0.12020723389476541
 
-############################################################################################ 
-## Welfare calculations 
+############################################################################################
+## Welfare calculations
 
 m = SDCore(
     β = [0.5, 1.0],
@@ -107,7 +107,7 @@ m = SDCore(
     zdfun = "linear",
     zsfun = "linear"
 )
-# Compute cd cost   
+# Compute cd cost
 calculate_costs!(m, d, 10000000; seed, rng)
 
 W = calculate_welfare(m, d, 1000; rng, seed)
@@ -127,14 +127,14 @@ W = calculate_welfare(m, d, 1000; rng, seed)
 @test W[:conditional_on_search][:discovery_costs] ≈ 0.531337975733615 atol=0.03
 
 
-############################################################################################ 
-## Revenue calculations 
+############################################################################################
+## Revenue calculations
 
 R = calculate_revenues(m, d, 1, 100; seed, rng)
 
 @test R[:revenues] ≈ 823.245049712528 atol=1e-6
 @test R[:demand] ≈ 1629.76 atol=1e-6
- 
+
 #########################################################################################
 ## Test when only one characteristic on landing page
 m = SDCore(
@@ -150,9 +150,9 @@ m = SDCore(
     zdfun = "linear",
     zsfun = "linear",
     information_structure = InformationStructureSpecification(
-        γ = [0.0, 0.0, 0.0], 
+        γ = [0.0, 0.0, 0.0],
         κ = [0.0, 0.1, 0.0],
-        indices_characteristics_β_union = 1:1, 
+        indices_characteristics_β_union = 1:1,
         indices_characteristics_γ_union= 1:0,
         indices_characteristics_κ_union = 2:2,
     )
@@ -167,7 +167,7 @@ d = generate_data(m, n_consumers, 1; seed, rng,
 @test d.search_paths[1][1:2] == [2, 4]
 @test d.stop_indices[2] == 8
 
-# Verify costs (which are now different with some characteristics hidden on list page) 
+# Verify costs (which are now different with some characteristics hidden on list page)
 calculate_costs!(m, d, 10000; seed, rng, position_at_which_correct_beliefs = 0)
 @test m.cd[1] ≈ 0.18833486964459709 atol=0.02
 @test m.cs[1][2] ≈ 0.08331547058768628 atol=1e-12
@@ -178,7 +178,7 @@ calculate_costs!(m, d, 10000; seed, rng, position_at_which_correct_beliefs = 0)
 @test m.cs[1][3] ≈ 0.12020723389476541 atol=1e-12
 @test m.cs[1][4] ≈ 0.16867273224175544 atol=1e-12
 
-# Check welfare 
+# Check welfare
 W = calculate_welfare(m, d, 100; rng, seed)
 
 @test W[:average][:welfare] ≈ 0.6045585458932817 atol=0.05
@@ -187,9 +187,9 @@ W = calculate_welfare(m, d, 100; rng, seed)
 
 
 #########################################################################################
-## Test with inference about detail page 
-m.information_structure.γ[1] = 0.1 
-m.information_structure.indices_characteristics_γ_union = 1:1 
+## Test with inference about detail page
+m.information_structure.γ[1] = 0.1
+m.information_structure.indices_characteristics_γ_union = 1:1
 m.information_structure.indices_characteristics_γ_individual = 1:1
 d = generate_data(m, n_consumers, 1; seed, rng,
     products = generate_products(n_consumers, MvNormal([0.0, 0.0], [1.0 0.0; 0.0 1.0]); seed, rng))
@@ -205,7 +205,7 @@ calculate_costs!(m, d, 1000; seed, rng, position_at_which_correct_beliefs = 0)
 @test m.cd[1] ≈ 0.18972651307956953 atol=0.02
 @test m.cs[1][2] ≈ 0.10263615330290497 atol=1e-12
 
-# Check welfare 
+# Check welfare
 W = calculate_welfare(m, d, 100; rng, seed)
 
 @test W[:average][:welfare] ≈ 0.6119811728332721 atol=0.05
@@ -314,13 +314,13 @@ W_vary = calculate_welfare(m, d_vary, 100; rng, seed)
 
 
 #########################################################################################
-## Test heterogeneity specification 
-# function test_observed_heterogeneity_spec(m, pars_to_test, ll_het) 
-    
-#     # Set to homogeneous model 
-#     m.heterogeneity = HeterogeneitySpecification() 
+## Test heterogeneity specification
+# function test_observed_heterogeneity_spec(m, pars_to_test, ll_het)
 
-#     n_consumers = 10 
+#     # Set to homogeneous model
+#     m.heterogeneity = HeterogeneitySpecification()
+
+#     n_consumers = 10
 #     d_homo = generate_data(m, n_consumers, 1;
 #         seed, rng,
 #         conditional_on_search = false, conditional_on_search_iter = 100,
@@ -336,51 +336,51 @@ W_vary = calculate_welfare(m, d_vary, 100; rng, seed)
 
 #     Random.seed!(rng, seed)
 #     session_characteristics = [[rand(rng, [1., 0])] for _ in 1:n_consumers]
-#     session_characteristics[1][1] = 0 # set to zero so same as homogeneous case 
-#     session_characteristics[2][1] = 1 # set to one so different 
+#     session_characteristics[1][1] = 0 # set to zero so same as homogeneous case
+#     session_characteristics[2][1] = 1 # set to one so different
 #     d_homo.session_characteristics = session_characteristics
-#     d_hetero = generate_data(m, d_homo; rng, seed) 
+#     d_hetero = generate_data(m, d_homo; rng, seed)
 
 #     if !isnothing(ll_het)
 #         @test ll_het == calculate_likelihood(m, e, d_hetero; rng, seed)
 #     end
 
-#     # No change for first consumer that has session_characteristics = 0, but change for second 
+#     # No change for first consumer that has session_characteristics = 0, but change for second
 #     @test isequal(d_homo[1], d_hetero[1])
-#     @test isequal(d_homo[1], d_hetero[2]) == false 
+#     @test isequal(d_homo[1], d_hetero[2]) == false
 
 #     # Try different heterogeneity specifications, all with ψ = 0, so should yield same as homogenous
-#     # model, but runs through data generation 
+#     # model, but runs through data generation
 #     for p in pars_to_test
 #         test_observed_heterogeneity_inner_specs(p, d_homo, ll_homo)
 #     end
-#     return nothing 
+#     return nothing
 # end
 
 # function test_observed_heterogeneity_inner_specs(pars, d_homo, ll_homo)
 
 #     hspecs = [HeterogeneitySpecification(
 #                 parameters_with_observed_heterogeneity = Dict(p => [1] for p in par),
-#                 ψ = fill([0.0], length(par))) for par in pars] 
+#                 ψ = fill([0.0], length(par))) for par in pars]
 
-#     for h in hspecs 
-#         m.heterogeneity = h 
-#         update_heterogeneity_specification!(m) 
-#         d_hetero = generate_data(m, d_homo; rng, seed) 
+#     for h in hspecs
+#         m.heterogeneity = h
+#         update_heterogeneity_specification!(m)
+#         d_hetero = generate_data(m, d_homo; rng, seed)
 #         @test isequal(d_homo, d_hetero)
 #         if !isnothing(ll_homo)
-#             @test calculate_likelihood(m, SMLE(100), d_hetero; rng, seed) == ll_homo 
+#             @test calculate_likelihood(m, SMLE(100), d_hetero; rng, seed) == ll_homo
 #         end
 #     end
-#     return nothing 
+#     return nothing
 # end
 
-# function test_unobserved_heterogeneity_spec(m, pars_to_test, ll_het_base, ll_het_qmc) 
+# function test_unobserved_heterogeneity_spec(m, pars_to_test, ll_het_base, ll_het_qmc)
 
-#     # Construct heterogeneity specifications 
+#     # Construct heterogeneity specifications
 #     hspecs = []
 #     for pars in pars_to_test
-#         for par in pars 
+#         for par in pars
 #             Σ = zeros(length(par), length(par))
 #             for i in axes(Σ, 1)
 #                 Σ[i, i] = 0.05
@@ -393,34 +393,34 @@ W_vary = calculate_welfare(m, d_vary, 100; rng, seed)
 #             push!(hspecs, hp)
 #         end
 #     end
-    
-#     m.heterogeneity = HeterogeneitySpecification() 
-#     n_consumers = 10 
+
+#     m.heterogeneity = HeterogeneitySpecification()
+#     n_consumers = 10
 #     d = generate_data(m, n_consumers, 1;
 #         seed, rng,
 #         products = generate_products(n_consumers, Normal(); rng, seed))
 
 #     for (i, spec) in enumerate(hspecs)
-#         m.heterogeneity = spec 
-#         update_heterogeneity_specification!(m) 
+#         m.heterogeneity = spec
+#         update_heterogeneity_specification!(m)
 
-#         d = generate_data(m, d; rng, seed) 
-        
+#         d = generate_data(m, d; rng, seed)
+
 #         @test calculate_likelihood(m, SMLE(100), d; rng, seed) ≈ ll_het_base[i] atol=1e-12
 
-#         numerical_integration_method_heterogeneity = 
+#         numerical_integration_method_heterogeneity =
 #             QMC(n_draws = 10, n_draws_discard = 3; sampler = QuasiMonteCarlo.SobolSample())
 #         @test calculate_likelihood(m, SMLE(100;numerical_integration_method_heterogeneity), d; rng, seed) ≈ ll_het_qmc[i] atol=1e-12
 
 #     end
 
-#     return nothing 
+#     return nothing
 # end
 
 
 
 
-# pars_to_test = [  
+# pars_to_test = [
 #     [[:β], [:ξ], [:Ξ], [:ρ], [:ξρ]],
 #     [(:β, :ξ), (:β, :Ξ), (:Ξ, :ρ), (:ξ, :ξρ), (:ξ, :Ξ)]
 # ]
@@ -438,5 +438,5 @@ W_vary = calculate_welfare(m, d_vary, 100; rng, seed)
 #     zdfun = "log",
 #     zsfun = "linear"
 # )
-    
-# test_observed_heterogeneity_spec(m, pars_to_test, nothing) 
+
+# test_observed_heterogeneity_spec(m, pars_to_test, nothing)

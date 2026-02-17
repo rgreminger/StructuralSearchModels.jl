@@ -1,9 +1,9 @@
 ###########################################################################################
 # Parameter handling
 function vectorize_parameters(m::M; kwargs...) where {M <: SearchRankingJointModel}
-    
+
     θ1 = vectorize_parameters(m.search_model; kwargs...)
-    
+
     θ2 = vectorize_parameters(m.ranking_model; kwargs...)
 
     return vcat(θ1, θ2)
@@ -21,11 +21,11 @@ function construct_model_from_pars(θ::Vector{T}, m::M; kwargs...) where {M <: S
 end
 
 ############################################################################################
-# Data generation 
+# Data generation
 
 function generate_data(m::SearchRankingJointModel, n_consumers, n_sessions_per_consumer; kwargs...)
-    # Produce first data from search model 
-    d = generate_data(m.search_model, n_consumers, n_sessions_per_consumer; kwargs...) 
+    # Produce first data from search model
+    d = generate_data(m.search_model, n_consumers, n_sessions_per_consumer; kwargs...)
     # Rank alternatives using ranking model
     rank_alternatives!(d, m.ranking_model; kwargs...)
     # Generate search paths again using the newly ranked alternatives
@@ -36,12 +36,12 @@ end
 
 
 ############################################################################################
-# Likelihood calculation 
+# Likelihood calculation
 
 function prepare_arguments_likelihood(
     model::SearchRankingJointModel, estimator::SMLE, data::DataSD; kwargs...)
 
-    # Prepare arguments for the likelihood function 
+    # Prepare arguments for the likelihood function
     args = prepare_arguments_likelihood(model.search_model, estimator, data; kwargs...)
 
     return args
@@ -59,12 +59,12 @@ end
 
 
 #############################################################################################
-# Fit measures 
+# Fit measures
 function calculate_fit_measures(m::SearchRankingJointModel, data::DataSD, n_sim; kwargs...)
-    # Calculate fit measures for the search model 
+    # Calculate fit measures for the search model
     fit_measures_search = calculate_fit_measures(m.search_model, data, n_sim; kwargs...)
 
-    # Calculate fit measures for the ranking model 
+    # Calculate fit measures for the ranking model
     fit_measures_ranking = calculate_fit_measures(m.ranking_model, data, n_sim; kwargs...)
 
     # Combine fit measures
@@ -73,5 +73,3 @@ function calculate_fit_measures(m::SearchRankingJointModel, data::DataSD, n_sim;
 
     return fit_measures
 end
-
-
