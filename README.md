@@ -1,5 +1,7 @@
 # StructuralSearchModels.jl
 
+[![Documentation](https://img.shields.io/badge/docs-stable-blue.svg)](https://rgreminger.github.io/StructuralSearchModels.jl/stable)
+
 The *StructuralSearchModels.jl* package implements structural search models and related functions for estimation and consumer welfare analysis. In particular, it provides the following functionality for different structural search models:
 
 - Estimation
@@ -21,18 +23,18 @@ Pkg.add("StructuralSearchModels")
 
 ## Documentation
 
-Detailed information on using the package can be found in the [documentation](XX ). It is organized as follows:
-- [Getting Started](https://rgreminger.github.io/StructuralSearchModels.jl/getting_started): Installation and usage instructions.
-- [Tutorials and Examples](https://rgreminger.github.io/StructuralSearchModels.jl/tutorials): Examples of how to use the package.
-- [Models](https://rgreminger.github.io/StructuralSearchModels.jl/models): Describes the available model types and specifications
-- [Data](https://rgreminger.github.io/StructuralSearchModels.jl/data_generation): Describes the data types and data generation functions.
-- [Estimation](https://rgreminger.github.io/StructuralSearchModels.jl/models): Describes the estimation functions.
-- [Post Estimation](https://rgreminger.github.io/StructuralSearchModels.jl/post_estimation): Describes the post estimation functions (e.g., welfare analysis, demand analysis, etc.)
+Detailed information on using the package can be found in the [documentation](https://rgreminger.github.io/StructuralSearchModels.jl/stable). It is organized as follows:
+- [Getting Started](https://rgreminger.github.io/StructuralSearchModels.jl/stable/getting_started): Installation and usage instructions.
+- [Tutorials and Examples](https://rgreminger.github.io/StructuralSearchModels.jl/stable/tutorials): Examples of how to use the package.
+- [Models](https://rgreminger.github.io/StructuralSearchModels.jl/stable/models): Describes the available model types and specifications
+- [Data](https://rgreminger.github.io/StructuralSearchModels.jl/stable/data_generation): Describes the data types and data generation functions.
+- [Estimation](https://rgreminger.github.io/StructuralSearchModels.jl/stable/models): Describes the estimation functions.
+- [Post Estimation](https://rgreminger.github.io/StructuralSearchModels.jl/stable/post_estimation): Describes the post estimation functions (e.g., welfare analysis, demand analysis, etc.)
 
 
 ## Minimal example
 
-Below is a minimal example showing how to define a model, generate data from it, and estimate it on the simulated data. Further examples and tutorials are provided in the [documentation](https://rgreminger.github.io/StructuralSearchModels.jl).
+Below is a minimal example showing how to define a model, generate data from it, and estimate it on the simulated data. Further examples and tutorials are provided in the [documentation](https://rgreminger.github.io/StructuralSearchModels.jl/stable/).
 
 ```julia
 using Distributions, StructuralSearchModels
