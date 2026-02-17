@@ -19,7 +19,9 @@ makedocs(
         "Post-Estimation" => "post_estimation.md",
         # "Public Interface" => "api.md",
         # "Contributing" => "contributing.md",
-        ]
+        ],
+    clean = true, linkcheck = true,
+        warnonly = [:missing_docs, :cross_references],
 )
 
 deploydocs(
