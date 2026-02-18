@@ -15,7 +15,7 @@ This documentation is organized as follows:
 - [Getting Started](getting_started.md): Installation and usage instructions.
 - [Tutorials and Examples](tutorials.md): Examples of how to use the package.
 - [Models](models.md): Describes the available model types and specifications
-- [Data](data_generation.md): Describes the data types and data generation functions.
+- [Data](data.md): Describes the data types and data generation functions.
 - [Estimation](estimation.md): Describes the estimation functions.
 - [Post Estimation](post_estimation.md): Describes the post estimation functions (e.g., welfare analysis, demand analysis, etc.)
 
@@ -58,7 +58,7 @@ model_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estim
 ```
 
 ## State and future development
-This is the first public release of the package. The core functionality for estimating the search and siscovery model and Weitzman model is implemented and tested, including accompanying data generation and post-estimation functions. I will also try to keep the public-facing types and functions stable, so that future updates do not break existing code.
+This is the first public release of the package. The core functionality for estimating the search and discovery model and Weitzman model is implemented and tested, including accompanying data generation and post-estimation functions. I will also try to keep the public-facing types and functions stable, so that future updates do not break existing code.
 
 For the next version, I plan to allow specifying and estimating parameters that govern observed and unobserved heterogeneity across consumers (e.g., heterogeneous preferences). There are already several placeholders as type definitions that hopefully are sufficient so that the public-facing types do not change when implementing this in the next version.
 
@@ -100,7 +100,7 @@ If you use the search and discovery model implemented in this package, please al
 
 
 ## Acknowledgements
-This package builds on the amazing Julia ecosystem. It would not have been possible possible without the great work done as part of the packages listed in the `Project.toml` file on GitHub.
+This package builds on the amazing Julia ecosystem. It would not have been possible without the great work done as part of the packages listed in the `Project.toml` file on GitHub.
 
 The package heavily relies on the [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) and [Optimization.jl](https://github.com/SciML/Optimization.jl) packages. Optimization.jl implements solvers that are published in different packages. By default, this package uses the solver implemented by [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl).
 

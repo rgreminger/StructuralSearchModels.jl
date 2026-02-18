@@ -5,6 +5,9 @@ tmp*
 # vscode
 .vscode/*
 
+# claude
+.claude/*
+
 # manifest
 Manifest.toml
 

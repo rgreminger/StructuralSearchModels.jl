@@ -14,8 +14,8 @@ export calculate_revenues # revenues
 # Additional helper functions
 export calculate_discovery_value
 export vectorize_parameters, construct_model_from_pars
-export fill_indices_min_discover!, update_positions!, expand_products!, merge_data
-export add_product_fe!, find_products_appearing_min_n_times, add_product_fe_data!
+export fill_indices_min_discover!, update_positions!, merge_data
+export add_product_fe!, add_product_fe_data!
 export update_heterogeneity_specification!
 
 # Export concrete model types

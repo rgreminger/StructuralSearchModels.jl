@@ -221,6 +221,11 @@ function getindex(d::DataSD, elements...)
         )
 end
 
+"""
+    merge_data(data1::DataSD, data2::DataSD)
+
+Merge two `DataSD` objects into a single one by concatenating all fields. If the combined `consumer_ids` contain duplicates, they are replaced with consecutive integers.
+"""
 function merge_data(data1::DataSD, data2::DataSD)
     consumer_ids = vcat(data1.consumer_ids, data2.consumer_ids)
     if length(unique(consumer_ids)) != length(consumer_ids) # redo consumer ids if duplicates
@@ -818,7 +823,11 @@ end
 """
 	calculate_costs!(model::SDModel, data::DataSD, n_draws...; force_recompute = true, kwargs...)
 
-Calculate search and discovery costs for the `model <: SDModel` using `data <: DataSD` and add/update them in the `model`. Uses `n_draws` to calculate the difference costs using the distribution of characteristics in the data. If `n_draws` is a single element, the same number of draws are used to compute `cs` and `cd`. Otherwise, the first element is used to compute `cs` and the second to compute `cd`. If `force_recompute` is true (default), the costs are recomputed even if they are already present in the model.
+Calculate search and discovery costs for the `model <: SDModel` using `data <: DataSD` and add/update them in the `model`. Uses `n_draws` to calculate the different costs using the distribution of characteristics in the data. If `n_draws` is a single element, the same number of draws are used to compute `cs` and `cd`. Otherwise, the first element is used to compute `cs` and the second to compute `cd`. If `force_recompute` is true (default), the costs are recomputed even if they are already present in the model.
+
+Discovery costs are given by E[max{0, xβγ_demeaned + ε - Ξ}] and depend on the distribution of characteristics in the data as well as the distribution of ε. The expectation is computed by sampling from the distribution of characteristics in the data and the distribution of ε. Discovery costs are thus computed under the assumption that  beliefs are correct across positions.
+
+Search costs are given by E[max{0, xβ_detail_demeaned + ε - ξj}], where ξj is the position (or product) specific search value. The expectation is computed by sampling from the distribution of characteristics in the data and the distribution of ε. If all characteristics are revealed on the list, then the search cost is instead computed as E[1 - F(ξj)], where F is the distribution of ε. See (7) in Greminger (2022) and online appendix EC.2.
 """
 function calculate_costs!(m::SDCore, d::DataSD, n_draws...;
         force_recompute = true,
@@ -838,11 +847,6 @@ function calculate_costs!(m::SDCore, d::DataSD, n_draws...;
     return nothing
 end
 
-"""
-	calculate_search_costs(m::SDModel, ξ, d::DataSD, n_draws; kwargs...)
-
-Calculate search costs for `SDModel` model given specific `ξj`. The search cost is given by E[max{0, xβ_detail_demeaned + ε - ξj}], which is computed using MC integration using `n_draws` draws from the demeaned empirical distribution of xβ_detail and the distribution of ε. If all characteristics are revealed on the list, then the search cost is given by E[1 - F(ξ)], where F is the distribution of ε. See (7) in the theory paper and online appendix EC.2.
-"""
 function calculate_search_costs(m::SDModel, d::DataSD, n_draws; kwargs...)
 
     if has_heterogeneity(m)
@@ -1254,11 +1258,6 @@ end
 #     end
 # end
 
-"""
-	calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
-        kwargs...)
-Calculate discovery cost `cd` for model `m` using data `d` and `n_draws` draws of effective values. The discovery value is calculated under the assumption that beliefs are correct across positions.
-"""
 function calculate_discovery_costs(m::SDModel, d::DataSD, n_draws;
         kwargs...)
 

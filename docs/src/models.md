@@ -9,7 +9,7 @@ Because the Weitzman model is a special case of the Search and Discovery model, 
 
 ## Search and Discovery Model
 
-The empirical Search and Discovery model has been introduced by [Greminger (2025)](https://rgreminger.github.io/wp/heterogeneous_position_effects.html), building on the theory introduced by [Greminger (2022)](https://rgreminger.github.io/pub/search_discovery.html).
+The empirical Search and Discovery model is introduced in [Greminger (2025)](https://rgreminger.github.io/wp/heterogeneous_position_effects.html), building on the theory introduced in [Greminger (2022)](https://rgreminger.github.io/pub/search_discovery.html).
 
 The model requires specifying `ξ` and `Ξ`, rather than the costs `cs` and `cd`. These costs can be computed and added to the model using `calculate_costs!(model, data)`.
 
@@ -47,7 +47,8 @@ vectorize_parameters
 
 #### Reservation value and cost calculations
 
-The following function is available to compute costs and reservation values.
+The following function is available to compute costs and reservation values in the Search and Discovery model. These can be used to compute the search costs `cs` and discovery costs `cd` from the parameters `ξ` and `Ξ`, respectively.
+
 ```@docs
 calculate_costs!
 ```
@@ -73,7 +74,7 @@ The model can be estimated using the simulated maximum likelihood. By default, t
 
 #### Reservation value and cost calculations
 
-For the Weitzman model, the same `calculate_costs!` is available as for the SD model. The difference is that it computes the position-specific search costs as a vector `cs_h`, rather than a discovery cost.
+For the Weitzman model, the same functions to compute search costs and reservation values are available as for the SD model. The difference is that it computes the position-specific search costs as a vector `cs_h`, rather than a discovery cost.
 
 
 ## I don't like Greek unicode letters

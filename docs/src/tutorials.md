@@ -166,7 +166,7 @@ n_draws = 1000
 fit_measures = calculate_fit_measures(m_hat, d, n_draws; seed)
 ```
 
-These fit measures then can be accessed in the usual way. For example, if we want to compare the position position-specific click probabilities, we can do this as follows.
+These fit measures then can be accessed in the usual way. For example, if we want to compare the position-specific click probabilities, we can do this as follows.
 
 ```@example 1
 prob_sim = fit_measures[:click_stats_sim][:click_probability_per_position]
@@ -174,7 +174,7 @@ prob_data = fit_measures[:click_stats_data][:click_probability_per_position]
 hcat(prob_sim, prob_data) # compare simulated and data click probabilities
 ```
 
-Or if we want to compare the average number of clicks per sessions, we can do this as follows.
+Or if we want to compare the average number of clicks per session, we can do this as follows.
 
 ```@example 1
 n_clicks_sim = fit_measures[:click_stats_sim][:no_clicks_per_session]
@@ -183,7 +183,7 @@ hcat(n_clicks_sim, n_clicks_data) # compare simulated and data clicks per sessio
 ```
 ## Estimating Shock Variances
 
-To estimate the variances of the unobserved shocks, we can pass the `estimation_shock_variances` keyword argument to the `estimate` function. The following would the variance of the unobserved shock `dE`. Note that trying to run this code will not produce valid results. This is because the variance is not identified, which is not checked by the code.
+To estimate the variances of the unobserved shocks, we can pass the `estimation_shock_variances` keyword argument to the `estimate` function. The following would estimate the variance of the unobserved shock `dE`. Note that trying to run this code will not produce valid results. This is because the variance is not identified, which is not checked by the code.
 
 See the [Estimation](estimation.md#options) section for more details on the options.
 
@@ -221,7 +221,7 @@ e = SMLE(100;
 )
 
 ```
-Note that the `NelderMead` algorithm does not use gradients, but the differentiation still needs to be specfied as it has no default.
+Note that the `NelderMead` algorithm does not use gradients, but the differentiation still needs to be specified as it has no default.
 
 We can also pass additional options to the optimizer that are used by the `Optimization.jl` package as described in the [estimation](estimation.md) section. For example, we can print information on the solvers' iterations as follows:
 ```julia
@@ -236,7 +236,7 @@ This again uses the default `LBFGS` optimizer. These options may differ across o
 
 Sometimes, it is necessary to condition on search, for example, when estimating the model on data that only includes sessions with at least one click/search. This can be accommodated by setting the `conditional_on_search` option to `true`. The keyword applies to both the `generate_data` function and the `SMLE` estimator. Importantly, the keyword also needs to be set when calculating fit measures based on the estimated model. If the model is estimated conditional on search, while the fit measures are computed without it, the estimated model will likely not fit the data well.
 
-Below is an eaxmple for an MC simulation for the WM model that conditions on search.
+Below is an example for an MC simulation for the WM model that conditions on search.
 
 ```@example
 using StructuralSearchModels

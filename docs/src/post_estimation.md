@@ -1,3 +1,5 @@
+# Post Estimation utilities
+
 ## Welfare and revenue calculations
 
 An important use case for structural search models is to compute revenue and consumer welfare effects of different models.

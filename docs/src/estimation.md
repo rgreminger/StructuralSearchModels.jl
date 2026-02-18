@@ -1,6 +1,11 @@
+# Estimation
+
+For model estimation, this package implements estimators as subtypes of an abstract `Estimator` type. The [Models](models.md) section shows for each model which estimator is available. Currently, only simulated maximum likelihood is available, but I hope to implement more estimators (e.g., indirect inference) in the future.
+
+
 ## Simulated Maximum Likelihood
 
-For model estimation, this package implements estimators as subtypes of an abstract `Estimator` type. Currently, only simulated maximum likelihood is available. The baseline estimator can be created with `e = SMLE(n_draws)` where `n_draws` specifies the number of simulation draws used for numerical integration.
+The baseline Simulated Maximum Likelihood Estimator can be created with `e = SMLE(n_draws)` where `n_draws` specifies the number of simulation draws used for numerical integration.
 
 
 ```@docs
@@ -11,7 +16,7 @@ SMLE
 Various options for the optimization and numerical integration procedures used in estimation can be specified. Moreover, the `conditional_on_search` option allows specifying whether the sample is selected based on there being at least one click.
 
 #### Optimization
-Simulated maximum likelhood finds the parameter estimates by numerically maximizing the model likelihood function. This is implemented using the amazing [Optimization.jl](https://github.com/SciML/Optimization.jl) package, which allows to specify a range of optimizers (from other packages) and solvers. The `SMLE` struct is set up to to pass the respective options to the optimization package as keyword arguments.
+Simulated maximum likelhood finds the parameter estimates by numerically maximizing the model likelihood function. This is implemented using the amazing [Optimization.jl](https://github.com/SciML/Optimization.jl) package, which allows to specify a range of optimizers (from other packages) and solvers. The `SMLE` struct is set up to pass the respective options to the optimization package as keyword arguments.
 
 Specifically, this is how the different fields are passed into the respective constructors and functions of the [Optimization.jl](https://github.com/SciML/Optimization.jl) package:
 ```julia
@@ -21,9 +26,7 @@ r = solve(p, options_optimization.algorithm; options_solver...)
 ```
 
 #### Numerical Integration
-Simulated maximum likelihood uses numerical integration to compute a likelihood function that has no closed-form. `SMLE` uses the `DefaultNI` by default, which is also the only option so far. In the future, I hope that alternative approaches to compute the likelihood function are implemented.
-
-The `DefaultNI` for now uses the method introduced in [Greminger (2025)](https://rgreminger.github.io/wp/heterogeneous_position_effects.html) to integrate over the unobserved shocks for all available models.
+Simulated maximum likelihood uses numerical integration to compute a likelihood function that has no closed-form. `SMLE` uses the `DefaultNI`, which is also the only option so far. For now, the `DefaultNI` uses the method introduced in [Greminger (2025)](https://rgreminger.github.io/wp/heterogeneous_position_effects.html) to integrate over the unobserved shocks for all available models. This approach has the advantage that it does not require smoothing parameters (as KSFS) and is quite fast, but does not use the search order (as the GHK simulator does). In the future, more numerical integration methods, such as the GHK simulator that additionally uses the search order, should be implemented and made available as new types. The `DefaultNI` then should default to the appropriate method for each model and available data.
 
 ```@docs
 DefaultNI
@@ -31,7 +34,7 @@ DefaultNI
 
 #### Estimation of Shock Variances
 
-Options whether to estimate the variances of the unobserved shocks are directly passed as keyword arguments to the `estimate` function, rather than being part of the `Estimator` type. This is because it is not specific to any estimator and rather a general option.
+Options whether to estimate the variances of the unobserved shocks are directly passed as keyword arguments to the `estimate` function, rather than being part of the `Estimator` type. This is because it is not specific to any estimator and a rather general option.
 
 By default, the variances are not estimated. To estimate them, pass the keyword argument `estimation_shock_variances` to the `estimate` function. The following are valid options:
 
