@@ -23,7 +23,7 @@ r = solve(p, options_optimization.algorithm; options_solver...)
 #### Numerical Integration
 Simulated maximum likelihood uses numerical integration to compute a likelihood function that has no closed-form. `SMLE` uses the `DefaultNI` by default, which is also the only option so far. In the future, I hope that alternative approaches to compute the likelihood function are implemented.
 
-The `DefaultNI` for now uses the method proposed by [Greminger (2025)](https://rgreminger.github.io/wp/heterogeneous_position_effects.html) to integrate over the unobserved shocks for all available models.
+The `DefaultNI` for now uses the method introduced in [Greminger (2025)](https://rgreminger.github.io/wp/heterogeneous_position_effects.html) to integrate over the unobserved shocks for all available models.
 
 ```@docs
 DefaultNI
