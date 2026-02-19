@@ -1,24 +1,17 @@
 # StructuralSearchModels.jl
 
-The *StructuralSearchModels.jl* package implements structural search models and related functions for estimation and consumer welfare analysis. In particular, it provides the following functionality for different structural search models:
+This Julia package implements structural search models and related functions for estimation and consumer welfare analysis. In particular, it provides the following functionality for different structural search models:
 
 - Estimation
 - Data simulation
 - Model fit evaluation
 - Welfare analysis
-- Demand analysis
 
-Functions providing these functionalities are implemented as methods of the respective model type. This has the advantage that more models can be easily added in the future. For example, the `estimate` function is implemented as a method of the abstract types `Model` and `Estimator` types, allowing to implement further models and estimators as subtypes that continue to use the same interface.
+## How the package works
 
+The package defines types for _models_, _estimators_, and _data_. For example, the abstract type `Model` is defined for structural search models, and specific models (e.g., the search and discovery model) are implemented as subtypes of this abstract type.
 
-This documentation is organized as follows:
-- [Getting Started](getting_started.md): Installation and usage instructions.
-- [Tutorials and Examples](tutorials.md): Examples of how to use the package.
-- [Models](models.md): Describes the available model types and specifications
-- [Data](data.md): Describes the data types and data generation functions.
-- [Estimation](estimation.md): Describes the estimation functions.
-- [Post Estimation](post_estimation.md): Describes the post estimation functions (e.g., welfare analysis, demand analysis, etc.)
-
+The package then implements functions for these types while making use of Julia's multiple dispatch: functions execute different code depending on the input types. This setup leads to a convenient interface for users by exposing only high-level functions and types. For example, the `estimate(model, estimator, data)` function will dispatch to different function definitions depending on the types of its arguments. It also lends itself to future extension: new models and estimation approaches can be implemented as new types, and the same high-level functions can be used for estimation, data generation, etc. without changing the user interface.
 
 ## Installation
 
@@ -58,6 +51,7 @@ model_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estim
 ```
 
 ## State and future development
+
 This is the first public release of the package. The core functionality for estimating the search and discovery model and Weitzman model is implemented and tested, including accompanying data generation and post-estimation functions. I will also try to keep the public-facing types and functions stable, so that future updates do not break existing code.
 
 For the next version, I plan to allow specifying and estimating parameters that govern observed and unobserved heterogeneity across consumers (e.g., heterogeneous preferences). There are already several placeholders as type definitions that hopefully are sufficient so that the public-facing types do not change when implementing this in the next version.
@@ -66,11 +60,11 @@ If you are interested in contributing to the development of the package, please 
 
 ## Citation
 
-If you use this package in your research, please cite the following paper which introduced the estimation approach:
+If you use this package in your research, please cite the following paper that introduced the estimation approach:
 
 > Greminger, R. P. (2025). Trade-Offs Between Ranking Objectives: Descriptive Evidence and Structural Estimation. arXiv preprint available at https://arxiv.org/abs/2210.16408.
 
-If you use the search and discovery model implemented in this package, please also cite the following paper which introduces the model:
+If you use the search and discovery model implemented in this package, please also cite the following paper that introduced the model:
 
 > Greminger, R. P. (2022). Optimal Search and Discovery. *Management Science* 68(5), 3904–3924.
 
@@ -100,6 +94,7 @@ If you use the search and discovery model implemented in this package, please al
 
 
 ## Acknowledgements
+
 This package builds on the amazing Julia ecosystem. It would not have been possible without the great work done as part of the packages listed in the `Project.toml` file on GitHub.
 
 The package heavily relies on the [Distributions.jl](https://github.com/JuliaStats/Distributions.jl) and [Optimization.jl](https://github.com/SciML/Optimization.jl) packages. Optimization.jl implements solvers that are published in different packages. By default, this package uses the solver implemented by [Optim.jl](https://github.com/JuliaNLSolvers/Optim.jl).
