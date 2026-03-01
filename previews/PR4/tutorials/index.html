@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Tutorials and Examples · StructuralSearchModels.jl</title><meta name="title" content="Tutorials and Examples · StructuralSearchModels.jl"/><meta property="og:title" content="Tutorials and Examples · StructuralSearchModels.jl"/><meta property="twitter:title" content="Tutorials and Examples · StructuralSearchModels.jl"/><meta name="description" content="Documentation for StructuralSearchModels.jl."/><meta property="og:description" content="Documentation for StructuralSearchModels.jl."/><meta property="twitter:description" content="Documentation for StructuralSearchModels.jl."/><meta property="og:url" content="https://rgreminger.github.io/StructuralSearchModels.jl/stable/tutorials/"/><meta property="twitter:url" content="https://rgreminger.github.io/StructuralSearchModels.jl/stable/tutorials/"/><link rel="canonical" href="https://rgreminger.github.io/StructuralSearchModels.jl/stable/tutorials/"/><script data-outdated-warner src="../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL=".."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../assets/documenter.js"></script><script src="../search_index.js"></script><script src="../siteinfo.js"></script><script src="../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><div class="docs-package-name"><span class="docs-autofit"><a href="../">StructuralSearchModels.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../">StructuralSearchModels.jl</a></li><li><a class="tocitem" href="../getting_started/">Getting Started</a></li><li class="is-active"><a class="tocitem" href>Tutorials and Examples</a><ul class="internal"><li><a class="tocitem" href="#MC-Simulation-for-the-SD-Model"><span>MC Simulation for the SD Model</span></a></li><li><a class="tocitem" href="#MC-Simulation-for-the-WM-Model"><span>MC Simulation for the WM Model</span></a></li><li><a class="tocitem" href="#Adding-Search-Over-Vertical-Attributes"><span>Adding Search Over Vertical Attributes</span></a></li><li><a class="tocitem" href="#Computing-Consumer-Welfare-and-Revenues"><span>Computing Consumer Welfare and Revenues</span></a></li><li><a class="tocitem" href="#Computing-Fit-Measures"><span>Computing Fit Measures</span></a></li><li><a class="tocitem" href="#Estimating-Shock-Variances"><span>Estimating Shock Variances</span></a></li><li><a class="tocitem" href="#Specifying-Solver-Options"><span>Specifying Solver Options</span></a></li><li><a class="tocitem" href="#Conditioning-on-Search"><span>Conditioning on Search</span></a></li><li><a class="tocitem" href="#Generating-Products"><span>Generating Products</span></a></li><li><a class="tocitem" href="#Preparing-Data"><span>Preparing Data</span></a></li><li><a class="tocitem" href="#Changing-the-Number-of-Products-in-Each-Position"><span>Changing the Number of Products in Each Position</span></a></li></ul></li><li><a class="tocitem" href="../models/">Models</a></li><li><a class="tocitem" href="../data/">Data</a></li><li><a class="tocitem" href="../estimation/">Estimation</a></li><li><a class="tocitem" href="../post_estimation/">Post-Estimation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Tutorials and Examples</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Tutorials and Examples</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/rgreminger/StructuralSearchModels.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/rgreminger/StructuralSearchModels.jl/blob/main/docs/src/tutorials.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Tutorials-and-Examples"><a class="docs-heading-anchor" href="#Tutorials-and-Examples">Tutorials and Examples</a><a id="Tutorials-and-Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Tutorials-and-Examples" title="Permalink"></a></h1><p>Below are several examples that showcase the functionality of the package and how it can be used.</p><h2 id="MC-Simulation-for-the-SD-Model"><a class="docs-heading-anchor" href="#MC-Simulation-for-the-SD-Model">MC Simulation for the SD Model</a><a id="MC-Simulation-for-the-SD-Model-1"></a><a class="docs-heading-anchor-permalink" href="#MC-Simulation-for-the-SD-Model" title="Permalink"></a></h2><p>A Monte Carlo simulation requires generating data for a model and estimating it. We now do this for the Search and Discovery Model.</p><p>First, we load the package. We also load the <code>Distributions</code> package because it specifies the <code>Distribution</code> type we&#39;re using here.</p><pre><code class="language-julia hljs">using StructuralSearchModels
+using Distributions</code></pre><p>Now, we create the model with defined parameter values.</p><pre><code class="language-julia hljs"># Define model
+m = SD(
+    β = [-0.05, 3.0], # preference parameters
+    Ξ = 3.5,          # discovery value
+    ρ = [-0.1],       # parameter governing decrease in discovery value across positions
+    ξ = 2.5,          # search value
+    dE = Normal(),    # Distribution of εᵢⱼ (shocks revealed from search)
+    dV = Normal(),    # Distribution of νᵢⱼ (shocks revealed on list)
+    dU0 = Uniform(),  # distribution of outside option shock η
+    zdfun = &quot;log&quot;     # functional form specification
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SD{Float64}
+  β: Array{Float64}((2,)) [-0.05, 3.0]
+  Ξ: Float64 3.5
+  ρ: Array{Float64}((1,)) [-0.1]
+  ξ: Float64 2.5
+  dE: Distributions.Normal{Float64}
+  dV: Distributions.Normal{Float64}
+  dU0: Distributions.Uniform{Float64}
+  zdfun: String &quot;log&quot;
+  information_structure: InformationStructureSpecification{Float64}
+  heterogeneity: HeterogeneitySpecification{Float64}
+  cs: Nothing nothing
+  cd: Nothing nothing
+</code></pre><p>To generate sample data, we specify for how many consumers we want to generate data, and for how many sessions per consumer. We also specify a seed, which is not required but recommended. As a default, <code>generate_data</code> generates products with product characteristics drawn from a multivariate normal distribution and a last product characteristic which is a dummy for the outside option. In this case, this means that the last element of <span>$\beta$</span> is the preference parameter for the outside option. <a href="#Generating-Products">Generating Products</a> provides an example of how products with more characteristics can be generated.</p><pre><code class="language-julia hljs">n_consumers = 1000
+n_sessions_per_consumer = 1
+seed = 1
+d = generate_data(m, n_consumers, n_sessions_per_consumer; seed)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DataSD{Float64}
+  consumer_ids: Array{Int64}((1000,)) [1, 2, 3, 4, 5, 6, 7, 8, 9, 10  …  991, 992, 993, 994, 995, 996, 997, 998, 999, 1000]
+  product_ids: Array{Vector{Int64}}((1000,))
+  product_characteristics: Array{Matrix{Float64}}((1000,))
+  positions: Array{Vector{Int64}}((1000,))
+  session_characteristics: Nothing nothing
+  consideration_sets: Array{Vector{Bool}}((1000,))
+  purchase_indices: Array{Int64}((1000,)) [19, 1, 1, 1, 1, 1, 1, 1, 14, 1  …  1, 1, 1, 15, 1, 1, 1, 1, 1, 1]
+  min_discover_indices: Array{Int64}((1000,)) [31, 2, 2, 2, 30, 2, 2, 2, 14, 2  …  2, 2, 2, 15, 2, 29, 2, 2, 2, 2]
+  search_paths: Array{Vector{Int64}}((1000,))
+  stop_indices: Array{Int64}((1000,)) [31, 2, 2, 2, 31, 2, 2, 2, 14, 2  …  2, 2, 2, 15, 3, 31, 2, 2, 2, 2]
+</code></pre><p>The data now is all in the data object <code>d</code>, which is a <code>DataSD</code> type. By default, the data contains all fields, including where consumers stopped scrolling and the search order. These fields can be dropped for the simulation by setting them to <code>nothing</code>. This is useful if you want to simulate data that does not include this information.</p><pre><code class="language-julia hljs">d.stop_indices = nothing</code></pre><p>To estimate the model, we need to specify an estimator. The package currently includes one estimator: <code>SMLE</code>. It can be set up with the following command. See the <a href="../estimation/#options">Estimation</a> section for more details on available options. By default, the <code>SMLE</code> estimator uses 100 simulation draws.</p><pre><code class="language-julia hljs">e = SMLE(200) # Simulated MLE estimator with 200 simulation draws</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SMLE
+  options_optimization: @NamedTuple{algorithm::Optim.LBFGS{Nothing, LineSearches.InitialStatic{Float64}, LineSearches.BackTracking{Float64, Int64}, Returns{Nothing}}, differentiation::ADTypes.AutoForwardDiff{nothing, Nothing}}
+  options_problem: Tuple{} ()
+  options_solver: @NamedTuple{iterations::Int64}
+  numerical_integration_method: DefaultNI
+  numerical_integration_method_heterogeneity: QMC
+  conditional_on_search: Bool false
+</code></pre><p>We now estimate the model using the <code>estimate</code> function. The function takes the model, the estimator, and the data as arguments. We also specify a seed for the RNG. The function returns the estimated model, the estimates, the likelihood at the estimates, the result of the optimization solver, and standard errors. Asymptotic standard errors in the <code>SMLE</code> are computed using the inverse Hessian.</p><pre><code class="language-julia hljs">seed = 1
+m_hat, estimates, likelihood_at_estimates, result_solver,
+    std_errors = estimate(m, e, d; seed)
+m_hat</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SD{Float64}
+  β: Array{Float64}((2,)) [-0.05591986870381233, 2.970118076133349]
+  Ξ: Float64 3.43163924594881
+  ρ: Array{Float64}((1,)) [-0.08540863818622849]
+  ξ: Float64 2.493162063515264
+  dE: Distributions.Normal{Float64}
+  dV: Distributions.Normal{Float64}
+  dU0: Distributions.Uniform{Float64}
+  zdfun: String &quot;log&quot;
+  information_structure: InformationStructureSpecification{Float64}
+  heterogeneity: HeterogeneitySpecification{Float64}
+  cs: Nothing nothing
+  cd: Nothing nothing
+</code></pre><p>To compare the estimates with the true parameter values, we can get the parameter values of the model using the <code>vectorize_parameters</code> function.</p><pre><code class="language-julia hljs">true_params = vectorize_parameters(m)
+est_params = vectorize_parameters(m_hat)
+hcat(est_params, true_params, std_errors)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5×3 Matrix{Float64}:
+ -0.0559199  -0.05  0.016447
+  2.97012     3.0   0.0537314
+  3.43164     3.5   0.0582419
+ -0.0854086  -0.1   0.00714476
+  2.49316     2.5   0.0543736</code></pre><p>If we want to compute standard errors after estimation, the <code>calculate_standard_errors</code> function can be used. When doing so, it is important to set the <code>seed</code> argument to the same value as used for the estimation.</p><pre><code class="language-julia hljs">std_errors = calculate_standard_errors(m_hat, e, d; seed)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">5-element Vector{Float64}:
+ 0.016447000648264116
+ 0.05373141483457332
+ 0.058241904244901874
+ 0.0071447586905003324
+ 0.05437364953366132</code></pre><h2 id="MC-Simulation-for-the-WM-Model"><a class="docs-heading-anchor" href="#MC-Simulation-for-the-WM-Model">MC Simulation for the WM Model</a><a id="MC-Simulation-for-the-WM-Model-1"></a><a class="docs-heading-anchor-permalink" href="#MC-Simulation-for-the-WM-Model" title="Permalink"></a></h2><p>We can do the same for the WM model. The only difference is that we specify the model differently. The other functions are the same.</p><pre><code class="language-julia hljs">using StructuralSearchModels
+using Distributions
+
+# Define model
+m = WM(
+    β = [-0.1, 3.0], # preference parameters
+    ρ = [-0.1],       # parameter governing decrease in discovery value across positions
+    ξ = 1.5,          # search value
+    dE = Normal(),    # Distribution of εᵢⱼ (shocks revealed from search)
+    dV = Normal(),    # Distribution of νᵢⱼ (shocks revealed on list)
+    dU0 = Uniform(),  # distribution of outside option shock η
+    zsfun = &quot;linear&quot;     # functional form specification
+)
+
+n_consumers = 1000
+n_sessions_per_consumer = 1
+seed = 1
+d = generate_data(m, n_consumers, n_sessions_per_consumer; seed)
+
+e = SMLE(200) # Simulated MLE estimator with 200 simulation draws
+
+seed = 1
+m_hat, estimates, likelihood_at_estimates,
+    result_solver, std_errors = estimate(m, e, d; seed) ;
+m_hat</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">WM{Float64}
+  β: Array{Float64}((2,)) [-0.06351499678944007, 3.029058517962158]
+  ξ: Float64 1.495311841795068
+  ρ: Array{Float64}((1,)) [-0.08756232802224653]
+  dE: Distributions.Normal{Float64}
+  dV: Distributions.Normal{Float64}
+  dU0: Distributions.Uniform{Float64}
+  zsfun: String &quot;linear&quot;
+  information_structure: InformationStructureSpecification{Float64}
+  heterogeneity: HeterogeneitySpecification{Float64}
+  cs: Nothing nothing
+</code></pre><h2 id="Adding-Search-Over-Vertical-Attributes"><a class="docs-heading-anchor" href="#Adding-Search-Over-Vertical-Attributes">Adding Search Over Vertical Attributes</a><a id="Adding-Search-Over-Vertical-Attributes-1"></a><a class="docs-heading-anchor-permalink" href="#Adding-Search-Over-Vertical-Attributes" title="Permalink"></a></h2><p>To specify that vertical attributes are revealed when searching alternative, we additionally specify the <code>search_value_specification</code>. Below is an example where the first attribute in the <code>data.product_characteristics</code> is revealed on the list. This attribute enters utility through <span>$x_j^l\beta$</span> and also informs consumers beliefs about what will be revealed when searching through <span>$x_j^l\gamma$</span>. The second characteristic is revealed on search and enters only <span>$x_j^d\kappa$</span>. The following code sets up this model. Note that the other elements in the three parameter vectors are set to zero. Moreover, note that the last element in <span>$\beta$</span> is for the outside option.</p><pre><code class="language-julia hljs">m = SD(
+    β = [-0.05, 0.0, 0.8],
+    Ξ = 1.0,
+    ρ = [-0.1],
+    ξ = 1.0,
+    dE = Normal(),
+    dV = Normal(),
+    dU0 = Normal(),
+    zdfun = &quot;linear&quot;,
+    information_structure = InformationStructureSpecification(
+        γ = [0.02, 0.0, 0.0],
+        κ = [0.0, 0.1, 0.0],
+        indices_characteristics_β_union = 1:1,
+        indices_characteristics_γ_union= 1:0,
+        indices_characteristics_κ_union = 2:2,
+    )
+)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">SD{Float64}
+  β: Array{Float64}((3,)) [-0.05, 0.0, 0.8]
+  Ξ: Float64 1.0
+  ρ: Array{Float64}((1,)) [-0.1]
+  ξ: Float64 1.0
+  dE: Distributions.Normal{Float64}
+  dV: Distributions.Normal{Float64}
+  dU0: Distributions.Normal{Float64}
+  zdfun: String &quot;linear&quot;
+  information_structure: InformationStructureSpecification{Float64}
+  heterogeneity: HeterogeneitySpecification{Float64}
+  cs: Nothing nothing
+  cd: Nothing nothing
+</code></pre><h2 id="Computing-Consumer-Welfare-and-Revenues"><a class="docs-heading-anchor" href="#Computing-Consumer-Welfare-and-Revenues">Computing Consumer Welfare and Revenues</a><a id="Computing-Consumer-Welfare-and-Revenues-1"></a><a class="docs-heading-anchor-permalink" href="#Computing-Consumer-Welfare-and-Revenues" title="Permalink"></a></h2><p>To compute consumer welfare and revenues for an estimated model <code>m_hat</code> and data <code>d</code>, we can use the <code>calculate_welfare</code> and <code>calculate_revenues</code> functions.</p><p>First, we need to compute the costs using the <code>calculate_costs!</code> function. This function computes the search and discovery costs from the estimates for <span>$\xi$</span> and <span>$\Xi$</span> and adds them to the model in-place. Cost computation is done using <code>n_draws_cd</code> draws of the attribute distribution.</p><p>Once the costs are computed, we can compute welfare, which gives a <code>Dict</code> with welfare values. The dictionary reports the total welfare, the paid discovery costs, and the effective value of the chosen alternative. This is done as an average across all sessions, only those that had at least one search, and only those resulted in a purchase.</p><p>Going back to the example for the SD model, we can compute the costs and welfare as follows:</p><pre><code class="language-julia hljs"># Compute costs
+n_draws_cd = 100_000
+calculate_costs!(m_hat, d, n_draws_cd; seed)
+
+# Compute welfare
+n_draws_welfare = 1000
+calculate_welfare(m_hat, d, n_draws_welfare; seed)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Any, Any} with 3 entries:
+  :average                 =&gt; Dict(:discovery_costs=&gt;0.0297592, :utility=&gt;3.515…
+  :conditional_on_purchase =&gt; Dict(:discovery_costs=&gt;0.0652538, :utility=&gt;3.633…
+  :conditional_on_search   =&gt; Dict(:discovery_costs=&gt;0.0691212, :utility=&gt;3.337…</code></pre><p>To compute revenues, we can use the <code>calculate_revenues</code> function. It requires specifying which product characteristic is the price attribute and the number of draws to use for the demand computation of each product. Note, this computation is done using the simulation procedure described in <a href="https://rgreminger.github.io/wp/heterogeneous_position_effects.html">Greminger (2025)</a>.</p><pre><code class="language-julia hljs">index_price_attribute = 1
+n_draws_demand = 50
+total_revenues, revenues_by_session = calculate_revenues(m_hat, d, index_price_attribute, n_draws_demand; seed)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Symbol, Any} with 4 entries:
+  :demand_individual   =&gt; [0.12, 0.1, 0.12, 0.18, 0.12, 0.08, 0.08, 0.08, 0.08,…
+  :revenues_individual =&gt; [-0.0631634, 0.0717765, -0.0852874, -0.0718732, -0.01…
+  :demand              =&gt; 84.24
+  :revenues            =&gt; -10.2004</code></pre><h2 id="Computing-Fit-Measures"><a class="docs-heading-anchor" href="#Computing-Fit-Measures">Computing Fit Measures</a><a id="Computing-Fit-Measures-1"></a><a class="docs-heading-anchor-permalink" href="#Computing-Fit-Measures" title="Permalink"></a></h2><p>To evaluate how well an estimated model fits the data, we can use the <code>calculate_fit_measures</code> function. This function computes the fit measures for the estimated model and the data. It requires specifying the number of draws to use for the simulation. It returns a dictionary with the fit measures.</p><p>For the previously estimated SD model, we can compute the fit measures as follows:</p><pre><code class="language-julia hljs">n_draws = 1000
+fit_measures = calculate_fit_measures(m_hat, d, n_draws; seed)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Dict{Symbol, Any} with 7 entries:
+  :bounds                  =&gt; [([0.0, 0.152, 0.082, 0.075, 0.07, 0.066, 0.063, …
+  :click_stats_sim         =&gt; Dict{Symbol, Any}(:mean_position_clicked=&gt;11.2851…
+  :stop_probabilities_sim  =&gt; [0.0, 0.601326, 0.037676, 0.027452, 0.021741, 0.0…
+  :click_stats_data        =&gt; Dict{Symbol, Any}(:mean_position_clicked=&gt;11.3253…
+  :purchase_stats_sim      =&gt; Dict{Symbol, Any}(:purchase_probability=&gt;0.087027…
+  :stop_probabilities_data =&gt; [0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0…
+  :purchase_stats_data     =&gt; Dict{Symbol, Any}(:purchase_probability=&gt;0.08, :c…</code></pre><p>These fit measures then can be accessed in the usual way. For example, if we want to compare the position-specific click probabilities, we can do this as follows.</p><pre><code class="language-julia hljs">prob_sim = fit_measures[:click_stats_sim][:click_probability_per_position]
+prob_data = fit_measures[:click_stats_data][:click_probability_per_position]
+hcat(prob_sim, prob_data) # compare simulated and data click probabilities</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">31×2 Matrix{Float64}:
+ 0.0       0.0
+ 0.171584  0.172
+ 0.096331  0.094
+ 0.090249  0.096
+ 0.084079  0.093
+ 0.07938   0.075
+ 0.076235  0.076
+ 0.072317  0.08
+ 0.068749  0.064
+ 0.066332  0.065
+ ⋮         
+ 0.042863  0.038
+ 0.041413  0.046
+ 0.040287  0.047
+ 0.038914  0.029
+ 0.038135  0.036
+ 0.037019  0.044
+ 0.035681  0.034
+ 0.034564  0.034
+ 0.033762  0.043</code></pre><p>Or if we want to compare the average number of clicks per session, we can do this as follows.</p><pre><code class="language-julia hljs">n_clicks_sim = fit_measures[:click_stats_sim][:no_clicks_per_session]
+n_clicks_data = fit_measures[:click_stats_data][:no_clicks_per_session]
+hcat(n_clicks_sim, n_clicks_data) # compare simulated and data clicks per session</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">1×2 Matrix{Float64}:
+ 1.78511  1.795</code></pre><h2 id="Estimating-Shock-Variances"><a class="docs-heading-anchor" href="#Estimating-Shock-Variances">Estimating Shock Variances</a><a id="Estimating-Shock-Variances-1"></a><a class="docs-heading-anchor-permalink" href="#Estimating-Shock-Variances" title="Permalink"></a></h2><p>To estimate the variances of the unobserved shocks, we can pass the <code>estimation_shock_variances</code> keyword argument to the <code>estimate</code> function. The following would estimate the variance of the unobserved shock <code>dE</code>. Note that trying to run this code will not produce valid results. This is because the variance is not identified, which is not checked by the code.</p><p>See the <a href="../estimation/#options">Estimation</a> section for more details on the options.</p><pre><code class="language-julia hljs">estimation_shock_variances = [:σ_dE]
+m_hat, estimates, likelihood_at_estimates,
+    result_solver, std_errors = estimate(m, e, d; seed, estimation_shock_variances)</code></pre><h2 id="Specifying-Solver-Options"><a class="docs-heading-anchor" href="#Specifying-Solver-Options">Specifying Solver Options</a><a id="Specifying-Solver-Options-1"></a><a class="docs-heading-anchor-permalink" href="#Specifying-Solver-Options" title="Permalink"></a></h2><p>Solver options can be passed to the estimator. By default, the <code>SMLE</code> estimator uses the <code>LBFGS</code> optimizer, with gradients and Hessians computed using automatic differentiation. Specifically, calling <code>e=SMLE(100)</code> is equivalent to calling the following:</p><pre><code class="language-julia hljs">using Optimization # need to load to specify AutoDiff
+using OptimizationOptimJL # provides Optim algorithms
+using LineSearches
+e = SMLE(100;
+    options_optimization = (
+        algorithm = LBFGS(; linesearch = LineSearches.BackTracking(order = 2)),
+        differentiation = Optimization.AutoForwardDiff()
+    )
+)</code></pre><p>It uses the <code>LBFGS</code> algorithm with the <code>BackTracking</code> line search algorithm, which I found to be a bit more stable for these models.</p><p>While this is the default, we can use any solver/algorithm accessible through the Optimization package, provided we load the necessary packages first. For example, we can use the <code>NelderMead</code> algorithm as follows:</p><pre><code class="language-julia hljs">using Optimization # need to load to specify AutoDiff
+using OptimizationOptimJL # provides Optim algorithms (LBFGS, NelderMead etc.)
+e = SMLE(100;
+    options_optimization = (
+        algorithm = NelderMead(),
+        differentiation = Optimization.AutoForwardDiff()
+    )
+)
+</code></pre><p>Note that the <code>NelderMead</code> algorithm does not use gradients, but the differentiation still needs to be specified as it has no default.</p><p>We can also pass additional options to the optimizer that are used by the <code>Optimization.jl</code> package as described in the <a href="../estimation/">estimation</a> section. For example, we can print information on the solvers&#39; iterations as follows:</p><pre><code class="language-julia hljs">e = SMLE(100;
+        options_solver = (show_trace = true, show_every = 10)
+)</code></pre><p>This again uses the default <code>LBFGS</code> optimizer. These options may differ across optimizers. To see what&#39;s all possible, check the <a href="../estimation/">estimation</a> section and the documentation of the <a href="https://docs.sciml.ai/Optimization/stable/">Optimization.jl</a> package.</p><h2 id="Conditioning-on-Search"><a class="docs-heading-anchor" href="#Conditioning-on-Search">Conditioning on Search</a><a id="Conditioning-on-Search-1"></a><a class="docs-heading-anchor-permalink" href="#Conditioning-on-Search" title="Permalink"></a></h2><p>Sometimes, it is necessary to condition on search, for example, when estimating the model on data that only includes sessions with at least one click/search. This can be accommodated by setting the <code>conditional_on_search</code> option to <code>true</code>. The keyword applies to both the <code>generate_data</code> function and the <code>SMLE</code> estimator. Importantly, the keyword also needs to be set when calculating fit measures based on the estimated model. If the model is estimated conditional on search, while the fit measures are computed without it, the estimated model will likely not fit the data well.</p><p>Below is an example for an MC simulation for the WM model that conditions on search.</p><pre><code class="language-julia hljs">using StructuralSearchModels
+using Distributions
+
+# Define model
+m = WM(
+    β = [-0.1, 3.0], # preference parameters
+    ρ = [-0.1],       # parameter governing decrease in discovery value across positions
+    ξ = 1.5,          # search value
+    dE = Normal(),    # Distribution of εᵢⱼ (shocks revealed from search)
+    dV = Normal(),    # Distribution of νᵢⱼ (shocks revealed on list)
+    dU0 = Uniform(),  # distribution of outside option shock η
+    zsfun = &quot;linear&quot;     # functional form specification
+)
+
+n_consumers = 1000
+n_sessions_per_consumer = 1
+seed = 1
+d = generate_data(m, n_consumers, n_sessions_per_consumer; seed, conditional_on_search = true)
+
+e = SMLE(200; conditional_on_search = true) # Simulated MLE estimator with 200 simulation draws
+
+m_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estimate(m, e, d; seed) ;
+
+n_sim = 1000
+fit_measures = calculate_fit_measures(m_hat, d, n_sim; seed, conditional_on_search = true)
+m_hat</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">WM{Float64}
+  β: Array{Float64}((2,)) [-0.0915665137081704, 2.614781940107058]
+  ξ: Float64 1.4196795462369074
+  ρ: Array{Float64}((1,)) [-0.09842784675927765]
+  dE: Distributions.Normal{Float64}
+  dV: Distributions.Normal{Float64}
+  dU0: Distributions.Uniform{Float64}
+  zsfun: String &quot;linear&quot;
+  information_structure: InformationStructureSpecification{Float64}
+  heterogeneity: HeterogeneitySpecification{Float64}
+  cs: Nothing nothing
+</code></pre><h2 id="Generating-Products"><a class="docs-heading-anchor" href="#Generating-Products">Generating Products</a><a id="Generating-Products-1"></a><a class="docs-heading-anchor-permalink" href="#Generating-Products" title="Permalink"></a></h2><p>The <code>generate_data</code> function generates products using the <code>generate_products</code> function with default options. By default, it generates many different products, so that the products for each session are different. For each session, 30 products are sampled from the total number of products generated. For each product, product characteristics are drawn from a multivariate normal distribution, and the last product characteristic is assumed to be a dummy for the outside option.</p><p>The following generates products with a single product characteristic using the default options.</p><pre><code class="language-julia hljs">using Distributions, StructuralSearchModels
+n_sessions = 2
+
+product_ids, product_characteristics = generate_products(n_sessions, Normal())
+product_characteristics[1] # show the product characteristics for the first session</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">31×2 Matrix{Float64}:
+  0.0          1.0
+  0.741352     0.0
+ -0.857603     0.0
+ -1.25114      0.0
+  0.20667      0.0
+  0.000541248  0.0
+ -1.58682      0.0
+  0.488452     0.0
+  1.35961      0.0
+ -1.72073      0.0
+  ⋮            
+ -0.749141     0.0
+ -0.513452     0.0
+ -0.49227      0.0
+ -0.6667       0.0
+ -0.280047     0.0
+ -1.73937      0.0
+  2.06415      0.0
+ -2.54269      0.0
+ -0.0935741    0.0</code></pre><p>We can update the defaults by specifying keyword arguments. The following generates 100 products, of which, 10 are sampled for each session. There are now five product characteristics, and the last one is a dummy for the outside option.</p><pre><code class="language-julia hljs">using LinearAlgebra # provides convenient identify matrix constructor I(n)
+n_sessions = 2
+product_ids, product_characteristics = generate_products(n_sessions, MvNormal(I(5));
+    n_products = 100, n_products_per_session = 10)
+product_characteristics[1] # show the product characteristics for the first session</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">11×6 Matrix{Float64}:
+  0.0        0.0         0.0        0.0         0.0       1.0
+  0.614065   1.57919    -1.51982   -0.704462   -1.50624   0.0
+  0.14925    0.0179227   0.041416   1.49609    -0.803541  0.0
+ -1.06478    0.254082    0.118937   0.256643    1.23644   0.0
+  0.20066    1.8167      0.410969  -0.601564    0.252858  0.0
+ -1.42424   -0.452639   -1.39084    0.0210551   0.782351  0.0
+  1.10252   -0.409713   -1.02907    0.608061   -0.590686  0.0
+ -1.35606    0.664026    0.558733  -0.640729    0.801281  0.0
+ -1.72077   -0.474351    0.177091   0.28531     0.611775  0.0
+  0.594312  -1.42816     1.0473     1.51966    -0.871822  0.0
+ -0.183216  -0.414896    1.08171   -0.315755   -0.256567  0.0</code></pre><p>We can also suppress the outside option indicator by adding <code>outside_option = false</code>.</p><pre><code class="language-julia hljs">product_ids, product_characteristics = generate_products(n_sessions, MvNormal(I(5));
+    n_products = 100, n_products_per_session = 10, outside_option = false)
+product_characteristics[1] # show the product characteristics for the first session</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">10×5 Matrix{Float64}:
+  0.00639063   1.07431    -0.380136  -0.195797    1.34874
+ -0.455624    -1.09156     0.532969   2.14716    -0.401033
+ -0.821375     0.0584874   1.45876    0.0906896  -0.170223
+ -1.42273      0.800884   -0.612195   1.25007     1.87401
+  0.840979    -0.944985   -1.42842    1.47113     0.931302
+  0.676918     0.827983    0.842577  -0.422245   -0.938152
+ -0.178433    -0.154088    0.29332   -0.0629499   0.125209
+  0.746974     1.5712      0.519627  -0.636784   -1.14582
+  0.224812    -1.46657    -0.660883   0.461805   -0.52447
+ -1.30006     -1.00155    -0.494485   0.488309   -0.306919</code></pre><h2 id="Preparing-Data"><a class="docs-heading-anchor" href="#Preparing-Data">Preparing Data</a><a id="Preparing-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Preparing-Data" title="Permalink"></a></h2><p>To estimate the model on real data, the data needs to be prepared. The following example shows how to do this when the data is in a <code>DataFrame</code>. The code loops over the sessions (which is fast in Julia) and creates the necessary structure for the <code>DataSD</code> type.</p><pre><code class="language-julia hljs">using DataFrames, StructuralSearchModels
+# Generate example data
+df = DataFrame(
+    session_id = [1, 1, 1, 2, 2, 2],
+    position = [0, 1, 2, 0, 1, 2],
+    product_id = [1, 2, 3, 1, 2, 3],
+    price = [1.0, 2.0, 3.0, 1.0, 2.0, 3.0],
+    quality = [0.5, 0.6, 0.7, 0.5, 0.6, 0.7],
+    discovered = [1, 1, 0, 1, 1, 1],
+    clicked = [1, 0, 0, 0, 1, 0],
+    purchased = [1, 0, 0, 0, 0, 0],
+)
+
+
+# Extract consumer ids. Have only one session per id.
+n_sessions = length(unique(df.session_id))
+consumer_ids = collect(1:n_sessions)
+
+# Create empty arrays to store the data
+product_ids = []
+product_characteristics = []
+positions = []
+indices_list_characteristics = []
+session_characteristics = []
+consideration_sets = []
+purchase_indices = []
+stop_indices = []
+
+# loop over sessions and add to arrays. For each session, adds outside option
+for subdf in groupby(df, :session_id)
+
+    # Product ids
+    product_ids_i = vcat(0, subdf.product_id)
+    push!(product_ids, product_ids_i)
+
+    # Product characteristics
+    pc_i = Matrix(subdf[:, [:price, :quality]]) # converts to matrix
+    pc_i = hcat(pc_i, zeros(size(pc_i, 1))) # add characteristic for outside option
+    pc_i = vcat(zeros(1, size(pc_i, 2)), pc_i) # add outside option as product
+    pc_i[1, end] = 1 # set outside option dummy to 1 for outside option
+    push!(product_characteristics, pc_i)
+
+    # Positions
+    positions_i = vcat(0, subdf.position)
+    push!(positions, positions_i)
+
+    # Consideration sets
+    cs_i = vcat(0, subdf.clicked)
+    push!(consideration_sets, cs_i)
+
+    # stop indices
+    si = findlast(x -&gt; x == 1, subdf.discovered) # finds last 1 in discovered
+    push!(stop_indices, isnothing(si) ? length(subdf.discovered) + 1 : si + 1) # + 1
+
+    # purchase indices
+    pi = findfirst(x -&gt; x == 1, subdf.purchased) # returns nothing if not found
+    push!(purchase_indices, isnothing(pi) ? 1 : pi + 1) # +1 for outside option
+end
+
+# Put together into data type
+d = DataSD(; consumer_ids,
+    product_ids,
+    product_characteristics,
+    positions,
+    consideration_sets,
+    purchase_indices,
+    stop_indices)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">DataSD{Float64}
+  consumer_ids: Array{Int64}((2,)) [1, 2]
+  product_ids: Array{Vector{Int64}}((2,))
+  product_characteristics: Array{Matrix{Float64}}((2,))
+  positions: Array{Vector{Int64}}((2,))
+  session_characteristics: Nothing nothing
+  consideration_sets: Array{Vector{Bool}}((2,))
+  purchase_indices: Array{Int64}((2,)) [2, 1]
+  min_discover_indices: Nothing nothing
+  search_paths: Nothing nothing
+  stop_indices: Array{Int64}((2,)) [3, 4]
+</code></pre><h2 id="Changing-the-Number-of-Products-in-Each-Position"><a class="docs-heading-anchor" href="#Changing-the-Number-of-Products-in-Each-Position">Changing the Number of Products in Each Position</a><a id="Changing-the-Number-of-Products-in-Each-Position-1"></a><a class="docs-heading-anchor-permalink" href="#Changing-the-Number-of-Products-in-Each-Position" title="Permalink"></a></h2><p>The number of products in each position can be set by adjusting the positions in the <code>DataSD</code> type. The package provides a function to do this. The following updates the positions in the data object <code>d</code> to have 3 products in the first position (those revealed without cost), and then 2 products per position after that.</p><pre><code class="language-julia hljs">update_positions!(d, 3, 2)</code></pre><p>To generate data with a different number of positions, we can also pass the keyword arguments <code>n_A0</code> and <code>n_d</code> to the <code>generate_data</code> function. The following generates data with 3 products in the first position (those in the initial awareness set), and then 2 products per position after that.</p><pre><code class="language-julia hljs">generate_data(model, n_consumers, n_sessions_per_consumer;
+                        n_A0 = 3, n_d = 2)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../getting_started/">« Getting Started</a><a class="docs-footer-nextpage" href="../models/">Models »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Sunday 1 March 2026 15:06">Sunday 1 March 2026</span>. Using Julia version 1.12.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
