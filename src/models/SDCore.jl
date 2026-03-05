@@ -2253,8 +2253,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
         # prevent Inf values, helps AD
         if isinf(LL) || isnan(LL) || LL >= 0
             return -T(MAX_NUMERICAL), ind_last_par
-        elseif estimator.conditional_on_search && LL2 < -7.0 * length(data) # if P(click) < 0.001
-            return -T(MAX_NUMERICAL), ind_last_par
         else
             return LL::T, ind_last_par
         end
@@ -2262,8 +2260,6 @@ function loglikelihood(θ::Vector{T}, model::M, estimator::SMLE, data::DataSD,
 
     # prevent Inf values, helps AD
     if isinf(LL) || isnan(LL) || LL >= 0
-        return -T(MAX_NUMERICAL)
-    elseif estimator.conditional_on_search && LL2 < -7.0 * length(data) # if P(click) < 0.001, so logP(click) < -6.9
         return -T(MAX_NUMERICAL)
     else
         return LL::T
