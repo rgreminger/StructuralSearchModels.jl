@@ -664,40 +664,42 @@ end
 
 
 """
-    build_diagonal_inverse_hessian(m::Model, e::Estimator, data::Data, x0; kwargs...)
+    build_inverse_hessian_scaler(m::Model, e::Estimator, d::Data, x0; kwargs...)
 
-Compute the diagonal of the Hessian of the negative log-likelihood at `x0` and return
-it as a `Diagonal` matrix. Useful for constructing a `parameter_rescaling` vector for
-[`SMLE`](@ref) when parameters differ greatly in magnitude.
+Compute a `parameter_rescaling` vector for [`SMLE`](@ref) based on the diagonal of the
+Hessian of the negative log-likelihood at `x0`. Returns `1 ./ sqrt.(diag_H)`, where
+`diag_H` is the clamped diagonal of the Hessian. Passing this vector as
+`parameter_rescaling` normalizes each parameter by its curvature scale, which can
+improve convergence when parameters differ greatly in magnitude.
 
-Diagonal entries are clamped from below at `max(1.0, 0.01 * maximum(diag_H))` to avoid
-near-zero scaling factors.
+Diagonal entries are clamped from below at `max(1.0, 0.01 * maximum(diag_H))` before
+taking the square root, to avoid near-zero or negative scaling factors.
 
 ## Arguments
 - `m::Model`: The model.
 - `e::Estimator`: The estimator (typically [`SMLE`](@ref)).
-- `data::Data`: The data.
-- `x0`: Parameter vector at which to evaluate the Hessian.
+- `d::Data`: The data.
+- `x0`: Parameter vector at which to evaluate the Hessian (e.g. starting values).
 
 ## Example
 ```julia
-D = build_diagonal_inverse_hessian(m, SMLE(100), data, x0)
-e = SMLE(100; parameter_rescaling = sqrt.(diag(D)))
+scale = build_inverse_hessian_scaler(m, SMLE(100), d, x0)
+e = SMLE(100; parameter_rescaling = scale)
 ```
 """
-function build_diagonal_inverse_hessian(m::Model, e::Estimator, data::Data, x0;
+function build_inverse_hessian_scaler(m::Model, e::Estimator, d::Data, x0;
         kwargs...)
-    args_ll = StructuralSearchModels.prepare_arguments_likelihood(
-        model, estimator, data; kwargs...)
-    f(θ) = -StructuralSearchModels.loglikelihood(
-        θ, model, estimator, data, args_ll...; kwargs...)
-    nθ = length(startvals)
-    println("Computing diagonal elements of Hessian...")
+        
+    args_ll = prepare_arguments_likelihood(
+        m, e, d; kwargs...)
+
+    f(θ) = -loglikelihood(
+        θ, m, e, d, args_ll...; kwargs...)
+    nθ = length(x0)
     diag_H = map(1:nθ) do i
-        e = zeros(nθ); e[i] = 1.0
-        ForwardDiff.derivative(t -> ForwardDiff.derivative(s -> f(startvals .+ (s+t) .* e), 0.0), 0.0)
+        ei = zeros(nθ); ei[i] = 1.0
+        ForwardDiff.derivative(t -> ForwardDiff.derivative(s -> f(x0 .+ (s+t) .* ei), 0.0), 0.0)
     end
     clamp_val = max(1.0, 0.01 * maximum(diag_H))
-    println("Finished computing diagonal Hessian.")
-    return Diagonal(max.(diag_H, clamp_val))
+    return 1.0 ./ sqrt.(max.(diag_H, clamp_val))
 end

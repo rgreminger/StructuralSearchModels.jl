@@ -20,7 +20,7 @@ The number of simulation draws must be specified either:
 - `options_solver::NamedTuple`: Options for the solver passed to `solve` in Optimization.jl. Defaults to 100,000 iterations.
 - `numerical_integration_method_heterogeneity::NIMethod`: Integration method for unobserved heterogeneity. Defaults to `QMC(n_draws = 30)`.
 - `conditional_on_search::Bool`: Whether the likelihood function is conditional on search. Defaults to `false`.
-- `parameter_rescaling::Union{Nothing, AbstractVector}`: Optional vector of scaling factors for the parameters. When provided, the optimizer works in the rescaled space `φ = θ ./ scale`, which can improve convergence when parameters have very different magnitudes. Defaults to `nothing` (no rescaling). See [`build_diagonal_inverse_hessian`](@ref) for a helper to construct a suitable scaling vector.
+- `parameter_rescaling::Union{Nothing, AbstractVector}`: Optional vector of scaling factors for the parameters. When provided, the optimizer works in the rescaled space `φ = θ ./ scale`, which can improve convergence when parameters have very different magnitudes. Defaults to `nothing` (no rescaling). See [`build_inverse_hessian_scaler`](@ref) for a helper to construct a suitable scaling vector.
 
 ## Examples
 ```julia

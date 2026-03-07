@@ -233,17 +233,15 @@ This again uses the default `LBFGS` optimizer. These options may differ across o
 
 ### Parameter Rescaling
 
-When model parameters differ greatly in magnitude, the optimizer can struggle to converge. The `parameter_rescaling` option lets you provide a vector of scaling factors so that the optimizer works in a normalized space. A convenient way to construct a suitable scaling vector is via `build_diagonal_inverse_hessian`, which approximates the curvature of the likelihood at a given point:
+When model parameters differ greatly in magnitude, the optimizer can struggle to converge. The `parameter_rescaling` option lets you provide a vector of scaling factors so that the optimizer works in a normalized space. A convenient way to construct a suitable scaling vector is via `build_inverse_hessian_scaler`, which approximates the curvature of the likelihood at a given point and returns `1 ./ sqrt.(diag_H)` — a vector ready to pass directly as `parameter_rescaling`:
 
 ```julia
-# Compute diagonal Hessian approximation at starting values
+# Compute scaling vector from diagonal Hessian at starting values
 x0 = vectorize_parameters(m)
-e = SMLE(100)
-D = build_diagonal_inverse_hessian(m, e, d, x0)
-scale = sqrt.(diag(D))
+scale = build_inverse_hessian_scaler(m, SMLE(100), d, x0)
 
-# Set the scaling vector in the estimator
-e.parameter_rescaling = scale 
+# Use the scaling vector in the estimator
+e = SMLE(100; parameter_rescaling = scale)
 m_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estimate(m, e, d; seed)
 ```
 

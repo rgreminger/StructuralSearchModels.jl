@@ -16,7 +16,7 @@ export vectorize_parameters, construct_model_from_pars
 export fill_indices_min_discover!, update_positions!, merge_data
 export add_product_fe!, add_product_fe_data!
 export update_heterogeneity_specification!
-export build_diagonal_inverse_hessian
+export build_inverse_hessian_scaler
 
 # Export concrete model types
 export SDCore, SD, WM, DataSD

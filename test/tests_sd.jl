@@ -56,6 +56,19 @@ std_errors = estimate(
 @test estimates ≈ [-0.33380157449721964, 2.952996485252172,
     4.492705726089025, -0.1449647262037665, 2.517376324194926] atol = 1e-12
 
+# Parameter rescaling: scale = ones should give identical results
+e_scaled = SMLE(100; parameter_rescaling = ones(length(startvals)), options_solver = (f_calls_limit = 1,))
+_, estimates_scaled, likelihood_scaled, _, _ = estimate(
+    m, e_scaled, d; startvals, rng, seed, compute_std_errors = false)
+@test likelihood_scaled ≈ likelihood_at_estimates atol = 1e-12
+
+# build_inverse_hessian_scaler: returns a vector of positive scaling factors
+scale = build_inverse_hessian_scaler(m, SMLE(100), d, startvals; seed, rng)
+
+@test scale isa Vector
+@test length(scale) == length(startvals)
+@test all(scale .> 0)
+
 # General parameter handling (with different options)
 for estimation_shock_variances in [
     [:σ_dE, :dUequaldE],
