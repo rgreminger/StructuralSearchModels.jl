@@ -661,3 +661,43 @@ end
 
     return [searchsortedfirst(unique_vals, id) for id in sort(ids)]
 end
+
+
+"""
+    build_diagonal_inverse_hessian(m::Model, e::Estimator, data::Data, x0; kwargs...)
+
+Compute the diagonal of the Hessian of the negative log-likelihood at `x0` and return
+it as a `Diagonal` matrix. Useful for constructing a `parameter_rescaling` vector for
+[`SMLE`](@ref) when parameters differ greatly in magnitude.
+
+Diagonal entries are clamped from below at `max(1.0, 0.01 * maximum(diag_H))` to avoid
+near-zero scaling factors.
+
+## Arguments
+- `m::Model`: The model.
+- `e::Estimator`: The estimator (typically [`SMLE`](@ref)).
+- `data::Data`: The data.
+- `x0`: Parameter vector at which to evaluate the Hessian.
+
+## Example
+```julia
+D = build_diagonal_inverse_hessian(m, SMLE(100), data, x0)
+e = SMLE(100; parameter_rescaling = sqrt.(diag(D)))
+```
+"""
+function build_diagonal_inverse_hessian(m::Model, e::Estimator, data::Data, x0;
+        kwargs...)
+    args_ll = StructuralSearchModels.prepare_arguments_likelihood(
+        model, estimator, data; kwargs...)
+    f(θ) = -StructuralSearchModels.loglikelihood(
+        θ, model, estimator, data, args_ll...; kwargs...)
+    nθ = length(startvals)
+    println("Computing diagonal elements of Hessian...")
+    diag_H = map(1:nθ) do i
+        e = zeros(nθ); e[i] = 1.0
+        ForwardDiff.derivative(t -> ForwardDiff.derivative(s -> f(startvals .+ (s+t) .* e), 0.0), 0.0)
+    end
+    clamp_val = max(1.0, 0.01 * maximum(diag_H))
+    println("Finished computing diagonal Hessian.")
+    return Diagonal(max.(diag_H, clamp_val))
+end

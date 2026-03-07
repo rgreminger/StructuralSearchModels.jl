@@ -20,6 +20,7 @@ The number of simulation draws must be specified either:
 - `options_solver::NamedTuple`: Options for the solver passed to `solve` in Optimization.jl. Defaults to 100,000 iterations.
 - `numerical_integration_method_heterogeneity::NIMethod`: Integration method for unobserved heterogeneity. Defaults to `QMC(n_draws = 30)`.
 - `conditional_on_search::Bool`: Whether the likelihood function is conditional on search. Defaults to `false`.
+- `parameter_rescaling::Union{Nothing, AbstractVector}`: Optional vector of scaling factors for the parameters. When provided, the optimizer works in the rescaled space `φ = θ ./ scale`, which can improve convergence when parameters have very different magnitudes. Defaults to `nothing` (no rescaling). See [`build_diagonal_inverse_hessian`](@ref) for a helper to construct a suitable scaling vector.
 
 ## Examples
 ```julia
@@ -42,6 +43,7 @@ e = SMLE(; numerical_integration_method = QMC(n_draws = 500))
     numerical_integration_method::NIMethod = _smle_no_ni_error()
     numerical_integration_method_heterogeneity::NIMethod = QMC(n_draws = 30)
     conditional_on_search = false
+    parameter_rescaling::Union{Nothing, AbstractVector} = nothing
 end
 _smle_no_ni_error() = throw(ArgumentError("Must specify either number of draws through convenience constructor SMLE(n_draws) or through numerical_integration_method keyword argument."))
 SMLE(n_draws::Int; kwargs...) = SMLE(; numerical_integration_method = DefaultNI(n_draws), kwargs...)
@@ -69,10 +71,17 @@ function estimate(model::Model, estimator::SMLE, data::Data;
     ############################################################################
     # Optimization.jl optimization (wrapper around many solvers)
 
-    # Define objective function as negative likelihood function
-    function objective_function(θ, p)
+    scale = estimator.parameter_rescaling
+
+    # Define objective function as negative likelihood function.
+    # If parameter_rescaling is set, the optimizer works in rescaled space φ = θ ./ scale,
+    # so the Hessian is ~I and LBFGS converges without numerical scaling issues.
+    function objective_function(φ, p)
+        θ = isnothing(scale) ? φ : scale .* φ
         -loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
     end
+
+    startvals_opt = isnothing(scale) ? startvals : startvals ./ scale
 
     # Extract options
     options_optimization = estimator.options_optimization
@@ -81,7 +90,7 @@ function estimate(model::Model, estimator::SMLE, data::Data;
 
     # Set up problem to solve for numerical optimizer
     obj = OptimizationFunction(objective_function, options_optimization.differentiation)
-    prob = OptimizationProblem(obj, startvals;
+    prob = OptimizationProblem(obj, startvals_opt;
         options_problem...)
 
     # Run optimization
@@ -93,7 +102,7 @@ function estimate(model::Model, estimator::SMLE, data::Data;
         println(result_solver.original)
     end
 
-    estimates = result_solver.u
+    estimates = isnothing(scale) ? result_solver.u : scale .* result_solver.u
     likelihood_at_estimates = -result_solver.objective
     model_hat = construct_model_from_pars(estimates, model; kwargs...)
 

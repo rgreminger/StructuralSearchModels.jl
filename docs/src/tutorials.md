@@ -231,6 +231,23 @@ e = SMLE(100;
 ```
 This again uses the default `LBFGS` optimizer. These options may differ across optimizers. To see what's all possible, check the [estimation](estimation.md) section and the documentation of the [Optimization.jl](https://docs.sciml.ai/Optimization/stable/) package.
 
+### Parameter Rescaling
+
+When model parameters differ greatly in magnitude, the optimizer can struggle to converge. The `parameter_rescaling` option lets you provide a vector of scaling factors so that the optimizer works in a normalized space. A convenient way to construct a suitable scaling vector is via `build_diagonal_inverse_hessian`, which approximates the curvature of the likelihood at a given point:
+
+```julia
+# Compute diagonal Hessian approximation at starting values
+x0 = vectorize_parameters(m)
+e = SMLE(100)
+D = build_diagonal_inverse_hessian(m, e, d, x0)
+scale = sqrt.(diag(D))
+
+# Set the scaling vector in the estimator
+e.parameter_rescaling = scale 
+m_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estimate(m, e, d; seed)
+```
+
+The scaling is applied transparently: the optimizer works with rescaled parameters `φ = θ ./ scale`, while all outputs (estimates, standard errors) are returned on the original scale.
 
 ## Conditioning on Search
 

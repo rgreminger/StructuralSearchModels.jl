@@ -10,13 +10,13 @@ export calculate_fit_measures, calculate_likelihood, calculate_standard_errors #
 export calculate_welfare, calculate_costs! # welfare and costs
 export calculate_revenues # revenues
 
-
 # Additional helper functions
 export calculate_discovery_value
 export vectorize_parameters, construct_model_from_pars
 export fill_indices_min_discover!, update_positions!, merge_data
 export add_product_fe!, add_product_fe_data!
 export update_heterogeneity_specification!
+export build_diagonal_inverse_hessian
 
 # Export concrete model types
 export SDCore, SD, WM, DataSD
