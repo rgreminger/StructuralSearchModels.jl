@@ -231,21 +231,24 @@ e = SMLE(100;
 ```
 This again uses the default `LBFGS` optimizer. These options may differ across optimizers. To see what's all possible, check the [estimation](estimation.md) section and the documentation of the [Optimization.jl](https://docs.sciml.ai/Optimization/stable/) package.
 
-### Parameter Rescaling
+## Parameter Rescaling
 
-When model parameters differ greatly in magnitude, the optimizer can struggle to converge. The `parameter_rescaling` option lets you provide a vector of scaling factors so that the optimizer works in a normalized space. A convenient way to construct a suitable scaling vector is via `build_inverse_hessian_scaler`, which approximates the curvature of the likelihood at a given point and returns `1 ./ sqrt.(diag_H)` — a vector ready to pass directly as `parameter_rescaling`:
+When model parameters differ greatly in how they affect the likelihood, the optimizer can take longer to converge. The `parameter_rescaling` option lets you provide a vector of scaling factors so that the optimizer works in a normalized space. The package offers a convenient way to construct a suitable scaling vector via `build_inverse_hessian_scaler`. This function approximates the curvature of the likelihood at a given point (which usually would be the starting values)and returns `1 ./ sqrt.(diag_H)`, which is a scaling vector ready to pass to the `parameter_rescaling` option. 
 
 ```julia
 # Compute scaling vector from diagonal Hessian at starting values
 x0 = vectorize_parameters(m)
-scale = build_inverse_hessian_scaler(m, SMLE(100), d, x0)
+e = SMLE(100) 
+scale = build_inverse_hessian_scaler(m, e, d, x0)
 
-# Use the scaling vector in the estimator
-e = SMLE(100; parameter_rescaling = scale)
-m_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estimate(m, e, d; seed)
+# Update estimator with scaling vector
+e.parameter_rescaling = scale
+
+# Estimate with the updated estimator
+m_hat, estimates, likelihood_at_estimates, result_solver, std_errors = estimate(m, e, d)
 ```
 
-The scaling is applied transparently: the optimizer works with rescaled parameters `φ = θ ./ scale`, while all outputs (estimates, standard errors) are returned on the original scale.
+The scaling is applied transparently: the optimizer works with rescaled parameters `θ_rescaled = θ ./ scale`, while all outputs (estimates, standard errors) are returned on the original scale.
 
 ## Conditioning on Search
 

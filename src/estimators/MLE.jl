@@ -76,9 +76,9 @@ function estimate(model::Model, estimator::SMLE, data::Data;
     # Define objective function as negative likelihood function.
     # If parameter_rescaling is set, the optimizer works in rescaled space φ = θ ./ scale,
     # so the Hessian is ~I and LBFGS converges without numerical scaling issues.
-    function objective_function(φ, p)
-        θ = isnothing(scale) ? φ : scale .* φ
-        -loglikelihood(θ, model, estimator, data, args_likelihood_function...; kwargs...)
+    function objective_function(θ, p)
+        θ_rescaled = isnothing(scale) ? θ : scale .* θ
+        -loglikelihood(θ_rescaled, model, estimator, data, args_likelihood_function...; kwargs...)
     end
 
     startvals_opt = isnothing(scale) ? startvals : startvals ./ scale
