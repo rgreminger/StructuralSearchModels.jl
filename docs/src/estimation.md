@@ -15,6 +15,17 @@ SMLE
 
 Various options for the optimization and numerical integration procedures used in estimation can be specified. Moreover, the `conditional_on_search` option allows specifying whether the sample is selected based on there being at least one click.
 
+#### Starting Values
+
+By default, the starting values for estimation are taken from the model directly. However, it is also possible to specify different starting values by passing the `startvals` keyword argument to the `estimate` function. The starting values need to be passed as a vector of parameter values which has to have the expected order. 
+
+The following first extracts the parameter values from the model `m` and then passes it as a starting values into the `estimate` function. This will lead to the same starting values as the default. 
+
+```julia
+startvals = vectorize_parameters(m)
+estimate(m, SMLE(100), d; startvals)
+```
+
 #### Optimization
 Simulated maximum likelhood finds the parameter estimates by numerically maximizing the model likelihood function. This is implemented using the amazing [Optimization.jl](https://github.com/SciML/Optimization.jl) package, which allows to specify a range of optimizers (from other packages) and solvers. The `SMLE` struct is set up to pass the respective options to the optimization package as keyword arguments.
 
@@ -43,7 +54,14 @@ By default, the variances are not estimated. To estimate them, pass the keyword 
 - `estimation_shock_variances = [:dUequaldE, :σ_dE]`: estimates the variance of the unobserved shock `dE` and assumes that the distribution of the outside option shock `dU0` is equal to that of `dE`.
 - `estimation_shock_variances = [:dUequaldV, :σ_dV]`: estimates the variance of the unobserved shock `dV` and assumes that the distribution of the outside option shock `dU0` is equal to that of `dV`.
 
-Note that the code currently does not check for the validity of the options and will try to estimate them as specified, even if it is not possible. For example, setting `estimation_shock_variances = [:σ_dE, :σ_dV]` will run the estimation and try to estimate both variances, even though they are not separately identified.
+The code currently does not check for the validity of this option and will try to estimate them as specified, even if it is not possible. For example, setting `estimation_shock_variances = [:σ_dE, :σ_dV]` will run the estimation and try to estimate both variances, even though they are not separately identified.
+
+The keyword also needs to be passed on to the `vectorize_parameters` function so that it can appropriately extract the parameters from the model. For example, to get the vector of all estimated parameters after having an estimated model `m_hat` that used the `estimation_shock_variances` keyword, the following code can be used:
+
+```julia
+vectorize_parameters(m_hat; estimation_shock_variances)
+```
+
 
 
 #### Fixing Parameters

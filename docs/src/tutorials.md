@@ -183,7 +183,7 @@ hcat(n_clicks_sim, n_clicks_data) # compare simulated and data clicks per sessio
 ```
 ## Estimating Shock Variances
 
-To estimate the variances of the unobserved shocks, we can pass the `estimation_shock_variances` keyword argument to the `estimate` function. The following would estimate the variance of the unobserved shock `dE`. Note that trying to run this code will not produce valid results. This is because the variance is not identified, which is not checked by the code.
+To estimate the variances of the unobserved shocks, we can pass the `estimation_shock_variances` keyword argument to the `estimate` function. The following would estimate the variance of the unobserved shock `dE`. Note that trying to run this code will not produce valid results. This is because the variance is not identified in this example, which is not checked by the code.
 
 See the [Estimation](estimation.md#options) section for more details on the options.
 
