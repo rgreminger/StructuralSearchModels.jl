@@ -28,6 +28,28 @@ Specification for the information structure in the Search and Discovery model. T
         Vector{UnitRange{Int}}, Vector{Vector{Int}}} = indices_characteristics_κ_union
 end
 
+
+# Create additional constructors to handle inputs from Python
+_convert_indices(x::UnitRange{Int}) = x
+_convert_indices(x::Vector{Int}) = x
+_convert_indices(x) = convert(Vector{Int}, collect(x))
+
+function InformationStructureSpecification(γ, κ,
+        indices_characteristics_β_union, indices_characteristics_γ_union,
+        indices_characteristics_κ_union, indices_characteristics_β_individual,
+        indices_characteristics_γ_individual, indices_characteristics_κ_individual)
+    T = promote_type(eltype(γ), eltype(κ))
+    return InformationStructureSpecification{T}(
+        convert(Vector{T}, collect(γ)), convert(Vector{T}, collect(κ)),
+        _convert_indices(indices_characteristics_β_union),
+        _convert_indices(indices_characteristics_γ_union),
+        _convert_indices(indices_characteristics_κ_union),
+        _convert_indices(indices_characteristics_β_individual),
+        _convert_indices(indices_characteristics_γ_individual),
+        _convert_indices(indices_characteristics_κ_individual))
+end
+
+# Default constructor which assumes all n-1 attributes are revealed on the list.
 function InformationStructureSpecification(n::Int)
     γ = zeros(n)
     κ = zeros(n)
@@ -40,11 +62,20 @@ function InformationStructureSpecification(n::Int)
 end
 
 function InformationStructureSpecification(γ, κ, indices_characteristics_β,
-        indices_characteristics_γ, indices_characteristics_κ)
+        indices_characteristics_γ, indices_characteristics_κ;
+        indices_characteristics_β_individual = indices_characteristics_β,
+        indices_characteristics_γ_individual = indices_characteristics_γ,
+        indices_characteristics_κ_individual = indices_characteristics_κ)
 
-    return InformationStructureSpecification(γ, κ, indices_characteristics_β,
-        indices_characteristics_γ, indices_characteristics_κ,
-        indices_characteristics_β, indices_characteristics_γ, indices_characteristics_κ)
+    T = promote_type(eltype(γ), eltype(κ))
+    return InformationStructureSpecification(
+        convert(Vector{T}, collect(γ)), convert(Vector{T}, collect(κ)),
+        _convert_indices(indices_characteristics_β),
+        _convert_indices(indices_characteristics_γ),
+        _convert_indices(indices_characteristics_κ),
+        _convert_indices(indices_characteristics_β_individual),
+        _convert_indices(indices_characteristics_γ_individual),
+        _convert_indices(indices_characteristics_κ_individual))
 end
 
 function ==(s1::InformationStructureSpecification, s2::InformationStructureSpecification)
@@ -57,6 +88,7 @@ function ==(s1::InformationStructureSpecification, s2::InformationStructureSpeci
         s1.indices_characteristics_κ_individual == s2.indices_characteristics_κ_individual
 end
 
+# Check whether all characteristics enter on the list (i.e., no search value)
 function all_characteristics_on_list(m::SDModel)
     length(m.information_structure.indices_characteristics_γ_union) == 0
 end
@@ -2340,144 +2372,144 @@ function construct_tasks_homogeneous(model::M, estimator::SMLE, data::DataSD,
 end
 
 
-function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
-    β::Vector{T}, γ::Vector{T}, κ::Vector{T}, Ξ, ρ, ξ, ξρ, ψ, U, dE, dV, dU0, dW,
-    args...) where {M <: SDModel, T <: Real}
+# function construct_tasks_heterogeneous(model::M, estimator::SMLE, data::DataSD,
+#     β::Vector{T}, γ::Vector{T}, κ::Vector{T}, Ξ, ρ, ξ, ξρ, ψ, U, dE, dV, dU0, dW,
+#     args...) where {M <: SDModel, T <: Real}
 
-    # Extract arguments
-    all_possible_positions, has_search, has_purchase, zdfun, zsfun, rng, seed,
-        mapping_characteristics, ni_pts_whts = args
-    ni_points, ni_weights = ni_pts_whts
+#     # Extract arguments
+#     all_possible_positions, has_search, has_purchase, zdfun, zsfun, rng, seed,
+#         mapping_characteristics, ni_pts_whts = args
+#     ni_points, ni_weights = ni_pts_whts
 
-    # Reset seed
-    Random.seed!(rng, seed)
+#     # Reset seed
+#     Random.seed!(rng, seed)
 
-    # Create pre-allocated arrays for search and discovery values (same for all consumers by default)
-    zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
-    zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
+#     # Create pre-allocated arrays for search and discovery values (same for all consumers by default)
+#     zd_h = isnothing(zdfun) ? Ξ : [zdfun(Ξ, ρ, pos) for pos in all_possible_positions]
+#     zs_h = isnothing(zsfun) ? ξ : [zsfun(ξ, ξρ, pos) for pos in all_possible_positions]
 
-    # Define chunks for parallelization. Each chunk is a range of consumers for which
-    # a single calculates and sums up the likelihood. For each consumer, we integrate out
-    # the unobserved heterogeneity
-    _, data_chunks = get_chunks(get_n_consumers(data))  # last consumer id is number of consumers
+#     # Define chunks for parallelization. Each chunk is a range of consumers for which
+#     # a single calculates and sums up the likelihood. For each consumer, we integrate out
+#     # the unobserved heterogeneity
+#     _, data_chunks = get_chunks(get_n_consumers(data))  # last consumer id is number of consumers
 
-    # Extract number of draws
-    n_draws = estimator.numerical_integration_method.n_draws
+#     # Extract number of draws
+#     n_draws = estimator.numerical_integration_method.n_draws
 
-    # Create and define tasks for each chunk
-    tasks = map(data_chunks) do chunk
-        Threads.@spawn begin
+#     # Create and define tasks for each chunk
+#     tasks = map(data_chunks) do chunk
+#         Threads.@spawn begin
 
-            # Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer
-            local logL = zeros(T, 2)    # sums up log likelihood across consumers
-                                        # and heterogeneity draws draws for each consumer
-            local Linner = ones(T, 2)   # product of likelihoods for each consumer across sessions given draw
-            local Louter = zeros(T, 2)   # sum across (weighted) heterogeneity draws
+#             # Pre-allocate arrays per task -> avoid memory allocation by not having to re-create these arrays for every consumer
+#             local logL = zeros(T, 2)    # sums up log likelihood across consumers
+#                                         # and heterogeneity draws draws for each consumer
+#             local Linner = ones(T, 2)   # product of likelihoods for each consumer across sessions given draw
+#             local Louter = zeros(T, 2)   # sum across (weighted) heterogeneity draws
 
-            # Pre-allocate arrays for heterogeneity
-            local zd_hi = isnothing(zdfun) ? nothing : copy(zd_h)
-            local zs_hi = copy(zs_h)
-            local βi = copy(β)
-            local γi = copy(β)
-            local κi = isnothing(κ) ? nothing : copy(κ)
-            local ρi = isnothing(ρ) ? nothing : copy(ρ)
-            local ξρi = isnothing(ξρ) ? nothing : copy(ξρ)
-            local ni_points_i = zeros(T, size(ni_points[1])) # pre-allocate draws for each consumer
+#             # Pre-allocate arrays for heterogeneity
+#             local zd_hi = isnothing(zdfun) ? nothing : copy(zd_h)
+#             local zs_hi = copy(zs_h)
+#             local βi = copy(β)
+#             local γi = copy(β)
+#             local κi = isnothing(κ) ? nothing : copy(κ)
+#             local ρi = isnothing(ρ) ? nothing : copy(ρ)
+#             local ξρi = isnothing(ξρ) ? nothing : copy(ξρ)
+#             local ni_points_i = zeros(T, size(ni_points[1])) # pre-allocate draws for each consumer
 
-            for cons_id in chunk  # Iterate over consumers in chunk
-                si = searchsorted(data.consumer_ids, cons_id) # get index of sessions belonging to consumer
+#             for cons_id in chunk  # Iterate over consumers in chunk
+#                 si = searchsorted(data.consumer_ids, cons_id) # get index of sessions belonging to consumer
 
-                Louter .= 0 # reset likelihood for this consumer
+#                 Louter .= 0 # reset likelihood for this consumer
 
-                mul!(ni_points_i, U, ni_points[cons_id]) # adjust draws with covariance U * draws
+#                 mul!(ni_points_i, U, ni_points[cons_id]) # adjust draws with covariance U * draws
 
-                for di in axes(ni_points[cons_id], 2) # iterate over draws for this consumer
+#                 for di in axes(ni_points[cons_id], 2) # iterate over draws for this consumer
 
-                    shocks = @views ni_points_i[:, di]
-                    Ξi, ξi = add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_hi, zs_hi, model,
-                        β, γ, Ξ, ρ, ξ, ξρ, shocks, all_possible_positions, zdfun, zsfun)
+#                     shocks = @views ni_points_i[:, di]
+#                     Ξi, ξi = add_shocks_parameters!(βi, γi, κi, ρi, ξρi, zd_hi, zs_hi, model,
+#                         β, γ, Ξ, ρ, ξ, ξρ, shocks, all_possible_positions, zdfun, zsfun)
 
-                    # Update discovery and search values in case are reals
-                    # (rather than arrays that are updated in place)
-                    if isnothing(zdfun)
-                        zd_hi = Ξi
-                    end
-                    if isnothing(zsfun)
-                        zs_hi = ξi
-                    end
+#                     # Update discovery and search values in case are reals
+#                     # (rather than arrays that are updated in place)
+#                     if isnothing(zdfun)
+#                         zd_hi = Ξi
+#                     end
+#                     if isnothing(zsfun)
+#                         zs_hi = ξi
+#                     end
 
-                    if !isnothing(ρi) && ρi[1] > 0
-                        Linner[1] += -T(MAX_NUMERICAL)
-                        continue
-                    end
+#                     if !isnothing(ρi) && ρi[1] > 0
+#                         Linner[1] += -T(MAX_NUMERICAL)
+#                         continue
+#                     end
 
-                    # Reset likelihood for draw
-                    Linner .= 1
+#                     # Reset likelihood for draw
+#                     Linner .= 1
 
-                    for i in si # iterate over sessions of consumer
+#                     for i in si # iterate over sessions of consumer
 
-                        # Update based on session characteristics, which may differ for same consumer
-                        if has_observed_heterogeneity(model)
-                            # Update search values, discovery values, and preference parameters for each consumer
+#                         # Update based on session characteristics, which may differ for same consumer
+#                         if has_observed_heterogeneity(model)
+#                             # Update search values, discovery values, and preference parameters for each consumer
 
-                            Ξi, ξi = add_observed_shifters_parameters!(βi, γi, κi, zd_hi, zs_hi, model,
-                                Ξi, ρi, ξi, ξρi, ψ,
-                                zdfun, zsfun,
-                                data.session_characteristics[i],
-                                all_possible_positions)
+#                             Ξi, ξi = add_observed_shifters_parameters!(βi, γi, κi, zd_hi, zs_hi, model,
+#                                 Ξi, ρi, ξi, ξρi, ψ,
+#                                 zdfun, zsfun,
+#                                 data.session_characteristics[i],
+#                                 all_possible_positions)
 
-                            # Update discovery and search values in case are reals
-                            # (rather than arrays that are updated in place)
-                            if isnothing(zdfun)
-                                zd_hi = Ξi
-                            end
-                            if isnothing(zsfun)
-                                zs_hi = ξi
-                            end
+#                             # Update discovery and search values in case are reals
+#                             # (rather than arrays that are updated in place)
+#                             if isnothing(zdfun)
+#                                 zd_hi = Ξi
+#                             end
+#                             if isnothing(zsfun)
+#                                 zs_hi = ξi
+#                             end
 
-                            if !isnothing(ρi) && ρi[1] > 0
-                                Linner[1] += -T(MAX_NUMERICAL)
-                                continue
-                            end
-                        end
+#                             if !isnothing(ρi) && ρi[1] > 0
+#                                 Linner[1] += -T(MAX_NUMERICAL)
+#                                 continue
+#                             end
+#                         end
 
-                        # Do inner likelihood calculations based on pre-allocated arrays
-                        return_log = false
-                        if has_search[i] == 0 # Case 1: no clicks (implies also no purchase)
-                            Linner[1] *= lik_no_searches(
-                                model, zd_hi, zs_hi, βi, γi, κi, dV, dU0, mapping_characteristics,
-                                data, i, n_draws, false, rng, return_log)
-                        elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase
-                            Linner[1] *=lik_search_no_purchase(
-                                model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
-                                data, i, n_draws, rng, return_log)
-                        else # Case 3: Purchase a product
-                            Linner[1] *= lik_purchase(
-                                model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
-                                data, i, n_draws, rng, return_log)
-                        end
+#                         # Do inner likelihood calculations based on pre-allocated arrays
+#                         return_log = false
+#                         if has_search[i] == 0 # Case 1: no clicks (implies also no purchase)
+#                             Linner[1] *= lik_no_searches(
+#                                 model, zd_hi, zs_hi, βi, γi, κi, dV, dU0, mapping_characteristics,
+#                                 data, i, n_draws, false, rng, return_log)
+#                         elseif has_purchase[i] == 0 # Case 2: Some clicks but no purchase
+#                             Linner[1] *=lik_search_no_purchase(
+#                                 model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
+#                                 data, i, n_draws, rng, return_log)
+#                         else # Case 3: Purchase a product
+#                             Linner[1] *= lik_purchase(
+#                                 model, zd_hi, zs_hi, βi, γi, κi, dE, dV, dU0, mapping_characteristics,
+#                                 data, i, n_draws, rng, return_log)
+#                         end
 
-                        if estimator.conditional_on_search
-                            Linner[2] *= lik_no_searches(
-                                            model, zd_h, zs_h, βi, γi, κi, dV, dU0, mapping_characteristics,
-                                            data, i, n_draws, true, rng, return_log)
-                        end
-                    end
-                    # Sum over draws
-                    Louter[1] += ni_weights[di] * Linner[1]
-                    Louter[2] += ni_weights[di] * Linner[2]
-                end
+#                         if estimator.conditional_on_search
+#                             Linner[2] *= lik_no_searches(
+#                                             model, zd_h, zs_h, βi, γi, κi, dV, dU0, mapping_characteristics,
+#                                             data, i, n_draws, true, rng, return_log)
+#                         end
+#                     end
+#                     # Sum over draws
+#                     Louter[1] += ni_weights[di] * Linner[1]
+#                     Louter[2] += ni_weights[di] * Linner[2]
+#                 end
 
-                logL[1] += lik_return_stable(Louter[1], true)
-                logL[2] += lik_return_stable(Louter[2], true)
-            end
+#                 logL[1] += lik_return_stable(Louter[1], true)
+#                 logL[2] += lik_return_stable(Louter[2], true)
+#             end
 
-            return logL # Return likelihood for chunk
-        end
-    end
+#             return logL # Return likelihood for chunk
+#         end
+#     end
 
-    return tasks
-end
+#     return tasks
+# end
 
 function unpack_cache(cache, β)
 

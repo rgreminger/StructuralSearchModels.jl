@@ -70,6 +70,22 @@ function convert_to_greek(sv::InformationStructureSpecificationNU)
     )
 end
 
+
+function InformationStructureSpecificationNU(gamma, kappa,
+        indices_characteristics_beta_union, indices_characteristics_gamma_union,
+        indices_characteristics_kappa_union, indices_characteristics_beta_individual,
+        indices_characteristics_gamma_individual, indices_characteristics_kappa_individual)
+    T = promote_type(eltype(gamma), eltype(kappa))
+    return InformationStructureSpecificationNU{T}(
+        convert(Vector{T}, collect(gamma)), convert(Vector{T}, collect(kappa)),
+        _convert_indices(indices_characteristics_beta_union),
+        _convert_indices(indices_characteristics_gamma_union),
+        _convert_indices(indices_characteristics_kappa_union),
+        _convert_indices(indices_characteristics_beta_individual),
+        _convert_indices(indices_characteristics_gamma_individual),
+        _convert_indices(indices_characteristics_kappa_individual))
+end
+
 function InformationStructureSpecificationNU(n::Int)
     gamma = zeros(n)
     kappa = zeros(n)
@@ -82,11 +98,20 @@ function InformationStructureSpecificationNU(n::Int)
 end
 
 function InformationStructureSpecificationNU(gamma, kappa, indices_characteristics_beta,
-        indices_characteristics_gamma, indices_characteristics_kappa)
+        indices_characteristics_gamma, indices_characteristics_kappa;
+        indices_characteristics_beta_individual = indices_characteristics_beta,
+        indices_characteristics_gamma_individual = indices_characteristics_gamma,
+        indices_characteristics_kappa_individual = indices_characteristics_kappa)
 
-    return InformationStructureSpecificationNU(gamma, kappa, indices_characteristics_beta,
-        indices_characteristics_gamma, indices_characteristics_kappa,
-        indices_characteristics_beta, indices_characteristics_gamma, indices_characteristics_kappa)
+    T = promote_type(eltype(gamma), eltype(kappa))
+    return InformationStructureSpecificationNU(
+        convert(Vector{T}, collect(gamma)), convert(Vector{T}, collect(kappa)),
+        _convert_indices(indices_characteristics_beta),
+        _convert_indices(indices_characteristics_gamma),
+        _convert_indices(indices_characteristics_kappa),
+        _convert_indices(indices_characteristics_beta_individual),
+        _convert_indices(indices_characteristics_gamma_individual),
+        _convert_indices(indices_characteristics_kappa_individual))
 end
 
 function ==(s1::InformationStructureSpecificationNU, s2::InformationStructureSpecificationNU)
@@ -144,27 +169,47 @@ unicode letters for the fields. The parameterization of the `SD` model is as fol
     @assert rho[1]<=0 "ρ[1] must be less or equal to zero for weakly decreasing discovery value across positions."
 end
 
-function SDNU(β, Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+function _convert_information_structure(is::InformationStructureSpecificationNU, T)
+    return InformationStructureSpecificationNU(
+        convert(Vector{T}, is.gamma), convert(Vector{T}, is.kappa),
+        is.indices_characteristics_beta_union,
+        is.indices_characteristics_gamma_union,
+        is.indices_characteristics_kappa_union,
+        is.indices_characteristics_beta_individual,
+        is.indices_characteristics_gamma_individual,
+        is.indices_characteristics_kappa_individual)
+end
+
+function SDNU(β, Ξ, ρ, ξ, dE, dV, dU0, zdfun, information_structure, heterogeneity,
+    cs, cd)
     Ξ, ξ = promote(Ξ, ξ)
     T = eltype(Ξ)
     ρ = convert_ρ(ρ, T)
-    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+    cs = convert_cs(cs, T)
+    is = _convert_information_structure(information_structure, T)
+    return SDNU(convert(Vector{T}, collect(β)), Ξ, ρ, ξ, dE, dV, dU0, zdfun, is, heterogeneity, cs, cd)
 end
 
 # this one for some reason is necessary as Parameters.jl does not seem to enforce T for β
-function SDNU(β::Vector{Any}, Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+function SDNU(β::Vector{Any}, Ξ, ρ, ξ, dE, dV, dU0, zdfun, information_structure, heterogeneity,
+    cs, cd)
     Ξ, ξ = promote(Ξ, ξ)
     T = eltype(Ξ)
     ρ = convert_ρ(ρ, T)
-    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+    cs = convert_cs(cs, T)
+    is = _convert_information_structure(information_structure, T)
+    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, is, heterogeneity, cs, cd)
 end
 
 function SDNU(β, Ξ, ρ, ξ, dE, dV, dU0, zdfun; cs = nothing, cd = nothing,
+    information_structure = InformationStructureSpecificationNU(length(collect(β))),
     heterogeneity = HeterogeneitySpecificationNU())
     Ξ, ξ = promote(Ξ, ξ)
     T = eltype(Ξ)
     ρ = convert_ρ(ρ, T)
-    return SDNU(convert(Vector{T}, β), Ξ, ρ, ξ, dE, dV, dU0, zdfun, cs, cd, heterogeneity)
+    cs = convert_cs(cs, T)
+    is = _convert_information_structure(information_structure, T)
+    return SDNU(convert(Vector{T}, collect(β)), Ξ, ρ, ξ, dE, dV, dU0, zdfun, is, heterogeneity, cs, cd)
 end
 
 function convert_to_greek(m::SDNU)
@@ -221,7 +266,7 @@ unicode letters for the fields. The parameterization of the `WM` model is as fol
     cs_h::Union{Vector{T}, Nothing} = nothing
 end
 
-function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
+function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun, information_structure, heterogeneity, cs, cs_h)
     T = eltype(ξ)
     ρ = convert_ρ(ρ, T)
     cs = convert_cs(cs, T)
@@ -229,25 +274,32 @@ function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
     if cs_h isa Real
         throw(ArgumentError("cs_h must be a vector or nothing."))
     end
-    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
+    is = _convert_information_structure(information_structure, T)
+    return WMNU(convert(Vector{T}, collect(β)), ρ, ξ, dE, dV, dU0, zsfun, is, heterogeneity, cs, cs_h)
 end
 
 function WMNU(β::Vector{Any}, ξ, ρ, dE, dV, dU0, zsfun; cs = nothing, cs_h = nothing,
+    information_structure = InformationStructureSpecificationNU(length(β)),
     heterogeneity = HeterogeneitySpecificationNU())
     T = eltype(ξ)
     ρ = convert_ρ(ρ, T)
     cs = convert_cs(cs, T)
     cs_h = convert_cs(cs_h, T)
-    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
+    is = _convert_information_structure(information_structure, T)
+    return WMNU(convert(Vector{T}, β), ρ, ξ, dE, dV, dU0, zsfun,
+        is, heterogeneity, cs, cs_h)
 end
 
 function WMNU(β, ξ, ρ, dE, dV, dU0, zsfun; cs = nothing, cs_h = nothing,
+    information_structure = InformationStructureSpecificationNU(length(collect(β))),
     heterogeneity = HeterogeneitySpecificationNU())
     T = eltype(ξ)
     ρ = convert_ρ(ρ, T)
     cs = convert_cs(cs, T)
     cs_h = convert_cs(cs_h, T)
-    return WMNU(convert(Vector{T}, β), ξ, ρ, dE, dV, dU0, zsfun, cs, cs_h, heterogeneity)
+    is = _convert_information_structure(information_structure, T)
+    return WMNU(convert(Vector{T}, collect(β)), ρ, ξ, dE, dV, dU0, zsfun,
+        is, heterogeneity, cs, cs_h)
 end
 
 function convert_to_greek(m::WMNU)
