@@ -1,4 +1,5 @@
 using Distributions
+using LinearAlgebra
 using QuasiMonteCarlo
 using Random
 using StableRNGs
@@ -13,11 +14,15 @@ end
     include("tests_sdcore.jl")
 end
 
-@testset "SD" begin
+@testset "SD" verbose = true begin
     include("tests_sd.jl")
 end
 
-@testset "WM" begin
+@testset "WM" verbose = true begin
     include("tests_wm.jl")
+end
+
+@testset "NonUnicode" verbose = true begin
+    include("tests_non_unicode.jl")
 end
 
