@@ -1,22 +1,26 @@
 """
-    Default numerical integration that is used to integrate over the idiosyncratic shocks.
-## Options
-- `n_draws::Int`: Number of draws for main integration over shocks.
+    DefaultNI(n_draws::Int)
+
+Default numerical integration method for integrating over the idiosyncratic shocks.
+
+# Arguments
+- `n_draws::Int`: Number of simulation draws.
 """
 @with_kw struct DefaultNI <: NIMethod
     n_draws::Int
 end
 
 """
-    QMC(n_draws; sampler))
-    QME(; n_draws, sampler)
-Quasi Monte Carlo integration method for numerical integration over unobserved heterogeneity. Builds on `QuasiMonteCarlo.jl` package to provide functionality of taking different series.
+    QMC(n_draws::Int; sampler = Uniform())
+    QMC(; n_draws, sampler = Uniform())
 
-## Arguments
-- `n_draws::Int`: Number of draws for main integration over shocks.
+Quasi-Monte Carlo integration method for numerical integration over unobserved heterogeneity, built on `QuasiMonteCarlo.jl`.
 
-## Optional Keyword Arguments
-- `sampler::Union{Distribution, SamplingAlgorithm}`: Sampling algorithm for the QMC method. Defaults to `Uniform()`, i.e., takes draws just from the uniform distribution.
+# Arguments
+- `n_draws::Int`: Number of simulation draws.
+
+# Keyword Arguments
+- `sampler::Union{Distribution, SamplingAlgorithm}`: Sampling algorithm. Defaults to `Uniform()`. Use a `SamplingAlgorithm` from `QuasiMonteCarlo.jl` for low-discrepancy sequences.
 """
 @with_kw struct QMC <: NIMethod
     n_draws::Int

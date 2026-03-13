@@ -1,16 +1,17 @@
 """
     InformationStructureSpecification{T} <: AbstractSpecification
-Specification for the information structure in the Search and Discovery model. This specification includes the parameter γ for the search value, as well as selectors for the characteristics that enter both the search value and utility through xβ, and the characteristics that enter only the search value through xγ. By default, is initialized with everything as nothing, which means `γ` is not used, and all characteristics are used for both xβ.
 
-## Fields:
-- `γ::Vector{T}`: Vector of parameters for the search value. If `empty` (default), no search value is used.
-- `κ::Vector{T}`: Vector of parameters for the utility only characteristics. If `empty`, no utility only characteristics.
-- `indices_characteristics_β_union::Union{UnitRange{Int}, Vector{Int}}`: All characteristics that enter the search value and utility through `xβ` in at least one session.
-- `indices_characteristics_γ_union::Union{UnitRange{Int}, Vector{Int}}`: All characteristics that enter the search value and utility through `xγ` in at least one session.
-- `indices_characteristics_κ_union::Union{UnitRange{Int}, Vector{Int}}`: All characteristics that enter the search value and utility through `xκ` in at least one session.
-- `indices_characteristics_β_individual::Union{UnitRange{Int}, Vector{Int}, Vector{UnitRange{Int}}, Vector{Vector{Int}}}`. By default is the same as `indices_characteristics_β_union`, but can be set to individual indices for each session.
-- `indices_characteristics_γ_individual::Union{UnitRange{Int}, Vector{Int}, Vector{UnitRange{Int}}, Vector{Vector{Int}}}`. By default is the same as `indices_characteristics_γ_union`, but can be set to individual indices for each session.
-- `indices_characteristics_κ_individual::Union{UnitRange{Int}, Vector{Int}, Vector{UnitRange{Int}}, Vector{Vector{Int}}}`. By default is the same as `indices_characteristics_κ_union`, but can be set to individual indices for each session.
+Specification of the information structure for the Search and Discovery model. Controls which product characteristics enter the search value (via `γ`) and hidden utility (via `κ`), and which characteristics from `β` are used in each component. By default all fields are empty, meaning `γ` and `κ` are unused and all characteristics enter through `β`.
+
+# Fields
+- `γ::Vector{T}`: Parameters for the search value component `xγ`. Empty by default (no search value component).
+- `κ::Vector{T}`: Parameters for the hidden utility component `xκ`. Empty by default.
+- `indices_characteristics_β_union`: Indices of characteristics entering through `xβ` in at least one session.
+- `indices_characteristics_γ_union`: Indices of characteristics entering through `xγ` in at least one session.
+- `indices_characteristics_κ_union`: Indices of characteristics entering through `xκ` in at least one session.
+- `indices_characteristics_β_individual`: Per-session indices for `xβ`. Defaults to `indices_characteristics_β_union`.
+- `indices_characteristics_γ_individual`: Per-session indices for `xγ`. Defaults to `indices_characteristics_γ_union`.
+- `indices_characteristics_κ_individual`: Per-session indices for `xκ`. Defaults to `indices_characteristics_κ_union`.
 """
 @with_kw mutable struct InformationStructureSpecification{T} <: AbstractSpecification where {T <: Real}
     γ::Vector{T}
@@ -94,31 +95,34 @@ function all_characteristics_on_list(m::SDModel)
 end
 
 """
-Search and Discovery (SD) core model. This model is a base model for all models that are subtypes of `SDModel`. It implements the most general specification using three shocks and both functional forms for ξ and Ξ. Currently, there is no estimation method for this model, but it is used internally to generate data.
+    SDCore{T} <: SDModel
+
+Search and Discovery core model with the most general specification. Used internally for data generation and welfare calculations; no estimation method is available directly for this type. Parameterization:
 
 - uᵢⱼ = xⱼβ + xⱼκ + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ(h) = xⱼβ + xⱼγ + ξ(h) + νᵢⱼ + ωᵢⱼ, ωᵢⱼ ~ dW
-- uᵢ₀ = β0 + ηᵢ , ηᵢ ~ dU0
-- zd(h) = zdfun(Ξ, ρ, pos) with ρ ≤ 0
-- ξ(h) = zsfun(ξ, ξρ, pos)
-- For the estimation, the specification of `xⱼβ`, `xⱼκ`, and `xⱼγ` are determined by `information_structure`.
+- uᵢ₀ = β0 + ηᵢ, ηᵢ ~ dU0
+- zd(h) = zdfun(Ξ, ρ, h) with ρ ≤ 0
+- ξ(h) = zsfun(ξ, ξρ, h)
 
-# Fields:
-- `β::Vector{T}`: Vector of preference weights.
-- `Ξ::T`: Baseline Ξ for position 1 (not demeaned).
-- `ρ::Union{T, Vector{T}} `: Parameters governing decrease of Ξ across positions.
-- `ξ::T`: Baseline ξ.
-- `ξρ::Union{T, Vector{T}} `: Parameters governing decrease of ξ across positions.
+The specification of `xⱼβ`, `xⱼκ`, and `xⱼγ` is determined by `information_structure`.
+
+# Fields
+- `β::Vector{T}`: Preference weights.
+- `Ξ::T`: Baseline discovery value for position 1 (not demeaned).
+- `ρ::Union{T, Vector{T}}`: Parameters governing decrease of Ξ across positions.
+- `ξ::T`: Baseline search value.
+- `ξρ::Union{T, Vector{T}}`: Parameters governing decrease of ξ across positions.
 - `dE::Distribution`: Distribution of εᵢⱼ.
 - `dV::Distribution`: Distribution of νᵢⱼ.
 - `dU0::Distribution`: Distribution of ηᵢ.
 - `dW::Distribution`: Distribution of ωᵢⱼ.
-- `zdfun::String`: Select functional form f(h, Ξ, ρ) that determines the discovery value in position h.
-- `zsfun::String`: Select functional form f(h, ξ, ξρ) that determines the search value in position h.
-- `information_structure::InformationStructureSpecification{T}`: Specification of information structure, including `γ`, `κ` and characteristics for `β`, `γ`, and `κ`. See `InformationStructureSpecification` for details.
-- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs on a product level. Initialized as `nothing` and only used for welfare calculations. Vector of vector, matching structure in data. Can be added through `calculate_costs!(m, data; kwargs...)`.
-- `cd::Union{Vector{T}, Nothing}`: Discovery costs, specific to sessions. Initialized as `nothing` and only used for welfare calculations. Can be updated through `calculate_costs!(m, data; kwargs...)`.
-- `heterogeneity::HeterogeneitySpecification`: Specification of heterogeneity (unobserved and observed) in the model.
+- `zdfun::String`: Functional form f(Ξ, ρ, h) for the discovery value at position h. Available options: `""` (constant), `"linear"`, `"log"`, `"exp"`, `"linear-k"`, `"log-k"` (where `k` is an integer).
+- `zsfun::String`: Functional form f(ξ, ξρ, h) for the search value at position h. Available options: `""` (constant), `"linear"`, `"log"`, `"exp"`, `"linear-k"`, `"log-k"` (where `k` is an integer).
+- `information_structure::InformationStructureSpecification{T}`: Information structure specification. See `InformationStructureSpecification`.
+- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs per product, populated by `calculate_costs!`. `nothing` until computed.
+- `cd::Union{Vector{T}, Nothing}`: Discovery costs per session, populated by `calculate_costs!`. `nothing` until computed.
+- `heterogeneity::HeterogeneitySpecification`: Heterogeneity specification (observed and unobserved).
 """
 @with_kw mutable struct SDCore{T} <: SDModel where {T <: Real}
     β::Vector{T}
@@ -147,19 +151,21 @@ end
 
 
 """
-*Data* type for the core Search and Discovery model. Indexing is based on sessions. See the tutorials for examples on how such data can be simulated or constructed.
+    DataSD{T} <: Data
 
-# Fields:
-- `consumer_ids::Vector{Int}`: consumer id for each session.
-- `product_ids::Vector{Vector{Int}}`: vector of vectors of product ids for each session.
-- `product_characteristics::Vector{Matrix{T}}`: product characteristics matrix.
-- `positions::Vector{Vector{Int}}`: positions for each session.
-- `consideration_sets::Vector{Vector{Bool}}`: consideration sets for each session, booleans whether searched or not.
-- `purchase_indices::Vector{Int}`: which product within session is purchased.
-- `min_discover_indices::Union{Vector{Int}, Nothing}`: index of last product must have been discovered in session (lowest position at which click occurred). This is mainly used during estimation, and can be constructed in with the `fill_indices_min_discover!` function.
-- `stop_indices::Union{Vector{Int}, Nothing}`: index of last product discovered in session (at which discovery stops). Is `nothing` if not available (e.g., when scrolling is not observed).
-- `session_characteristics::Union{Vector{Vector{T}}, Nothing}`: session characteristics for each session. Is `nothing` if not available (default).
-- `search_paths::Union{Vector{Vector{Int}}, Nothing}`: search paths for each session. Is `nothing` if search order is not available.
+Data type for the Search and Discovery model. Indexing is session-based. See the tutorials for examples on how to simulate or construct this data from real datasets.
+
+# Fields
+- `consumer_ids::Vector{Int}`: Consumer ID for each session.
+- `product_ids::Vector{Vector{Int}}`: Product IDs available in each session.
+- `product_characteristics::Vector{Matrix{T}}`: Product characteristics matrix for each session.
+- `positions::Vector{Vector{Int}}`: Position of each product in each session.
+- `consideration_sets::Vector{Vector{Bool}}`: Whether each product was searched (clicked) in each session.
+- `purchase_indices::Vector{Int}`: Index of the purchased product within each session.
+- `min_discover_indices::Union{Vector{Int}, Nothing}`: Index of the last product that must have been discovered (lowest position of any click). Used during estimation; populate with `fill_indices_min_discover!`. Defaults to `nothing`.
+- `stop_indices::Union{Vector{Int}, Nothing}`: Index of the last product discovered before stopping. `nothing` if scrolling is not observed.
+- `session_characteristics::Union{Vector{Vector{T}}, Nothing}`: Session-level characteristics. `nothing` if not available (default).
+- `search_paths::Union{Vector{Vector{Int}}, Nothing}`: Search order within each session. `nothing` if search order is not observed.
 """
 @with_kw mutable struct DataSD{T} <: Data where {T <: Real}
 
@@ -256,7 +262,10 @@ end
 """
     merge_data(data1::DataSD, data2::DataSD)
 
-Merge two `DataSD` objects into a single one by concatenating all fields. If the combined `consumer_ids` contain duplicates, they are replaced with consecutive integers.
+Merge two `DataSD` objects into one by concatenating all fields. Duplicate `consumer_ids` are replaced with consecutive integers.
+
+# Returns
+A new `DataSD` with all sessions from `data1` followed by those from `data2`.
 """
 function merge_data(data1::DataSD, data2::DataSD)
     consumer_ids = vcat(data1.consumer_ids, data2.consumer_ids)
@@ -423,7 +432,8 @@ end
 
 """
     update_positions!(data::DataSD, nA0, nd)
-Update positions in `data` to fit the number of alternatives in initial awareness set `nA0` and the number of alternatives per position `nd`.
+
+Update `data.positions` in-place to reflect `nA0` products in the initial awareness set (position 0) and `nd` products per subsequent position. Modifies `data` directly and returns `nothing`.
 """
 function update_positions!(data::DataSD, nA0, nd)
     # Update positions
@@ -853,13 +863,18 @@ end
 
 # Cost computations
 """
-	calculate_costs!(model::SDModel, data::DataSD, n_draws...; force_recompute = true, kwargs...)
+    calculate_costs!(model::SDModel, data::DataSD, n_draws...; force_recompute = true, kwargs...)
 
-Calculate search and discovery costs for the `model <: SDModel` using `data <: DataSD` and add/update them in the `model`. Uses `n_draws` to calculate the different costs using the distribution of characteristics in the data. If `n_draws` is a single element, the same number of draws are used to compute `cs` and `cd`. Otherwise, the first element is used to compute `cs` and the second to compute `cd`. If `force_recompute` is true (default), the costs are recomputed even if they are already present in the model.
+Compute search and discovery costs for `model` using `data` and store them in-place on `model`. Pass a single `n_draws` to use the same number of draws for both costs, or two values to use different draws for search costs and discovery costs respectively. If `force_recompute = false`, skips recomputation when costs are already present.
 
-Discovery costs are given by E[max{0, xβγ_demeaned + ε - Ξ}] and depend on the distribution of characteristics in the data as well as the distribution of ε. The expectation is computed by sampling from the distribution of characteristics in the data and the distribution of ε. Discovery costs are thus computed under the assumption that  beliefs are correct across positions.
+Discovery costs are E[max{0, xβγ_demeaned + ε - Ξ}], sampled from the characteristic distribution in `data`. Search costs are E[max{0, xβ_demeaned + ε - ξⱼ}] (or E[1 - F(ξⱼ)] when all characteristics are revealed on the list). See Greminger (2022), equation (7) and online appendix EC.2.
 
-Search costs are given by E[max{0, xβ_detail_demeaned + ε - ξj}], where ξj is the position (or product) specific search value. The expectation is computed by sampling from the distribution of characteristics in the data and the distribution of ε. If all characteristics are revealed on the list, then the search cost is instead computed as E[1 - F(ξj)], where F is the distribution of ε. See (7) in Greminger (2022) and online appendix EC.2.
+Returns `nothing`. Call this before `calculate_welfare`.
+
+# Example
+```julia
+calculate_costs!(m_hat, d, 100_000; seed = 1)
+```
 """
 function calculate_costs!(m::SDCore, d::DataSD, n_draws...;
         force_recompute = true,
@@ -1420,8 +1435,12 @@ end
 
 # Reservation values / inverse calculations for costs
 """
-	calculate_discovery_value(G::Normal, m::SDModel, ξ::T, cs::T, cd::T)
-Calculate the discovery value `zd` given `cs`, `cd` and `ξ`. Assumes that pre-search values xβ + v + w follow normal distribution `G`.
+    calculate_discovery_value(G::Normal, m::SDModel, ξ::T, cs::T, cd::T)
+
+Compute the discovery value `zd` given search cost `cs`, discovery cost `cd`, and search value `ξ`, assuming pre-search values xβ + ν + ω follow the normal distribution `G`. Currently only supports `dE <: Normal`.
+
+# Returns
+A `Float64` discovery value.
 """
 function calculate_discovery_value(G::Normal, m::SDModel, ξ::T, cs::T, cd::T) where T <: Real
 
@@ -2739,7 +2758,8 @@ end
 
 """
     fill_indices_min_discover!(data::DataSD)
-Use clicks to add indices of minimum position consumers must have discovered in `data`.
+
+Populate `data.min_discover_indices` in-place from `data.consideration_sets` and `data.positions`. For each session, computes the array index of the last product that must have been discovered based on the deepest click position. Returns `nothing`.
 """
 function fill_indices_min_discover!(d::DataSD)
     min_discover_indices = get_indices_min_discover(d)

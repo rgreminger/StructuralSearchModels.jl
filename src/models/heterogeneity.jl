@@ -8,6 +8,17 @@
 end
 
 
+"""
+    HeterogeneitySpecification{T}
+
+Specification of observed and unobserved consumer heterogeneity for a search model.
+
+# Fields
+- `parameters_with_observed_heterogeneity`: Dict mapping parameter symbols (e.g., `:β`, `:γ`) to indices of heterogeneity dimensions for observed heterogeneity (interacted with session characteristics via `ψ`).
+- `ψ`: Coefficients for observed heterogeneity, one vector per heterogeneous parameter.
+- `parameters_with_unobserved_heterogeneity`: Dict mapping parameter symbols to indices of heterogeneity dimensions for unobserved heterogeneity (integrated out via `distribution`).
+- `distribution`: Multivariate normal distribution for unobserved heterogeneity; its dimension must match `parameters_with_unobserved_heterogeneity`.
+"""
 @with_kw mutable struct HeterogeneitySpecification{T} <: AbstractHeterogeneitySpecification  where {T <: Real}
     # Parameters for observed heterogeneity (multiplied with session_characteristics)
     parameters_with_observed_heterogeneity::Dict{Symbol, Any} = Dict{Symbol, Any}()
@@ -81,6 +92,14 @@ function extract_heterogeneity_parameters(m::M, θ::Vector{T}, c; kwargs...) whe
     return ψ, U, c
 end
 
+"""
+    update_heterogeneity_specification!(m)
+
+Reparse the heterogeneity dictionaries in `m.heterogeneity` and update the internal
+`_observed_hs` and `_unobserved_hs` case objects in-place. Call this after modifying
+`parameters_with_observed_heterogeneity` or `parameters_with_unobserved_heterogeneity`
+on an existing model.
+"""
 function update_heterogeneity_specification!(m)
     m.heterogeneity._observed_hs =
         parse_heterogeneity_specification(m.heterogeneity.parameters_with_observed_heterogeneity)

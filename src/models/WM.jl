@@ -4,23 +4,28 @@ Abstract type for the *Weitzman* (WM) model. This type is a base type for all mo
 abstract type WMModel <: SDModel end
 
 """
-*Weitzman model* `WM{T} <: WMModel` with the following parameterization:
+    WM{T} <: WMModel
+
+Weitzman model with the following parameterization:
+
 - uᵢⱼ = xⱼβ + xⱼκ + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ(h) = xⱼβ + xⱼγ + ξ(h) + νᵢⱼ
-- uᵢ₀ = x₀'β + ηᵢ , ηᵢ ~ dU0
-- ξ(h) = zsfun(ξ, ρ, pos)
+- uᵢ₀ = x₀'β + ηᵢ, ηᵢ ~ dU0
+- ξ(h) = zsfun(ξ, ρ, h)
 
-## Fields:
-- `β::Vector{T}`: Vector of preference weights.
-- `ξ::T`: Baseline ξ.
-- `ρ::Union{T, Vector{T}} `: Parameters governing decrease of ξ across positions.
+The specification of `xⱼβ`, `xⱼκ`, and `xⱼγ` is determined by `information_structure`.
+
+# Fields
+- `β::Vector{T}`: Preference weights.
+- `ξ::T`: Baseline search value.
+- `ρ::Union{T, Vector{T}}`: Parameters governing decrease of ξ across positions.
 - `dE::Distribution`: Distribution of εᵢⱼ.
 - `dV::Distribution`: Distribution of νᵢⱼ.
 - `dU0::Distribution`: Distribution of ηᵢ.
-- `information_structure::InformationStructureSpecification{T}`: Specification of information structure, including `γ`, `κ` and characteristics for `β`, `γ`, and `κ`. See `InformationStructureSpecification` for details.
-- `zsfun::String`: Select functional form f(ξ, ρ, h) that determines the search value in position h.
-- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs on a product level. Initialized as `nothing` and only used for welfare calculations. Vector of vector, matching structure in data. Can be added through `calculate_costs!(m, data; kwargs...)`.
-- `heterogeneity::HeterogeneitySpecification`: Specification of heterogeneity (unobserved and observed) in the model. By default assumes homogeneous model.
+- `zsfun::String`: Functional form f(ξ, ρ, h) for the search value at position h. Available options: `""` (constant), `"linear"`, `"log"`, `"exp"`, `"linear-k"`, `"log-k"` (where `k` is an integer).
+- `information_structure::InformationStructureSpecification{T}`: Information structure specification. See `InformationStructureSpecification`.
+- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs per product, populated by `calculate_costs!`. `nothing` until computed.
+- `heterogeneity::HeterogeneitySpecification`: Heterogeneity specification. Defaults to homogeneous model.
 """
 @with_kw mutable struct WM{T} <: WMModel where {T <: Real}
     β::Vector{T}

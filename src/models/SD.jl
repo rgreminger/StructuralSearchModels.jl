@@ -1,24 +1,28 @@
 """
-*Search and Discovery* model `SD{T} <: SDModel`  with the following parameterization:
+    SD{T} <: SDModel
+
+Search and Discovery model with the following parameterization:
+
 - uᵢⱼ = xⱼβ + xⱼκ + νᵢⱼ + εᵢⱼ,  εᵢⱼ ~ dE, νᵢⱼ ~ dV
 - zsᵢⱼ = xⱼβ + xⱼγ + ξ + νᵢⱼ
-- uᵢ₀ = β0 + ηᵢ , ηᵢ ~ dU0
-- zd(h) = zdfun(Ξ, ρ, pos) with ρ ≤ 0
-- For the estimation, the specification of `xⱼβ`, `xⱼκ`, and `xⱼγ` are determined by `information_structure`.
+- uᵢ₀ = β0 + ηᵢ, ηᵢ ~ dU0
+- zd(h) = zdfun(Ξ, ρ, h) with ρ ≤ 0
 
-## Fields:
-- `β::Vector{T}`: Vector of preference weights.
-- `Ξ::T`: Baseline Ξ for position 1 (not demeaned).
-- `ρ::Union{T, Vector{T}}`: Parameter(s) governing decrease of Ξ across positions.
-- `ξ::T`: Baseline ξ.
+The specification of `xⱼβ`, `xⱼκ`, and `xⱼγ` is determined by `information_structure`.
+
+# Fields
+- `β::Vector{T}`: Preference weights.
+- `Ξ::T`: Baseline discovery value for position 1 (not demeaned).
+- `ρ::Union{T, Vector{T}}`: Parameters governing decrease of Ξ across positions.
+- `ξ::T`: Baseline search value.
 - `dE::Distribution`: Distribution of εᵢⱼ.
 - `dV::Distribution`: Distribution of νᵢⱼ.
 - `dU0::Distribution`: Distribution of ηᵢ.
-- `zdfun::String`: Select functional form f(Ξ, ρ, h) that determines the discovery value in position h.
-- `information_structure::InformationStructureSpecification{T}`: Specification of information structure, including `γ`, `κ` and characteristics for `β`, `γ`, and `κ`. See `InformationStructureSpecification` for details.
-- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs on a product level. Initialized as `nothing` and only used for welfare calculations. Vector of vector, matching structure in data. Can be added through `calculate_costs!(m, data; kwargs...)`.
-- `cd::Union{Vector{T}, Nothing}`: Discovery costs, specific to sessions. Initialized as `nothing` and only used for welfare calculations. Can be updated through `calculate_costs!(m, data; kwargs...)`.
-- `heterogeneity::HeterogeneitySpecification`: Specification of heterogeneity (unobserved and observed) in the model. By default assumes homogeneous model.
+- `zdfun::String`: Functional form f(Ξ, ρ, h) for the discovery value at position h. Available options: `""` (constant), `"linear"`, `"log"`, `"exp"`, `"linear-k"`, `"log-k"` (where `k` is an integer).
+- `information_structure::InformationStructureSpecification{T}`: Information structure specification. See `InformationStructureSpecification`.
+- `cs::Union{Vector{Vector{T}}, Nothing}`: Search costs per product, populated by `calculate_costs!`. `nothing` until computed.
+- `cd::Union{Vector{T}, Nothing}`: Discovery costs per session, populated by `calculate_costs!`. `nothing` until computed.
+- `heterogeneity::HeterogeneitySpecification`: Heterogeneity specification. Defaults to homogeneous model.
 """
 @with_kw mutable struct SD{T} <: SDModel where {T <: Real}
     β::Vector{T}

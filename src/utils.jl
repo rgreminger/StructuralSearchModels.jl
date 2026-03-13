@@ -7,11 +7,18 @@
         outside_option = true,
         kwargs...)
 
-Generate product IDs and their characteristics for `n_sessions` sessions. Each session has `n_products_per_session` products randomly sampled from `n_products` available in total. By default, `n_products` is large and 30 products are sampled per session.
+Generate product IDs and their characteristics for `n_sessions` sessions. Each session has `n_products_per_session` products randomly sampled from `n_products` available in total. Product characteristics are sampled from `distribution`, which must be multivariate (e.g., `MvNormal`) when using multiple characteristics. If `outside_option = true`, an outside option is prepended to each session with product ID 0, last characteristic set to 1.0, and all others set to 0.0.
 
-Product characteristics for each product are sampled from the specified `distribution`, which needs to be multivariate (e.g., `MvNormal`) when using multiple characteristics. If `outside_option=true`, then an outside option is included as the first product for each session with product ID 0. For this product, the last characteristic is set to 1.0 and the remaining product characteristics are set to 0.0.
+# Returns
+A tuple `(product_ids, product_characteristics)` where each element is a vector over sessions: `product_ids[i]` is a `Vector{Int}` and `product_characteristics[i]` is a `Matrix` of characteristics for session `i`.
 
-Returns product IDs and product characteristics as two separate vectors. Each element is a session, with a vector of product IDs or matrix of characteristics for all products available to the session.
+# Example
+```julia
+using Distributions, StructuralSearchModels
+product_ids, product_characteristics = generate_products(100, Normal())
+product_ids, product_characteristics = generate_products(100, MvNormal(I(3));
+    n_products = 500, n_products_per_session = 10)
+```
 """
 function generate_products(n_sessions, distribution::Distribution;
         n_products = 1_000_000,
@@ -226,7 +233,7 @@ end
 """
     add_product_fe!(model::SDModel, data::DataSD, n_min::Int, location::String)
 
-Add product fixed effects for all products that observed at least `n_min` times in the data. Fixed effects can shift either the search value, the hidden part of utility, or both. This is specified through `location`, which is set to eitehr `"search"`, `"hidden"`, or `"both"`.
+Add product fixed effects to `model` and `data` for all products observed at least `n_min` times. `location` controls where the fixed effects enter: `"search"` shifts the search value, `"hidden"` shifts the hidden part of utility, or `"both"` shifts both. Product indicator columns are added to `data.product_characteristics` in-place, and the model's information structure is updated accordingly.
 """
 function add_product_fe!(model::SDModel, data::DataSD, n_min::Int, location::String)
 
@@ -240,6 +247,11 @@ function add_product_fe!(model::SDModel, data::DataSD, n_min::Int, location::Str
 
 end
 
+"""
+    add_product_fe_data!(data::DataSD, product_ids_with_fe)
+
+Expand `data.product_characteristics` in-place by appending product indicator columns for each ID in `product_ids_with_fe`. The outside option indicator is moved to the last column. Prints the number of fixed effects added.
+"""
 function add_product_fe_data!(data, product_ids_with_fe)
 
     sort!(product_ids_with_fe) # sort product ids with fixed effects (yields faster search later on)
@@ -666,23 +678,17 @@ end
 """
     build_inverse_hessian_scaler(m::Model, e::Estimator, d::Data, x0; kwargs...)
 
-Compute a `parameter_rescaling` vector for [`SMLE`](@ref) based on the diagonal of the
-Hessian of the negative log-likelihood at `x0`. Returns `1 ./ sqrt.(diag_H)`, where
-`diag_H` is the clamped diagonal of the Hessian. Passing this vector as
-`parameter_rescaling` normalizes each parameter by its curvature scale, which can
-improve convergence when parameters differ greatly in magnitude.
+Compute a `parameter_rescaling` vector for `SMLE` based on the diagonal of the Hessian of the negative log-likelihood at `x0`. Returns `1 ./ sqrt.(diag_H)`, where `diag_H` is the diagonal of the Hessian clamped from below at `max(1.0, 0.01 * maximum(diag_H))` to avoid near-zero or negative scaling factors. Passing this vector as `parameter_rescaling` normalizes each parameter by its curvature scale, which can improve convergence when parameters differ greatly in magnitude.
 
-Diagonal entries are clamped from below at `max(1.0, 0.01 * maximum(diag_H))` before
-taking the square root, to avoid near-zero or negative scaling factors.
-
-## Arguments
+# Arguments
 - `m::Model`: The model.
-- `e::Estimator`: The estimator (typically [`SMLE`](@ref)).
+- `e::Estimator`: The estimator (typically `SMLE`).
 - `d::Data`: The data.
-- `x0`: Parameter vector at which to evaluate the Hessian (e.g. starting values).
+- `x0`: Parameter vector at which to evaluate the Hessian (e.g., starting values from `vectorize_parameters`).
 
-## Example
+# Example
 ```julia
+x0 = vectorize_parameters(m)
 scale = build_inverse_hessian_scaler(m, SMLE(100), d, x0)
 e = SMLE(100; parameter_rescaling = scale)
 ```

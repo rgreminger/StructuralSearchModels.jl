@@ -2,35 +2,24 @@
     SMLE(n_draws::Int; kwargs...)
     SMLE(; numerical_integration_method, kwargs...)
 
-Simulated maximum likelihood estimator (SMLE). This estimator is used to estimate
-models using maximum likelihood estimation when the likelihood function is not
-available in closed form.
+Simulated maximum likelihood estimator. The number of simulation draws is specified either via positional argument `SMLE(n_draws)`, which creates a `DefaultNI(n_draws)` integration method, or explicitly via `SMLE(; numerical_integration_method = DefaultNI(100))`.
 
-The number of simulation draws must be specified either:
-- Via positional argument: `SMLE(n_draws)` creates an estimator with `DefaultNI(n_draws)`.
-- Via keyword argument: `SMLE(; numerical_integration_method = DefaultNI(100))` or any other `NIMethod`.
+# Arguments
+- `n_draws::Int`: (Positional constructor only) Number of simulation draws; creates `DefaultNI(n_draws)`.
 
-## Arguments
-- `n_draws::Int`: (Positional constructor only) Number of simulation draws, creates `DefaultNI(n_draws)` as the integration method.
-
-## Optional Keyword Arguments
-- `numerical_integration_method::NIMethod`: (Required if not using positional constructor) Numerical integration method for main integration over shocks.
-- `options_optimization::NamedTuple`: Options for the optimization algorithm passed to `OptimizationFunction` of Optimization.jl. Uses LBFGS by default.
-- `options_problem::NamedTuple`: Options for the optimization problem passed to `OptimizationProblem` in Optimization.jl.
-- `options_solver::NamedTuple`: Options for the solver passed to `solve` in Optimization.jl. Defaults to 100,000 iterations.
+# Keyword Arguments
+- `numerical_integration_method::NIMethod`: Numerical integration method for the main integration over shocks. Required if not using the positional constructor.
+- `options_optimization::NamedTuple`: Options passed to `OptimizationFunction` in Optimization.jl. Uses LBFGS by default.
+- `options_problem::NamedTuple`: Options passed to `OptimizationProblem` in Optimization.jl.
+- `options_solver::NamedTuple`: Options passed to `solve` in Optimization.jl. Defaults to 100,000 iterations.
 - `numerical_integration_method_heterogeneity::NIMethod`: Integration method for unobserved heterogeneity. Defaults to `QMC(n_draws = 30)`.
-- `conditional_on_search::Bool`: Whether the likelihood function is conditional on search. Defaults to `false`.
-- `parameter_rescaling::Union{Nothing, AbstractVector}`: Optional vector of scaling factors for the parameters. When provided, the optimizer works in the rescaled space `φ = θ ./ scale`, which can improve convergence when parameters have very different magnitudes. Defaults to `nothing` (no rescaling). See [`build_inverse_hessian_scaler`](@ref) for a helper to construct a suitable scaling vector.
+- `conditional_on_search::Bool`: Whether the likelihood is conditional on at least one search. Defaults to `false`.
+- `parameter_rescaling::Union{Nothing, AbstractVector}`: Optional scaling vector; the optimizer works in the rescaled space `φ = θ ./ scale`. See `build_inverse_hessian_scaler` for a helper to construct a suitable vector. Defaults to `nothing`.
 
-## Examples
+# Examples
 ```julia
-# Using positional argument (most common)
-e = SMLE(100)  # Creates SMLE with DefaultNI(100)
-
-# With additional options
+e = SMLE(100)
 e = SMLE(200; conditional_on_search = true)
-
-# Custom integration method
 e = SMLE(; numerical_integration_method = QMC(n_draws = 500))
 ```
 """
@@ -116,7 +105,10 @@ end
 """
     calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
-Calculate the likelihood of the model `model` given the data `data` and the estimator `estimator`.
+Calculate the log-likelihood of `model` given `data` using `estimator`.
+
+# Returns
+A `Float64` log-likelihood value.
 """
 function calculate_likelihood(model::Model, estimator::MLE, data::Data; kwargs...)
 
