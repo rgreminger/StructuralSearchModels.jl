@@ -2113,6 +2113,11 @@ end
 function prepare_arguments_likelihood(
         m::M, e::Estimator, d::DataSD; kwargs...) where {M <: SDModel}
 
+    # Auto-populate min_discover_indices if not already provided
+    if isnothing(d.min_discover_indices)
+        fill_indices_min_discover!(d)
+    end
+
     # Get functional forms
     zdfun = get_functional_form(m.zdfun)
     zsfun = get_functional_form(m.zsfun)

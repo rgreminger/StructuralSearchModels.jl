@@ -44,7 +44,7 @@ The `generate_data` function passes `kwargs_path_generation` into the path gener
 The package exports some convenience functions for the `DataSD` type. These include:
 - `d == d1` checks whether two `DataSD` objects are the same.
 - `d[1:5]` selects the first five search sessions from the data
-- `fill_indices_min_discover!(data::DataSD)` adds the `min_discover_indices` from the consideration sets.
+- `fill_indices_min_discover!(data::DataSD)` adds the `min_discover_indices` from the consideration sets. This function is automatically called when estimating a model and the `min_discover_indices` field is not yet set (i.e., it is `nothing`). 
 
 The following are other functions that are available to manipulate the data and can be helpful for estimation.
 
