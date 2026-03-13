@@ -69,7 +69,7 @@ This is the first public release of the package. The core functionality for esti
 
 For the next version, I plan to allow specifying and estimating parameters that govern observed and unobserved heterogeneity across consumers (e.g., heterogeneous preferences). There are already several placeholders as type definitions that hopefully are sufficient so that the public-facing types do not change when implementing this in the next version.
 
-If you are interested in contributing to the development of the package, please get in touch! For example, there are many possible extensions to the package, such as implementing alternative estimation approaches (e.g., Bayesian estimation), or adding more structural search models.
+If you are interested in contributing to the development of the package, please get in touch! For example, there are many possible extensions to the package, such as implementing alternative estimation approaches (e.g., GHK simulator for Weitzman models), or adding more structural search models.
 
 ## Citation
 
