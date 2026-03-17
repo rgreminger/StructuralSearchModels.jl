@@ -9,4 +9,5 @@ StructuralSearchModels = "3afe5679-3dae-4b7a-af0e-821cb371ddf8"
 StructuralSearchModels = {path = ".."}
 
 [compat]
+DataFrames = "1.8.1"
 Distributions = "0.25.123"
