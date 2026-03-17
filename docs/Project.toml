@@ -10,3 +10,4 @@ StructuralSearchModels = {path = ".."}
 
 [compat]
 Distributions = "0.25.123"
+LiveServer = "1.5.0"
