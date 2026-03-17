@@ -1,0 +1,15 @@
+# tmp files
+tmp/*
+tmp*
+
+# vscode
+.vscode/*
+
+# claude
+.claude/*
+
+# manifest
+Manifest.toml
+
+# documenter
+docs/build/*
