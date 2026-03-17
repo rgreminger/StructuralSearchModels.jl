@@ -4,7 +4,8 @@ on:
   pull_request:
     branches:
       - main
-      - master 
+      - master
+  workflow_dispatch:
       
 # needed to allow julia-actions/cache to delete old caches that it has created
 permissions:
