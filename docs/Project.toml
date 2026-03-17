@@ -10,3 +10,4 @@ StructuralSearchModels = {path = ".."}
 
 [compat]
 Distributions = "0.25.123"
+Documenter = "1.17.0"
