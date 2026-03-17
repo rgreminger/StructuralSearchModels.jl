@@ -42,7 +42,6 @@ using PreallocationTools
 using QuadGK
 using QuasiMonteCarlo
 using Random
-using Revise
 using Roots
 using SpecialFunctions: erf, erfinv
 using StatsBase
